@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
 import com.homework.common.enums.UserInfoStatus;
 import com.homework.common.enums.UserInfoUserRole;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -11,6 +12,9 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @TableName("user_info")
 public class UserInfo extends BaseEntity {
+
+    @Schema(description = "用户账号ID")
+    private String accountNo;
 
     private String displayName;
 

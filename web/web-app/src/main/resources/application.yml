@@ -21,3 +21,18 @@ mybatis-plus:
 
 server:
   port: ${SERVER_PORT:8080}
+
+
+cloudflare:
+  turnstile:
+    secret-key: ${TURNSTILE_SECRET_KEY}
+    siteverify-url: https://challenges.cloudflare.com/turnstile/v0/siteverify
+
+
+jwt:
+  issuer: com.homework
+  secret-key: ${JWT_SECRET_KEY} #读取操作系统或 IDEA 运行配置中的 JWT_SECRET_KEY
+  ttl-seconds: 36000
+#不建议给生产密钥设置固定默认值
+#终端环境变量和 IDEA 运行配置中的环境变量是两套启动环境。
+#即使终端中为空，只要 IDEA 的 Environment variables 中设置了，使用 IDEA 启动时仍然可以正常读取。
