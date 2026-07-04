@@ -1,5 +1,6 @@
 package com.homework.model.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
 import lombok.Data;
@@ -12,7 +13,7 @@ public class CategorySubModule extends BaseEntity {
 
     private Long moduleId;
 
-    /** For example Java, Spring Boot, MySQL, Linux, AWS Associate. */
+    @TableField( "sub_module_name")
     private String subModuleName;
 
     private Integer sortOrder;

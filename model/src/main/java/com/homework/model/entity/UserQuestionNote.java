@@ -2,7 +2,7 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.common.enums.UserQuestionNoteVisibility;
+import com.homework.model.enums.UserQuestionNoteVisibility;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

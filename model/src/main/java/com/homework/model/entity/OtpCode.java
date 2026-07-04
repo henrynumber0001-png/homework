@@ -2,8 +2,8 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.common.enums.OtpCodePurpose;
-import com.homework.common.enums.OtpCodeStatus;
+import com.homework.model.enums.OtpCodePurpose;
+import com.homework.model.enums.OtpCodeStatus;
 import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

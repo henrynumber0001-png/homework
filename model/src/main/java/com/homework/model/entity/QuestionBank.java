@@ -3,11 +3,9 @@ package com.homework.model.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.common.enums.QuestionBankAccessType;
-import com.homework.common.enums.QuestionBankBankStatus;
-import com.homework.common.enums.QuestionBankBankType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -16,22 +14,12 @@ import lombok.EqualsAndHashCode;
 @TableName("question_bank")
 public class QuestionBank extends BaseEntity {
 
-    private String name;
+    private String bankName;
 
-    private String slug;
+    private Long subModuleId;
 
-    /** 1.interview;2.certification */
-    private QuestionBankBankType bankType;
-
-    private String description;
-
-    private String searchText;
-
-    private String coverUrl;
-
-    private Integer questionCount;
-
-    private Integer practiceUserCount;
+    @Schema(description = "完成题库的人数")
+    private Integer completeUserCount;
 
     private BigDecimal avgCorrectRate;
 
@@ -39,16 +27,15 @@ public class QuestionBank extends BaseEntity {
 
     private Integer viewCount;
 
+    private Integer hotScore;
+
     private Integer priority;
 
     @TableField("is_premium")
-    private Boolean premium;
+    private Boolean isPremium;
 
-    /** 1.free;2.premium;3.mixed_preview */
-    private QuestionBankAccessType accessType;
-
-    /** 1.draft;2.published;3.archived */
-    private QuestionBankBankStatus bankStatus;
+    @Schema(description = "题库中题目的数量")
+    private Integer questionCount;
 
     private Long createUserId;
 

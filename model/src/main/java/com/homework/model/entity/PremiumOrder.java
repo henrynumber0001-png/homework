@@ -2,10 +2,10 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.common.enums.PremiumOrderOrderStatus;
-import com.homework.common.enums.PremiumOrderPayType;
-import com.homework.common.enums.PremiumOrderPremiumScope;
-import com.homework.common.enums.PremiumOrderType;
+import com.homework.model.enums.PremiumOrderOrderStatus;
+import com.homework.model.enums.PremiumOrderPayType;
+import com.homework.model.enums.PremiumOrderPremiumScope;
+import com.homework.model.enums.PremiumOrderType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.Data;

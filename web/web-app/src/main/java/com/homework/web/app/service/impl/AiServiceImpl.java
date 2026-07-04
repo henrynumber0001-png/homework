@@ -1,8 +1,8 @@
 package com.homework.web.app.service.impl;
 
-import com.homework.common.enums.AiChatMessageSenderType;
-import com.homework.common.enums.AiChatSessionStatus;
-import com.homework.common.enums.AnswerCorrectionFeedbackStatus;
+import com.homework.model.enums.AiChatMessageSenderType;
+import com.homework.model.enums.AiChatSessionStatus;
+import com.homework.model.enums.AnswerCorrectionFeedbackStatus;
 import com.homework.web.app.dto.AiChatMessageDTO;
 import com.homework.web.app.dto.CorrectionFeedbackDTO;
 import com.homework.model.entity.AiChatMessage;

@@ -15,9 +15,4 @@ public class QuestionBankQuestion extends BaseEntity {
 
     private Long questionId;
 
-    private Integer priority;
-
-    /** Free user visible question. */
-    @TableField("is_free_preview")
-    private Boolean freePreview;
 }

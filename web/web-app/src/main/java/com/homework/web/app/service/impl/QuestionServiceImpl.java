@@ -1,10 +1,8 @@
 package com.homework.web.app.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.homework.common.enums.EnumUtils;
-import com.homework.common.enums.QuestionInfoDifficulty;
-import com.homework.common.enums.QuestionInfoQuestionStatus;
-import com.homework.common.enums.QuestionInfoQuestionType;
+import com.homework.model.enums.EnumUtils;
+import com.homework.model.enums.QuestionInfoQuestionType;
 import com.homework.web.app.dto.QuestionSaveDTO;
 import com.homework.model.entity.QuestionBankQuestion;
 import com.homework.model.entity.QuestionInfo;
@@ -63,9 +61,7 @@ public class QuestionServiceImpl implements QuestionService {
         entity.setAnswer(dto.getAnswer());
         entity.setAnalysis(dto.getAnalysis());
         entity.setQuestionType(EnumUtils.fromValue(QuestionInfoQuestionType.class, dto.getQuestionType()));
-        entity.setDifficulty(EnumUtils.fromValue(QuestionInfoDifficulty.class, dto.getDifficulty()));
-        entity.setPremium(dto.getPremium());
-        entity.setQuestionStatus(EnumUtils.fromValue(QuestionInfoQuestionStatus.class, dto.getQuestionStatus()));
+        entity.setIsPremium(dto.getPremium());
         entity.setCreateUserId(dto.getCreateUserId());
         if (dto.getId() == null) {
             questionInfoMapper.insert(entity);
@@ -110,8 +106,7 @@ public class QuestionServiceImpl implements QuestionService {
         vo.setAnswer(entity.getAnswer());
         vo.setAnalysis(entity.getAnalysis());
         vo.setQuestionType(entity.getQuestionType() == null ? null : entity.getQuestionType().getValue());
-        vo.setDifficulty(entity.getDifficulty() == null ? null : entity.getDifficulty().getValue());
-        vo.setPremium(entity.getPremium());
+        vo.setPremium(entity.getIsPremium());
         List<QuestionOptionVO> options = questionOptionMapper.selectList(new QueryWrapper<QuestionOption>()
                         .eq("question_id", entity.getId())
                         .eq("is_deleted", 0)

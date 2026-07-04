@@ -36,3 +36,40 @@ jwt:
 #不建议给生产密钥设置固定默认值
 #终端环境变量和 IDEA 运行配置中的环境变量是两套启动环境。
 #即使终端中为空，只要 IDEA 的 Environment variables 中设置了，使用 IDEA 启动时仍然可以正常读取。
+
+oauth:
+  google:
+    client-id: ${GOOGLE_CLIENT_ID}
+    client-secret: ${GOOGLE_CLIENT_SECRET}
+    redirect-uri: ${GOOGLE_REDIRECT_URI}
+    token-uri: https://oauth2.googleapis.com/token
+
+  apple:
+    client-id: ${APPLE_CLIENT_ID}
+    team-id: ${APPLE_TEAM_ID}
+    key-id: ${APPLE_KEY_ID}
+    private-key: ${APPLE_PRIVATE_KEY}
+    redirect-uri: ${APPLE_REDIRECT_URI}
+    token-uri: https://appleid.apple.com/auth/token
+    jwks-uri: https://appleid.apple.com/auth/keys
+
+  wechat:
+    app-id: ${WECHAT_APP_ID}
+    app-secret: ${WECHAT_APP_SECRET}
+    redirect-uri: ${WECHAT_REDIRECT_URI}
+    scope: snsapi_login
+    state-prefix: homework
+    authorize-url: https://open.weixin.qq.com/connect/qrconnect
+    access-token-url: https://api.weixin.qq.com/sns/oauth2/access_token
+    user-info-url: https://api.weixin.qq.com/sns/userinfo
+    lang: zh_CN
+
+  qq:
+    app-id: ${QQ_CONNECT_APP_ID}
+    app-key: ${QQ_CONNECT_APP_KEY} #相当于其他平台里的 client-secret
+    redirect-uri: ${QQ_CONNECT_REDIRECT_URI}
+    authorize-url: https://graph.qq.com/oauth2.0/authorize
+    token-url: https://graph.qq.com/oauth2.0/token
+    openid-url: https://graph.qq.com/oauth2.0/me
+    user-info-url: https://graph.qq.com/user/get_user_info
+    scope: get_user_info

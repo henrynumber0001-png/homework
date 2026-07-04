@@ -1,6 +1,5 @@
 package com.homework.web.app.dto;
 
-import com.homework.common.enums.UserAuthIdentityProvider;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 

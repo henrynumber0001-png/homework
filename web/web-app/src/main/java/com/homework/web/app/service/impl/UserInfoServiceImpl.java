@@ -1,10 +1,10 @@
 package com.homework.web.app.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.homework.common.enums.UserInfoStatus;
+import com.homework.model.enums.UserInfoStatus;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
-import com.homework.common.utils.LoginUserHolder;
+import com.homework.web.app.context.LoginUserHolder;
 import com.homework.model.entity.UserInfo;
 import com.homework.web.app.mapper.UserInfoMapper;
 import com.homework.web.app.service.UserInfoService;

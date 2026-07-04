@@ -14,13 +14,5 @@ public class CategoryModule extends BaseEntity {
 
     private String moduleName;
 
-    private String displayIcon;
-
-    private String themeColor;
-
-    private String themeBgColor;
-
-    private String themeGradient;
-
     private Integer sortOrder;
 }

@@ -2,8 +2,8 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.common.enums.PrivateMessageAllowReason;
-import com.homework.common.enums.PrivateMessageMessageStatus;
+import com.homework.model.enums.PrivateMessageAllowReason;
+import com.homework.model.enums.PrivateMessageMessageStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

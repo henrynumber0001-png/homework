@@ -3,7 +3,7 @@ package com.homework.model.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.common.enums.UserQuestionAnswerAnswerType;
+import com.homework.model.enums.UserQuestionAnswerAnswerType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.Data;

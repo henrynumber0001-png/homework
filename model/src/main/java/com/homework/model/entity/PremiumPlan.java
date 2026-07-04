@@ -2,9 +2,9 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.common.enums.PremiumPlanBillingCycle;
-import com.homework.common.enums.PremiumPlanPremiumScope;
-import com.homework.common.enums.PremiumPlanStatus;
+import com.homework.model.enums.PremiumPlanBillingCycle;
+import com.homework.model.enums.PremiumPlanPremiumScope;
+import com.homework.model.enums.PremiumPlanStatus;
 import java.math.BigDecimal;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

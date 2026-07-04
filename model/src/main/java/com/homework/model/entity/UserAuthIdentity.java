@@ -2,8 +2,8 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.common.enums.UserAuthIdentityProvider;
-import com.homework.common.enums.UserAuthIdentityStatus;
+import com.homework.model.enums.UserAuthIdentityProvider;
+import com.homework.model.enums.UserAuthIdentityStatus;
 import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

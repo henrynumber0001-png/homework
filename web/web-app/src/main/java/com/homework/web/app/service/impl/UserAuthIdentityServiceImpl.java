@@ -3,19 +3,20 @@ package com.homework.web.app.service.impl;
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.homework.common.enums.UserAuthIdentityProvider;
-import com.homework.common.enums.UserAuthIdentityStatus;
-import com.homework.common.enums.UserInfoStatus;
-import com.homework.common.enums.UserInfoUserRole;
+import com.homework.model.enums.UserAuthIdentityProvider;
+import com.homework.model.enums.UserAuthIdentityStatus;
+import com.homework.model.enums.UserInfoStatus;
+import com.homework.model.enums.UserInfoUserRole;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.common.utils.JwtUtil;
 import com.homework.common.utils.TurnstileService;
 import com.homework.model.entity.UserAuthIdentity;
 import com.homework.model.entity.UserInfo;
-import com.homework.web.app.dto.EmailRegisterDTO;
+import com.homework.web.app.dto.*;
 import com.homework.web.app.mapper.UserAuthIdentityMapper;
 import com.homework.web.app.mapper.UserInfoMapper;
+import com.homework.web.app.service.ThirdPartyAuthService;
 import com.homework.web.app.service.UserAuthIdentityService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,9 +47,14 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private ThirdPartyAuthService thirdPartyAuthService;
+
+
+
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public String register(EmailRegisterDTO emailRegisterDTO, HttpServletRequest request) {
+    public String registerByEmail(EmailRegisterDTO emailRegisterDTO, HttpServletRequest request) {
 
         if(emailRegisterDTO == null){
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -80,6 +86,7 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
         String identifierNormalized = normalizeEmail(identifier); //应该按照normalized之后的查，扩大查重范围，否则大小写同名邮箱会被认为是不重复；
         LambdaQueryWrapper<UserAuthIdentity> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(UserAuthIdentity::getIdentifierNormalized, identifierNormalized);
+
         if(this.getOne(queryWrapper) != null){
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_EMAIL_EXIST);
         }
@@ -91,11 +98,8 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
         userInfo.setDisplayName(emailRegisterDTO.getDisplayName());
         userInfo.setUserRole(UserInfoUserRole.USER);
         userInfo.setStatus(UserInfoStatus.ACTIVE);
-        inserUserInfoWithAccountNo(userInfo);
+        insertUserInfoWithAccountNo(userInfo);
         userInfoMapper.insert(userInfo); //你现在在UserAuthIdentityServiceImpl.java中，如果想保存userInfo，需要调用userInfoMapper的insert方法
-
-
-
 
         userAuthIdentity.setUserId(userInfo.getId());
         userAuthIdentity.setProvider(UserAuthIdentityProvider.EMAIL_PASSWORD);
@@ -111,13 +115,188 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
         return token;
     }
 
+    @Override
+    public String registerByOAuth(ThirdPartyRegisterDTO thirdPartyRegisterDTO,HttpServletRequest request) {
+
+        if(thirdPartyRegisterDTO == null || thirdPartyRegisterDTO.getIdentityProvider() == null || !StringUtils.hasText(thirdPartyRegisterDTO.getAuthCode())){
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        String remoteIp = request == null ? null : request.getRemoteAddr();
+        Boolean result = turnstileService.verify(thirdPartyRegisterDTO.getTurnstileToken(), remoteIp);
+        if(!result){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_TURNSTILE_VERIFY_ERROR);
+        }
+
+        ThirdPartyUser thirdPartyUser = thirdPartyAuthService.verifyAndGetUser(thirdPartyRegisterDTO.getIdentityProvider(), thirdPartyRegisterDTO.getAuthCode());
+        //在 registerByOAuth中，只有 ThirdPartyUser
+        //ThirdPartyUser -> ThirdPartyAuthHandler -> ThirdPartyAuthHandlerImpl -> GoogleAuthHandler -> GoogleIdToken
+
+        String identifier = thirdPartyUser.getExternalUserId();
+        String identifierNormalized = identifier.trim(); //没有什么实际的业务意义，因为第三方返回的不可能带空格，所以主要是用来和邮箱/手机号的identifierNormalized保持统一
+
+        LambdaQueryWrapper<UserAuthIdentity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserAuthIdentity::getProvider, thirdPartyRegisterDTO.getIdentityProvider())
+                .eq(UserAuthIdentity::getIdentifierNormalized, identifierNormalized);
+
+        if (this.getOne(wrapper) != null) {
+            throw new HomeworkException(ResultCodeEnum.REPEAT_SUBMIT); // 或者定义 THIRD_PARTY_ACCOUNT_EXIST
+        }
 
 
+        UserInfo userInfo = new UserInfo();
+        UserAuthIdentity userAuthIdentity = new UserAuthIdentity();
+
+        String displayName = thirdPartyUser.getDisplayName();//从第三方返回的displayName是有可能为null的，所以要做一个兜底条件
+        if(!StringUtils.hasText(displayName)){
+            displayName = thirdPartyUser.getEmail(); //ThirdPartyUser 中的 email 属性，用于 displayName 返回缺失时候的兜底条件
+        }
+        if(!StringUtils.hasText(displayName)){ //第二个兜底，因为如果email也返回null，那么就要自创一个displayName
+            displayName = thirdPartyRegisterDTO.getIdentityProvider().getLabel() + "用户" + RandomUtil.randomNumbers(6);
+        }
+        userInfo.setDisplayName(displayName);
+        userInfo.setUserRole(UserInfoUserRole.USER);
+        userInfo.setStatus(UserInfoStatus.ACTIVE);
+        insertUserInfoWithAccountNo(userInfo);
+        userInfoMapper.insert(userInfo); //你现在在UserAuthIdentityServiceImpl.java中，如果想保存userInfo，需要调用userInfoMapper的insert方法
+
+        userAuthIdentity.setUserId(userInfo.getId());
+        userAuthIdentity.setProvider(thirdPartyUser.getProvider()); // ThirdPartyUser 是服务端验证成功后生成的结果，更可信。
+        userAuthIdentity.setIdentifier(identifier);
+        userAuthIdentity.setIdentifierNormalized(identifierNormalized);
+        userAuthIdentity.setStatus(UserAuthIdentityStatus.VERIFIED);
+        userAuthIdentity.setVerifiedTime(LocalDateTime.now());
+        userAuthIdentity.setLastUsedTime(LocalDateTime.now());
+        this.save(userAuthIdentity);
+
+        String token = jwtUtil.createToken(userInfo.getId(),userInfo.getAccountNo());
+        return token;
+
+    }
+
+    @Override
+    public String loginByEmail(EmailLoginDTO emailLoginDTO,HttpServletRequest request) {
+        if(emailLoginDTO == null){
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        if(!StringUtils.hasText(emailLoginDTO.getEmail())){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_EMAIL_EMPTY);
+        }
+
+        if(!StringUtils.hasText(emailLoginDTO.getPassword())){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_PASSWORD_EMPTY);
+        }
+
+        String remoteIp = request == null ? null : request.getRemoteAddr();
+        Boolean result = turnstileService.verify(emailLoginDTO.getTurnstileToken(), remoteIp);
+        if(!result){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_TURNSTILE_VERIFY_ERROR);
+        }
 
 
+        //前置校验通过后，开始查询用户身份信息
+        //先查用户信息是否存在，如果存在，再用前端传来的密码和数据库中保存的密码进行匹配
+        String identifier = identifierOfEmail(emailLoginDTO.getEmail());
+        String identifierNormalized = normalizeEmail(identifier);
+
+        LambdaQueryWrapper<UserAuthIdentity> userAuthIdentityWrapper = new LambdaQueryWrapper<>();
+        userAuthIdentityWrapper.eq(UserAuthIdentity::getIdentifierNormalized,identifierNormalized)
+                .select(UserAuthIdentity::getUserId,UserAuthIdentity::getPasswordHash,UserAuthIdentity::getStatus);//只查需要的字段，提高查询性能
+
+        UserAuthIdentity fetchedUserAuthIdentity = this.getOne(userAuthIdentityWrapper);
+
+        if(fetchedUserAuthIdentity == null){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_USER_NOT_EXIST);
+        }
+
+        //用户存在，再用前端传来的密码和数据库中保存的密码进行匹配
+
+        boolean isPasswordMatch = bCryptPasswordEncoder.matches(emailLoginDTO.getPassword(), fetchedUserAuthIdentity.getPasswordHash());
+        if(!isPasswordMatch){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_PASSWORD_ERROR);
+        }
+
+        //最后验证用户状态
+        if(fetchedUserAuthIdentity.getStatus() != UserAuthIdentityStatus.VERIFIED){
+            throw new HomeworkException(ResultCodeEnum.APP_ACCOUNT_STATUS_ERROR);
+        }
+
+        //全部验证通过，加上accountNo之后，就可以发JWT了
+        Long userId = fetchedUserAuthIdentity.getUserId();
+        String accountNo = userInfoMapper.selectById(userId).getAccountNo();
+
+        String token = jwtUtil.createToken(userId,accountNo);
+        return token;
 
 
+    }
 
+    @Override
+    public String loginByOAuth(ThirdPartyLoginDTO thirdPartyLoginDTO,HttpServletRequest request) {
+        if(thirdPartyLoginDTO == null || thirdPartyLoginDTO.getIdentityProvider() == null || !StringUtils.hasText(thirdPartyLoginDTO.getAuthCode())){
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        ThirdPartyUser thirdPartyUser = thirdPartyAuthService.verifyAndGetUser(thirdPartyLoginDTO.getIdentityProvider(), thirdPartyLoginDTO.getAuthCode());
+        if(thirdPartyUser == null){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_USER_NOT_EXIST);
+        }
+
+        String remoteIp = request == null ? null : request.getRemoteAddr();
+        Boolean result = turnstileService.verify(thirdPartyLoginDTO.getTurnstileToken(), remoteIp);
+        if(!result){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_TURNSTILE_VERIFY_ERROR);
+        }
+
+        String identifier = thirdPartyUser.getExternalUserId();
+        String identifierNormalized = identifier.trim();
+
+        LambdaQueryWrapper<UserAuthIdentity> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(UserAuthIdentity::getProvider, thirdPartyLoginDTO.getIdentityProvider())
+                .eq(UserAuthIdentity::getIdentifierNormalized, identifierNormalized)
+                .select(UserAuthIdentity::getUserId,UserAuthIdentity::getStatus);
+
+        UserAuthIdentity fetchedAuthIdentity = this.getOne(queryWrapper);
+        if(fetchedAuthIdentity == null){
+            UserInfo userInfo = new UserInfo();
+            UserAuthIdentity userAuthIdentity = new UserAuthIdentity();
+
+            String displayName = thirdPartyUser.getDisplayName();
+            if(!StringUtils.hasText(displayName)){
+                userInfo.setDisplayName(thirdPartyUser.getEmail());
+            }
+            if(!StringUtils.hasText(displayName)){
+                displayName = thirdPartyUser.getProvider().getLabel() + "用户" + RandomUtil.randomNumbers(6);
+            }
+
+            userInfo.setDisplayName(displayName);
+            userInfo.setUserRole(UserInfoUserRole.USER);
+            userInfo.setStatus(UserInfoStatus.ACTIVE);
+            userInfo.setAvatar(thirdPartyUser.getAvatar());
+            userInfo.setCreatedTime(LocalDateTime.now());
+            userInfo.setUpdatedTime(LocalDateTime.now());
+            insertUserInfoWithAccountNo(userInfo);
+            userInfoMapper.insert(userInfo);
+
+            userAuthIdentity.setUserId(userInfo.getId());
+            userAuthIdentity.setProvider(thirdPartyUser.getProvider());
+            userAuthIdentity.setIdentifier(identifier);
+            userAuthIdentity.setIdentifierNormalized(identifierNormalized);
+            userAuthIdentity.setStatus(UserAuthIdentityStatus.VERIFIED);
+            userAuthIdentity.setVerifiedTime(LocalDateTime.now());
+            userAuthIdentity.setLastUsedTime(LocalDateTime.now());
+            this.save(userAuthIdentity);
+        }
+
+        if(fetchedAuthIdentity.getStatus()!= UserAuthIdentityStatus.VERIFIED){
+            throw new HomeworkException(ResultCodeEnum.APP_ACCOUNT_STATUS_ERROR);
+        }
+        Long userId = fetchedAuthIdentity.getUserId();
+        String accountNo = userInfoMapper.selectById(userId).getAccountNo();
+        String token = jwtUtil.createToken(userId,accountNo);
+        return token;
+    }
 
 
     private String identifierOfEmail(String email){
@@ -136,7 +315,7 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
         return identifierNormalized;
     }
 
-    private void inserUserInfoWithAccountNo(UserInfo userInfo){
+    private void insertUserInfoWithAccountNo(UserInfo userInfo){
         for (int i = 0; i < 5; i++) {
             userInfo.setAccountNo(generateAccountNo());
             try{

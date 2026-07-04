@@ -19,8 +19,6 @@ public class BrowsingHistory extends BaseEntity {
 
     private Long moduleId;
 
-    private Long detailId;
-
     /** Accumulated answer time in seconds. */
     private Integer answerTime;
 

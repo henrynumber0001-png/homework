@@ -1,8 +1,8 @@
 package com.homework.web.app.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.homework.common.enums.PrivateMessageAllowReason;
-import com.homework.common.enums.PrivateMessageMessageStatus;
+import com.homework.model.enums.PrivateMessageAllowReason;
+import com.homework.model.enums.PrivateMessageMessageStatus;
 import com.homework.web.app.dto.PrivateMessageCreateDTO;
 import com.homework.model.entity.PrivateMessage;
 import com.homework.model.entity.UserFollow;

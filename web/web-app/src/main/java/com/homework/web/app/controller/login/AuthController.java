@@ -2,13 +2,8 @@ package com.homework.web.app.controller.login;
 
 
 import com.homework.common.result.Result;
-import com.homework.model.entity.UserAuthIdentity;
-import com.homework.web.app.dto.EmailRegisterDTO;
-import com.homework.web.app.dto.PhoneRegisterDTO;
-import com.homework.web.app.dto.ThirdPartyRegisterDTO;
+import com.homework.web.app.dto.*;
 import com.homework.web.app.service.UserAuthIdentityService;
-import com.homework.web.app.service.UserInfoService;
-import com.homework.web.app.vo.UserInfoVo;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,42 +21,44 @@ public class AuthController {
     private UserAuthIdentityService userAuthIdentityService;
 
 
-
     @Operation(summary = "Email Register")
     @PostMapping("/register/email")
     public Result<String> registerByEmail(@RequestBody EmailRegisterDTO emailRegisterDTO, HttpServletRequest request) {
-        String token = userAuthIdentityService.register(emailRegisterDTO,request);
+        String token = userAuthIdentityService.registerByEmail(emailRegisterDTO,request);
         return Result.success(token);
     }
 
-    @Operation(summary = "Phone Register")
-    @PostMapping("/register/phone")
-    public Result<String> registerByPhone(@RequestBody PhoneRegisterDTO phoneRegisterDTO) {
-        return Result.fail();
-    }
+//    @Operation(summary = "Phone Register")
+//    @PostMapping("/register/phone")
+//    public Result<String> registerByPhone(@RequestBody PhoneRegisterDTO phoneRegisterDTO) {
+//        return Result.success();
+//    }
 
     @Operation(summary = "Third Party Register")
     @PostMapping("/register/oauth")
-    public Result<String> registerByOAuth(@RequestBody ThirdPartyRegisterDTO thirdPartyRegisterDTO) {
-        return Result.fail();
+    public Result<String> registerByOAuth(@RequestBody ThirdPartyRegisterDTO thirdPartyRegisterDTO,HttpServletRequest request) {
+        String token = userAuthIdentityService.registerByOAuth(thirdPartyRegisterDTO,request);
+        return Result.success(token);
     }
 
     @Operation(summary = "Email Login")
     @PostMapping("/login/email")
-    public Result<String> loginByEmail(@RequestBody EmailRegisterDTO emailRegisterDTO) {
-        return Result.fail();
+    public Result<String> loginByEmail(@RequestBody EmailLoginDTO emailLoginDTO, HttpServletRequest request) {
+        String token = userAuthIdentityService.loginByEmail(emailLoginDTO,request);
+        return Result.success();
     }
 
-    @Operation(summary = "Phone Login")
-    @PostMapping("/login/phone")
-    public Result<String> loginByPhone(@RequestBody PhoneRegisterDTO phoneRegisterDTO) {
-        return Result.fail();
-    }
+//    @Operation(summary = "Phone Login")
+//    @PostMapping("/login/phone")
+//    public Result<String> loginByPhone(@RequestBody PhoneRegisterDTO phoneRegisterDTO) {
+//        return Result.fail();
+//    }
 
     @Operation(summary = "Third Party Login")
     @PostMapping("/login/oauth")
-    public Result<String> loginByOAuth(@RequestBody ThirdPartyRegisterDTO thirdPartyRegisterDTO) {
-        return Result.fail();
+    public Result<String> loginByOAuth(@RequestBody ThirdPartyLoginDTO thirdPartyLoginDTO,HttpServletRequest request) {
+        String token = userAuthIdentityService.loginByOAuth(thirdPartyLoginDTO,request);
+        return Result.success(token);
     }
 
 

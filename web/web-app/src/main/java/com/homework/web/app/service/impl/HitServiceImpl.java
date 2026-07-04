@@ -1,9 +1,9 @@
 package com.homework.web.app.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.homework.common.enums.EnumUtils;
-import com.homework.common.enums.HitActionActionType;
-import com.homework.common.enums.HitPostPostStatus;
+import com.homework.model.enums.EnumUtils;
+import com.homework.model.enums.HitActionActionType;
+import com.homework.model.enums.HitPostPostStatus;
 import com.homework.web.app.dto.HitActionDTO;
 import com.homework.web.app.dto.HitCommentCreateDTO;
 import com.homework.web.app.dto.HitPostCreateDTO;

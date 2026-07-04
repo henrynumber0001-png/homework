@@ -2,8 +2,8 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.common.enums.PracticeSessionSessionMode;
-import com.homework.common.enums.PracticeSessionStatus;
+import com.homework.model.enums.PracticeSessionSessionMode;
+import com.homework.model.enums.PracticeSessionStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import lombok.Data;

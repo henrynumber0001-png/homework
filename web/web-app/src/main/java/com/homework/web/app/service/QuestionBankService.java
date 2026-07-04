@@ -1,16 +1,16 @@
 package com.homework.web.app.service;
 
-import com.homework.web.app.dto.BankQueryDTO;
-import com.homework.web.app.dto.QuestionBankSaveDTO;
-import com.homework.web.app.vo.CategoryDetailVO;
-import com.homework.web.app.vo.QuestionBankListVO;
+import com.baomidou.mybatisplus.extension.service.IService;
+import com.homework.model.entity.QuestionBank;
+import com.homework.web.app.vo.GroupPageVO;
+import com.homework.web.app.vo.ModulePageVO;
+import com.homework.web.app.vo.SubModulePageVO;
 
-import java.util.List;
+public interface QuestionBankService extends IService<QuestionBank> {
 
-public interface QuestionBankService {
-    List<CategoryDetailVO> listPrototypeBanks(BankQueryDTO query);
-    List<QuestionBankListVO> listQuestionBanks(BankQueryDTO query);
-    Long saveQuestionBank(QuestionBankSaveDTO dto);
-    void deleteQuestionBank(Long id);
-    java.util.Map<String, Object> favoriteBank(Long userId, Long bankId);
+    GroupPageVO getGroupPage(Long groupId);
+
+    ModulePageVO getModulePage(Long groupId, Long moduleId);
+
+    SubModulePageVO getSubModulePage(Long groupId, Long moduleId, Long subModuleId);
 }

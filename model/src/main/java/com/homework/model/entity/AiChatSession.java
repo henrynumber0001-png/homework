@@ -2,7 +2,7 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.common.enums.AiChatSessionStatus;
+import com.homework.model.enums.AiChatSessionStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

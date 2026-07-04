@@ -2,8 +2,8 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.common.enums.UserInfoStatus;
-import com.homework.common.enums.UserInfoUserRole;
+import com.homework.model.enums.UserInfoStatus;
+import com.homework.model.enums.UserInfoUserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

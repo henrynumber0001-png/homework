@@ -3,7 +3,7 @@ package com.homework.web.app.interceptor;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.common.utils.JwtUtil;
-import com.homework.common.utils.LoginUserHolder;
+import com.homework.web.app.context.LoginUserHolder;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,7 +34,9 @@ public class LoginInterceptor implements HandlerInterceptor {
 
         try {
             Long userId = jwtUtil.getUserId(token);
+            String accountNo = jwtUtil.getAccountNo(token);
             LoginUserHolder.setUserId(userId);
+            LoginUserHolder.setAccountNo(accountNo);
         }catch (ExpiredJwtException e){//如果token过期，抛异常
             throw new HomeworkException(ResultCodeEnum.TOKEN_EXPIRED);
         } catch(JwtException | IllegalArgumentException e){ //其他token异常（被篡改、格式错误、签名验证失败、token未生效，token是空字符串 等）

@@ -2,9 +2,9 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.common.enums.UserNotificationNotificationType;
-import com.homework.common.enums.UserNotificationReadStatus;
-import com.homework.common.enums.UserNotificationTargetType;
+import com.homework.model.enums.UserNotificationNotificationType;
+import com.homework.model.enums.UserNotificationReadStatus;
+import com.homework.model.enums.UserNotificationTargetType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 

@@ -1,10 +1,10 @@
 package com.homework.web.app.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.homework.common.enums.EnumUtils;
-import com.homework.common.enums.PremiumOrderOrderStatus;
-import com.homework.common.enums.PremiumOrderPremiumScope;
-import com.homework.common.enums.PremiumOrderType;
+import com.homework.model.enums.EnumUtils;
+import com.homework.model.enums.PremiumOrderOrderStatus;
+import com.homework.model.enums.PremiumOrderPremiumScope;
+import com.homework.model.enums.PremiumOrderType;
 import com.homework.web.app.dto.PremiumOrderCreateDTO;
 import com.homework.model.entity.PremiumOrder;
 import com.homework.model.entity.PremiumPlan;

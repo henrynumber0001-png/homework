@@ -1,10 +1,8 @@
 package com.homework.web.admin.controller;
 
 import com.homework.common.result.Result;
-import com.homework.web.app.dto.BankQueryDTO;
 import com.homework.web.app.dto.QuestionBankSaveDTO;
 import com.homework.web.app.service.QuestionBankService;
-import com.homework.web.app.vo.QuestionBankListVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
