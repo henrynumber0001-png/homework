@@ -27,7 +27,6 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
     private final CategorySubModuleMapper categorySubModuleMapper;
     private final QuestionBankMapper questionBankMapper;
     private final GraphInfoMapper graphInfoMapper;
-    private final CategoryGroupMapper categoryGroupMapper;
 
     @Override
     public GroupPageVO getGroupPage(Long groupId) {
@@ -47,7 +46,7 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         CategorySubModuleVO firstSubModuleVo = subModuleVos.get(0);
 
         Long subModuleId = firstSubModuleVo.getId();
-        List<QuestionBankVO> questionBankVos = listQuestionBanks(subModuleId);
+        List<QuestionBankVO> questionBankVos = listQuestionBanksByHot(subModuleId);
 
         GroupPageVO vo = new GroupPageVO();
         vo.setFirstModule(firstModuleVo);
@@ -59,37 +58,147 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         return vo;
     }
 
+//    @Override
+//    public ModulePageVO getModulePage(Long groupId, Long moduleId, Long currentModuleId) {
+//        if (groupId == null || moduleId == null) {
+//            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+//        }
+//
+//        //首先，根据前端传入的groupId，查询到所有Modules
+//        List<CategoryModuleVO> moduleVos = listModuleVos(groupId);
+//
+//        //stream.noneMatch(判断条件) 表示：没有任何一个元素满足这个条件
+//        //当用户点击的moduleId，与groupId下的任何一个module的Id都不相等时，说明前端放错module了，抛异常
+//        //这一步主要是防止前端乱传，比如把“认证题库”的 moduleId 传到“面试题库”的 groupId 下面
+//        if (moduleVos.stream().noneMatch(moduleVo -> moduleId.equals(moduleVo.getId()))) {
+//            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+//        }
+//
+//        //这个currentModuleId是web前端传入的，非用户传入的
+//        //用户这次点击的 moduleId，是不是和页面当前已经高亮/选中的 currentModuleId 一样。
+//        /*
+//        比如第一次进入 groupPage 后，后端返回：
+//        {
+//          "firstModule": {
+//            "id": 1
+//          }
+//        }
+//        前端此时应该记住：
+//        currentModuleId = 1
+//        如果用户又点击了这个 id=1 的 module，前端请求：
+//        /api/app/question-banks/group-page/module-page?groupId=100&moduleId=1&currentModuleId=1
+//
+//        不过更推荐前端自己判断：
+//        if (clickedModuleId === currentModuleId) {
+//          return;
+//        }
+//         */
+//        if (moduleId.equals(currentModuleId)) {
+//            return null;
+//        }
+//
+//        List<CategorySubModuleVO> subModuleVos = listSubModuleVos(moduleId);
+//        CategorySubModuleVO firstSubModuleVo = subModuleVos.get(0);
+//
+//        Long firstSubModuleId = firstSubModuleVo.getId();
+//        List<QuestionBankVO> questionBankVos = listQuestionBanks(firstSubModuleId);
+//
+//        ModulePageVO vo = new ModulePageVO();
+//        vo.setId(moduleId);
+//        vo.setFirstSubModule(firstSubModuleVo);
+//        vo.setSort(SortType.HOT);
+//        vo.setSubModules(subModuleVos);
+//        vo.setBanks(questionBankVos);
+//        return vo;
+//    }
+@Override
+public ModulePageVO getModulePage(Long currentGroupId, Long moduleId, Long currentModuleId) {
+    if (currentGroupId == null || moduleId == null || currentModuleId == null) {
+        throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+    }
+
+    //首先，根据前端传入的groupId，查询到所有Modules
+    List<CategoryModuleVO> moduleVos = listModuleVos(currentGroupId);
+
+    //stream.noneMatch(判断条件) 表示：没有任何一个元素满足这个条件
+    //当用户点击的moduleId，与groupId下的任何一个module的Id都不相等时，说明前端放错module了，抛异常
+    //这一步主要是防止前端乱传，比如把“认证题库”的 moduleId 传到“面试题库”的 groupId 下面
+    if (moduleVos.stream().noneMatch(moduleVo -> moduleId.equals(moduleVo.getId()))) {
+        throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+    }
+
+    //这个currentModuleId是web前端传入的，非用户传入的
+    //用户这次点击的 moduleId，是不是和页面当前已经高亮/选中的 currentModuleId 一样。
+        /*
+        比如第一次进入 groupPage 后，后端返回：
+        {
+          "firstModule": {
+            "id": 1
+          }
+        }
+        前端此时应该记住：
+        currentModuleId = 1
+        如果用户又点击了这个 id=1 的 module，前端请求：
+        /api/app/question-banks/group-page/module-page?groupId=100&moduleId=1&currentModuleId=1
+
+        不过更推荐前端自己判断：
+        if (clickedModuleId === currentModuleId) {
+          return;
+        }
+         */
+    if (moduleId.equals(currentModuleId)) {
+        return null;
+    }
+
+    List<CategorySubModuleVO> subModuleVos = listSubModuleVos(moduleId);
+    CategorySubModuleVO firstSubModuleVo = subModuleVos.get(0);
+
+    Long firstSubModuleId = firstSubModuleVo.getId();
+    List<QuestionBankVO> questionBankVos = listQuestionBanksByHot(firstSubModuleId);
+
+    ModulePageVO vo = new ModulePageVO();
+    vo.setFirstSubModule(firstSubModuleVo);
+    vo.setSort(SortType.HOT);
+    vo.setSubModules(subModuleVos);
+    vo.setBanks(questionBankVos);
+    return vo;
+}
+
     @Override
-    public ModulePageVO getModulePage(Long groupId, Long moduleId) {
-        if (groupId == null || moduleId == null) {
+    public SubModulePageVO getSubModulePage(Long currentModuleId, Long subModuleId, Long currentSubModuleId) {
+        if (currentModuleId == null || subModuleId == null || currentSubModuleId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
-        if(!categoryGroupMapper.selectById(groupId).getId().equals(moduleId)){
+        //先校验传入的subModule是否属于指定module下的subModule
+        List<CategorySubModuleVO> subModuleVos = listSubModuleVos(currentModuleId);
+        if(subModuleVos.stream().noneMatch(subModuleVo -> subModuleId.equals(subModuleVo.getId()))){
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
-        //当moduleId = firstModuleVo.id，不做任何反应
-        if(listModuleVos(groupId).get(0).getId().equals(moduleId)){
+
+        //验证subModule的点击是否与前端记录的重复（即是已经是当前subModule）
+        if(subModuleId.equals(currentSubModuleId)){
             return null;
         }
 
-        List<CategorySubModuleVO> subModuleVos = listSubModuleVos(moduleId);
-        CategorySubModuleVO firstSubModuleVo = subModuleVos.get(0);
+        List<QuestionBankVO> questionBankVos = listQuestionBanksByHot(subModuleId);
 
-        Long questionBankId = firstSubModuleVo.getId();
-        List<QuestionBankVO> questionBankVos = listQuestionBanks(questionBankId);
-
-        ModulePageVO vo = new ModulePageVO();
-        vo.setFirstSubModule(firstSubModuleVo);
+        SubModulePageVO vo = new SubModulePageVO();
         vo.setSort(SortType.HOT);
-        vo.setSubModules(subModuleVos);
         vo.setBanks(questionBankVos);
         return vo;
     }
 
     @Override
-    public SubModulePageVO getSubModulePage(Long groupId, Long moduleId, Long subModuleId) {
-        if (groupId == null || moduleId == null || subModuleId == null) {
+    public List<QuestionBankVO> getSortType(SortType sortType,Long currentSubModuleId) {
+        if(currentSubModuleId == null || sortType == null){
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+        if(sortType == SortType.HOT){
+            return listQuestionBanksByHot(currentSubModuleId);
+        }else if(sortType == SortType.LATEST){
+            return listQuestionBanksByLatest(currentSubModuleId);
+        }else {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
     }
@@ -138,7 +247,7 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
 
     }
 
-    private List<QuestionBankVO> listQuestionBanks(Long subModuleId) {
+    private List<QuestionBankVO> listQuestionBanksByHot(Long subModuleId) {
 
         LambdaQueryWrapper<QuestionBank> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(QuestionBank::getSubModuleId, subModuleId)
@@ -155,10 +264,45 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         return questionBankVos;
     }
 
+    private List<QuestionBankVO> listQuestionBanksByLatest(Long subModuleId) {
+        LambdaQueryWrapper<QuestionBank> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(QuestionBank::getSubModuleId, subModuleId)
+                .orderByAsc(QuestionBank::getCreatedTime)
+                .orderByDesc(QuestionBank::getId);
+
+        List<QuestionBank> questionBanks = questionBankMapper.selectList(queryWrapper);
+        if (questionBanks.isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        List<QuestionBankVO> questionBankVos = questionBanks.stream().map(this::toQuestionBankVO).collect(Collectors.toList());
+        return questionBankVos;
+    }
+
+
+    private void validateModuleInGroup(Long groupId, Long moduleId) {
+        LambdaQueryWrapper<CategoryModule> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(CategoryModule::getId, moduleId)
+                .eq(CategoryModule::getGroupId, groupId);
+
+        if (categoryModuleMapper.selectCount(queryWrapper) == 0) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+    }
+
+    private void validateSubModuleInModule(Long moduleId, Long subModuleId) {
+        LambdaQueryWrapper<CategorySubModule> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(CategorySubModule::getId, subModuleId)
+                .eq(CategorySubModule::getModuleId, moduleId);
+
+        if (categorySubModuleMapper.selectCount(queryWrapper) == 0) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+    }
+
     private CategoryModuleVO toModuleVo(CategoryModule entity) {
         CategoryModuleVO vo = new CategoryModuleVO();
         vo.setId(entity.getId());
-        vo.setGroupId(entity.getGroupId()); //暂时先别删，等继续开发后面的功能，如果不需要再删除；
         vo.setModuleName(entity.getModuleName());
         vo.setSortOrder(entity.getSortOrder());
         GraphInfoVo graphInfoVo = getGraphInfoVo(entity.getId());
@@ -170,7 +314,6 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
     private CategorySubModuleVO toSubModuleVO(CategorySubModule entity) {
         CategorySubModuleVO vo = new CategorySubModuleVO();
         vo.setId(entity.getId());
-        vo.setModuleId(entity.getModuleId());//暂时先别删，等继续开发后面的功能，如果不需要再删除；
         vo.setSubModuleName(entity.getSubModuleName());
         vo.setSortOrder(entity.getSortOrder());
         return vo;

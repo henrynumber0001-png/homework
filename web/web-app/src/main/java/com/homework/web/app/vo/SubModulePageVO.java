@@ -9,6 +9,7 @@ import java.util.List;
 @Data
 public class SubModulePageVO {
 
+
     //展示型字段
     private SortType sort;
 

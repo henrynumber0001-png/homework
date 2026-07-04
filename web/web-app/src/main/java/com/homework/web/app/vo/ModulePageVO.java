@@ -8,6 +8,7 @@ import java.util.List;
 @Data
 public class ModulePageVO {
 
+
     //高亮的是第一个sub_module
     private CategorySubModuleVO firstSubModule;
 
