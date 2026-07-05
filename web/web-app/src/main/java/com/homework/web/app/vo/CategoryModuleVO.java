@@ -11,7 +11,12 @@ public class CategoryModuleVO  {
 
     private Long id;
 
-    private Long groupId;
+    /*
+    把 private String groupId 删掉了
+    目的是为了不让前端混淆
+    因为当前业务模式下，groupId就是从用户侧获取
+    然后 clickedGroupId = currentGroupId
+     */
 
     private String moduleName;
 

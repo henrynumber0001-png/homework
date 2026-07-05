@@ -37,6 +37,9 @@ public enum ResultCodeEnum {
     APP_ACCOUNT_STATUS_ERROR(510, "账户状态异常"),
 
 
+    APP_AI_EVALUATION_EMPTY_SCORE(513, "该用户并未作答"),
+
+
 
     TOKEN_EXPIRED(601, "token过期"),
     TOKEN_INVALID(602, "token非法");

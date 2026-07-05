@@ -15,4 +15,6 @@ public class QuestionBankQuestion extends BaseEntity {
 
     private Long questionId;
 
+    private Integer sortOrder;//保留字段
+
 }

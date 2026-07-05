@@ -16,7 +16,7 @@ public interface QuestionBankService extends IService<QuestionBank> {
 
     ModulePageVO getModulePage(Long currentGroupId, Long moduleId, Long currentModuleId);
 
-    SubModulePageVO getSubModulePage(Long currentModuleId, Long subModuleId, Long currentSubModuleId);
+    SubModulePageVO getSubModulePage(Long currentGroupId, Long currentModuleId, Long subModuleId, Long currentSubModuleId);
 
     List<QuestionBankVO> getSortType(SortType sortType,Long currentSubModuleId);
 

@@ -3,9 +3,11 @@ package com.homework.model.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.model.enums.UserQuestionAnswerAnswerType;
+import com.homework.model.enums.QuestionInfoQuestionType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -16,19 +18,15 @@ public class UserQuestionAnswer extends BaseEntity {
 
     private Long userId;
 
-    private Long sessionId;
-
     private Long questionId;
 
-    /** 1.text;2.single_choice;3.multiple_choice */
-    private UserQuestionAnswerAnswerType answerType;
+    private QuestionInfoQuestionType questionType;
 
-    private String answerText;
-
-    private String selectedOptionsJson;
+    @Schema(description = "用户输入的回答")
+    private String content;
 
     @TableField("is_correct")
-    private Boolean correct;
+    private Boolean isCorrect;
 
     private BigDecimal aiScoreRate;
 
