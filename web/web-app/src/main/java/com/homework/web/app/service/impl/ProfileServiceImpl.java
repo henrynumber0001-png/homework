@@ -19,7 +19,6 @@ public class ProfileServiceImpl implements ProfileService {
     private final UserFollowMapper userFollowMapper;
     private final HitPostMapper hitPostMapper;
     private final UserQuestionAnswerMapper userQuestionAnswerMapper;
-    private final PracticeSessionMapper practiceSessionMapper;
     private final UserLearningStatDailyMapper userLearningStatDailyMapper;
     private final UserMedalMapper userMedalMapper;
     private final UserWrongQuestionMapper userWrongQuestionMapper;
@@ -40,7 +39,11 @@ public class ProfileServiceImpl implements ProfileService {
         vo.setFollowerCount(userFollowMapper.selectCount(new QueryWrapper<UserFollow>().eq("following_user_id", userId).eq("is_deleted", 0)));
         vo.setPostCount(hitPostMapper.selectCount(new QueryWrapper<HitPost>().eq("user_id", userId).eq("is_deleted", 0)));
         vo.setAnsweredCount(userQuestionAnswerMapper.selectCount(new QueryWrapper<UserQuestionAnswer>().eq("user_id", userId).eq("is_deleted", 0)));
-        vo.setLearnedBankCount(practiceSessionMapper.selectCount(new QueryWrapper<PracticeSession>().eq("user_id", userId).eq("is_deleted", 0)));
+        vo.setLearnedBankCount((long) userQuestionAnswerMapper.selectObjs(new QueryWrapper<UserQuestionAnswer>()
+                .select("DISTINCT bank_id")
+                .eq("user_id", userId)
+                .isNotNull("bank_id")
+                .eq("is_deleted", 0)).size());
         Map<String, Object> study = userLearningStatDailyMapper.selectMaps(new QueryWrapper<UserLearningStatDaily>()
                 .select("IFNULL(SUM(study_seconds),0) AS study_seconds")
                 .eq("user_id", userId)

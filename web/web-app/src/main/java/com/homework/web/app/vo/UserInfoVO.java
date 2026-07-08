@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Schema(description = "返回前端的用户信息")
-public class UserInfoVo {
+public class UserInfoVO {
     @Schema(description = "账户ID")
     private String accountNo;
 

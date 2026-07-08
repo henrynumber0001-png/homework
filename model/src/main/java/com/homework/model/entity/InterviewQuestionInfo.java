@@ -1,6 +1,5 @@
 package com.homework.model.entity;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
 import com.homework.model.enums.QuestionInfoQuestionType;
@@ -11,8 +10,7 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("question_info")
-public class QuestionInfo extends BaseEntity {
-    private Long bankId;
+public class InterviewQuestionInfo extends BaseEntity {
 
     private String title;
 

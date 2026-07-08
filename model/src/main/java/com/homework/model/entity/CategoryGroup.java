@@ -10,6 +10,5 @@ import lombok.EqualsAndHashCode;
 @TableName("category_group")
 public class CategoryGroup extends BaseEntity {
 
-    /** For example interview or certification. */
     private String groupName;
 }

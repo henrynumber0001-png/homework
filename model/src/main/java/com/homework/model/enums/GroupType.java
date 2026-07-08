@@ -5,13 +5,10 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
-public enum PracticeSessionQuestionStatus implements BaseEnum {
+public enum GroupType implements BaseEnum {
 
-    NOT_ANSWERED(1, "not_answered"),
-    ANSWERED(2, "answered"),
-    CORRECT(3, "correct"),
-    WRONG(4, "wrong"),
-    MARKED(5, "marked");
+    INTERVIEW(1, "interview"),
+    CERTIFICATION(2, "certification");
 
     @EnumValue
     @JsonValue
@@ -19,7 +16,7 @@ public enum PracticeSessionQuestionStatus implements BaseEnum {
 
     private final String label;
 
-    PracticeSessionQuestionStatus(Integer value, String label) {
+    GroupType(Integer value, String label) {
         this.value = value;
         this.label = label;
     }

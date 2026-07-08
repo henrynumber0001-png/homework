@@ -10,7 +10,6 @@ import java.math.BigDecimal;
 @Data
 public class InterViewAnswerPageVO {
 
-
     @Schema(description = "题目ID")
     private Long questionId;
 

@@ -266,7 +266,7 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         vo.setId(entity.getId());
         vo.setModuleName(entity.getModuleName());
         vo.setSortOrder(entity.getSortOrder());
-        GraphInfoVo graphInfoVo = getGraphInfoVo(entity.getId());
+        GraphInfoVO graphInfoVo = getGraphInfoVo(entity.getId());
         vo.setGraphInfoVo(graphInfoVo);
 
         return vo;
@@ -291,7 +291,7 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         return vo;
     }
 
-    private GraphInfoVo getGraphInfoVo(Long moduleId) {
+    private GraphInfoVO getGraphInfoVo(Long moduleId) {
         LambdaQueryWrapper<GraphInfo> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(GraphInfo::getItemType, ItemType.MODULE)
                 .eq(GraphInfo::getItemId, moduleId);
@@ -302,7 +302,7 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
             return null; //是允许返回null的，就表示没有图片
         }
         String url = graphInfo.getUrl();
-        GraphInfoVo graphInfoVo = new GraphInfoVo();
+        GraphInfoVO graphInfoVo = new GraphInfoVO();
         graphInfoVo.setUrl(url);
 
         return graphInfoVo;

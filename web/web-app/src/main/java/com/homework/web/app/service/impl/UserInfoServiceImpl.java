@@ -8,14 +8,14 @@ import com.homework.web.app.context.LoginUserHolder;
 import com.homework.model.entity.UserInfo;
 import com.homework.web.app.mapper.UserInfoMapper;
 import com.homework.web.app.service.UserInfoService;
-import com.homework.web.app.vo.UserInfoVo;
+import com.homework.web.app.vo.UserInfoVO;
 import org.springframework.stereotype.Service;
 
 @Service
 public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> implements UserInfoService {
 
     @Override
-    public UserInfoVo getUserInfo() {
+    public UserInfoVO getUserInfo() {
 
         Long userId = LoginUserHolder.getUserId();
 
@@ -32,7 +32,7 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
             throw new HomeworkException(ResultCodeEnum.APP_ACCOUNT_DISABLED_ERROR);
         }
 
-        UserInfoVo userInfoVo = new UserInfoVo();
+        UserInfoVO userInfoVo = new UserInfoVO();
         userInfoVo.setAccountNo(userInfo.getAccountNo());
         userInfoVo.setAvatar(userInfo.getAvatar());
         userInfoVo.setDisplayName(userInfo.getDisplayName());

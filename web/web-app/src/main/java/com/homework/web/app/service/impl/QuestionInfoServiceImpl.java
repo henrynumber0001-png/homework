@@ -4,40 +4,48 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.model.entity.*;
+import com.homework.model.enums.AiChatMessageSenderType;
+import com.homework.model.enums.AiChatSessionStatus;
+import com.homework.model.enums.GroupType;
 import com.homework.model.enums.QuestionInfoQuestionType;
 import com.homework.web.app.context.LoginUserHolder;
-import com.homework.web.app.dto.AiEvaluationResult;
-import com.homework.web.app.dto.InterviewQuestionSubmitDTO;
-import com.homework.web.app.dto.UserQuestionNoteDTO;
+import com.homework.web.app.dto.*;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.AiEvaluationService;
+import com.homework.web.app.service.LlmClient;
 import com.homework.web.app.service.QuestionInfoService;
-import com.homework.web.app.vo.InterViewAnswerPageVO;
-import com.homework.web.app.vo.InterviewQuestionPageVO;
-import lombok.Data;
+import com.homework.web.app.vo.*;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
-@Data
+@RequiredArgsConstructor
 @Service
 public class QuestionInfoServiceImpl implements QuestionInfoService {
-    private final QuestionInfoMapper questionInfoMapper;
+    private final InterviewQuestionInfoMapper interviewQuestionInfoMapper;
     private final QuestionBankQuestionMapper questionBankQuestionMapper;
     private final UserQuestionAnswerMapper userQuestionAnswerMapper;
     private final AiEvaluationService aiEvaluationService;
     private final QuestionAiEvaluationMapper questionAiEvaluationMapper;
     private final UserQuestionNoteMapper userQuestionNoteMapper;
+    private final CertificateQuestionInfoMapper certificateQuestionInfoMapper;
+    private final AiChatSessionMapper aiChatSessionMapper;
+    private final AiChatMessageMapper aiChatMessageMapper;
+    private final LlmClient llmClient;
+    private final AiPromptBuilder aiPromptBuilder;
 
     @Override
     public List<InterviewQuestionPageVO> getQuestionsByBankId(Long bankId) {
 
-        if(bankId == null){
+        if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
@@ -45,23 +53,23 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
 
         List<QuestionBankQuestion> questionBankQuestions = questionBankQuestionMapper.selectList(queryWrapper);
-        if(questionBankQuestions.isEmpty()){
+        if (questionBankQuestions.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
         List<Long> questionIds = questionBankQuestions.stream().map(QuestionBankQuestion::getQuestionId).toList();
 
 
-        LambdaQueryWrapper<QuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
-        questionInfoQueryWrapper.in(QuestionInfo::getId,questionIds)
-                .eq(QuestionInfo::getQuestionType,QuestionInfoQuestionType.ESSAY)
-                .eq(QuestionInfo::getIsReleased,true)
-                .orderByAsc(QuestionInfo::getSortOrder) //用sort_order字段，在查询时候给题目一个排序，就能保持每次顺序的固定了
-                .orderByAsc(QuestionInfo::getId);
+        LambdaQueryWrapper<InterviewQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
+        questionInfoQueryWrapper.in(InterviewQuestionInfo::getId, questionIds)
+                .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
+                .eq(InterviewQuestionInfo::getIsReleased, true)
+                .orderByAsc(InterviewQuestionInfo::getSortOrder) //用sort_order字段，在查询时候给题目一个排序，就能保持每次顺序的固定了
+                .orderByAsc(InterviewQuestionInfo::getId);
 
-        List<QuestionInfo> questionInfos = questionInfoMapper.selectList(questionInfoQueryWrapper);
+        List<InterviewQuestionInfo> questionInfos = interviewQuestionInfoMapper.selectList(questionInfoQueryWrapper);
 
-        if(questionInfos.isEmpty()){
+        if (questionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
@@ -71,9 +79,6 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             vo.setQuestionId(questionInfo.getId());
             vo.setTitle(questionInfo.getTitle());
             vo.setQuestionType(questionInfo.getQuestionType());
-            vo.setBankId(questionInfo.getBankId());
-            vo.setReleased(questionInfo.getIsReleased());
-            vo.setSortOder(questionInfo.getSortOrder());
             list.add(vo);
         });
 
@@ -83,23 +88,37 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public InterViewAnswerPageVO getAnswer(InterviewQuestionSubmitDTO submitDTO) {
-        if(submitDTO == null){
-            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
-        }
-
-        if(!StringUtils.hasText(submitDTO.getContent()) || submitDTO.getQuestionId() == null || submitDTO.getTimeSpentSeconds() == null){
+        //允许用户输入的回答为空
+        if (submitDTO == null || submitDTO.getQuestionId() == null || submitDTO.getTimeSpentSeconds() == null || submitDTO.getBankId() == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
         Long questionId = submitDTO.getQuestionId();
+        Long bankId = submitDTO.getBankId();
 
-        QuestionInfo questionInfo = questionInfoMapper.selectById(questionId);
-        if(questionInfo == null){
+        //bankId + questionId 关联校验
+        //防止bankId = A，questionId = B 题库里的题
+        LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId)
+                .eq(QuestionBankQuestion::getQuestionId, questionId);
+        QuestionBankQuestion questionBankQuestion = questionBankQuestionMapper.selectOne(queryWrapper);
+        if (questionBankQuestion == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        LambdaQueryWrapper<InterviewQuestionInfo> interviewQueryWrapper = new LambdaQueryWrapper<>();
+        interviewQueryWrapper.eq(InterviewQuestionInfo::getId, questionId)
+                .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
+                .eq(InterviewQuestionInfo::getIsReleased, Boolean.TRUE);
+
+        InterviewQuestionInfo questionInfo = interviewQuestionInfoMapper.selectOne(interviewQueryWrapper);
+
+        if (questionInfo == null) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
         //兜底机制（但后端接口不能只相信前端，因为用户可以绕过页面，直接请求）
-        if(!questionInfo.getQuestionType().equals(QuestionInfoQuestionType.ESSAY) || !Boolean.TRUE.equals(questionInfo.getIsReleased())){
+        if (!questionInfo.getQuestionType().equals(QuestionInfoQuestionType.ESSAY) || !Boolean.TRUE.equals(questionInfo.getIsReleased())) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
@@ -108,7 +127,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         String content = submitDTO.getContent();
 
         //提供 题目名称、用户回答内容、题目解析给 AI模型，然后获取 AI模型的评价结果
-        AiEvaluationResult aiResult = aiEvaluationService.evaluateInterviewAnswer(title,content,analysis);
+        AiEvaluationResult aiResult = aiEvaluationService.evaluateInterviewAnswer(title, content, analysis);
 
         //返回给前端
         InterViewAnswerPageVO answer = new InterViewAnswerPageVO();
@@ -121,6 +140,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         Long userId = LoginUserHolder.getUserId();
         UserQuestionAnswer userAnswer = new UserQuestionAnswer();
         userAnswer.setUserId(userId);
+        userAnswer.setBankId(bankId);
         userAnswer.setQuestionId(questionId);
         userAnswer.setContent(submitDTO.getContent());
         userAnswer.setQuestionType(QuestionInfoQuestionType.ESSAY);
@@ -128,8 +148,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         userAnswer.setTimeSpentSeconds(submitDTO.getTimeSpentSeconds());//用户在这道题上花费了多少秒，这个数据用于后续一系列统计功能的开发
         userAnswer.setAnsweredTime(LocalDateTime.now());
 
-        //insert之后，就会生成answerId;
-        userQuestionAnswerMapper.insert(userAnswer);
+        Long answerId = saveOrUpdateLatestAnswer(userAnswer);
         //UserQuestionAnswer 负责记录：用户每次提交的答案
         //QuestionAiEvaluation 负责记录：AI 对这个用户这次答案的评价
 
@@ -137,21 +156,20 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         QuestionAiEvaluation questionAiEvaluation = new QuestionAiEvaluation();
         questionAiEvaluation.setUserId(userId);
         questionAiEvaluation.setQuestionId(questionId);
-        questionAiEvaluation.setAnswerId(userAnswer.getId());
-        BeanUtils.copyProperties(aiResult,questionAiEvaluation);
-        questionAiEvaluationMapper.insert(questionAiEvaluation);
-
+        questionAiEvaluation.setAnswerId(answerId);
+        BeanUtils.copyProperties(aiResult, questionAiEvaluation);
+        saveOrUpdateLatestEvaluation(questionAiEvaluation);
         return answer;
     }
 
     @Override
     public void saveUserQuestionNote(UserQuestionNoteDTO noteDTO) {
-        if(noteDTO == null){
+        if (noteDTO == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
         //用户在笔记里输入 "  "空格字符，是被允许的，null和""空字符串（长度为0）的不行
-        if(noteDTO.getBankId() == null || noteDTO.getQuestionId() == null || noteDTO.getNoteContent() == null ||noteDTO.getNoteContent().isEmpty()){
+        if (noteDTO.getBankId() == null || noteDTO.getQuestionId() == null || noteDTO.getNoteContent() == null || noteDTO.getNoteContent().isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
@@ -166,5 +184,418 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
     }
 
+    @Override
+    public List<CertificateQuestionPageVO> getCertificateByBankId(Long bankId) {
+        if (bankId == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+        LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
 
+        List<QuestionBankQuestion> questionBankQuestions = questionBankQuestionMapper.selectList(queryWrapper);
+        if (questionBankQuestions.isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+        List<Long> questionIds = questionBankQuestions.stream().map(QuestionBankQuestion::getQuestionId).toList();
+
+        LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
+        certificateQueryWrapper.in(CertificateQuestionInfo::getId, questionIds)
+                .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
+                .eq(CertificateQuestionInfo::getIsReleased, true)
+                .orderByAsc(CertificateQuestionInfo::getSortOrder)
+                .orderByAsc(CertificateQuestionInfo::getId);
+
+        List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(certificateQueryWrapper);
+        if (certificateQuestionInfos.isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        List<CertificateQuestionPageVO> certificateQuestionPageVos = new ArrayList<>();
+        certificateQuestionInfos.forEach(certificateQuestionInfo -> {
+            CertificateQuestionPageVO vo = new CertificateQuestionPageVO();
+            vo.setQuestionId(certificateQuestionInfo.getId());
+            vo.setTitle(certificateQuestionInfo.getTitle());
+            vo.setOptions(certificateQuestionInfo.getOptions());
+            vo.setQuestionType(certificateQuestionInfo.getQuestionType());
+            vo.setImageUrl(certificateQuestionInfo.getImageUrl());
+            certificateQuestionPageVos.add(vo);
+        });
+        return certificateQuestionPageVos;
+
+    }
+
+    @Transactional
+    @Override
+    public CertificateAnswerPageVO getCertificateAnswer(CertificateQuestionSubmitDTO submitDTO) {
+        if (submitDTO == null || submitDTO.getQuestionId() == null || submitDTO.getQuestionType() == null ||
+                submitDTO.getChosonOptions() == null || submitDTO.getTimeSpentSeconds() == null || submitDTO.getBankId() == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        Long questionId = submitDTO.getQuestionId();
+        Long bankId = submitDTO.getBankId();
+
+        LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId)
+                .eq(QuestionBankQuestion::getQuestionId, questionId);
+        QuestionBankQuestion questionBankQuestion = questionBankQuestionMapper.selectOne(queryWrapper);
+        if (questionBankQuestion == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
+        certificateQueryWrapper.eq(CertificateQuestionInfo::getId, questionId)
+                .eq(CertificateQuestionInfo::getIsReleased, true)
+                .eq(CertificateQuestionInfo::getQuestionType, submitDTO.getQuestionType());
+
+        CertificateQuestionInfo certificateQuestionInfo = certificateQuestionInfoMapper.selectOne(certificateQueryWrapper);
+        if (certificateQuestionInfo == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+        if (certificateQuestionInfo.getCorrectAnswer() == null || certificateQuestionInfo.getCorrectAnswer().isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        boolean correct = sameOptions(submitDTO.getChosonOptions(), certificateQuestionInfo.getCorrectAnswer());
+
+
+        //依旧是要把用户作答记录保存到UserQuestionAnswer
+        Long userId = LoginUserHolder.getUserId();
+
+        UserQuestionAnswer userQuestionAnswer = new UserQuestionAnswer();
+        userQuestionAnswer.setUserId(userId);
+        userQuestionAnswer.setBankId(bankId);
+        userQuestionAnswer.setQuestionId(questionId);
+        userQuestionAnswer.setQuestionType(certificateQuestionInfo.getQuestionType());
+        userQuestionAnswer.setChosonOptions(submitDTO.getChosonOptions());
+        userQuestionAnswer.setIsCorrect(correct);
+        userQuestionAnswer.setTimeSpentSeconds(submitDTO.getTimeSpentSeconds());
+        userQuestionAnswer.setAnsweredTime(LocalDateTime.now());
+        saveOrUpdateLatestAnswer(userQuestionAnswer);
+
+        CertificateAnswerPageVO answer = new CertificateAnswerPageVO();
+        answer.setCorrectAnswer(certificateQuestionInfo.getCorrectAnswer());
+        answer.setAnalysis(certificateQuestionInfo.getAnalysis());
+        answer.setQuestionId(questionId);
+        answer.setCorrect(correct);
+
+        return answer;
+    }
+
+    @Override
+    public QuestionCountVO finishBank(Long bankId, GroupType groupType) {
+
+        // 1. 参数校验：bankId 不能为空。
+        // bankId 表示用户当前完成的是哪一个题库。
+        if (bankId == null || groupType == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        // 2. 获取当前登录用户的 userId。
+        // 这个 userId 是登录拦截器从 token 中解析后放进 ThreadLocal 的。
+        // 后面查询时必须带上 userId，防止用户查看别人的练习统计。
+        Long userId = LoginUserHolder.getUserId();
+
+        LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
+        List<QuestionBankQuestion> questionBankQuestions = questionBankQuestionMapper.selectList(queryWrapper);
+        if (questionBankQuestions.isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+        List<Long> questionIds = questionBankQuestions.stream().map(QuestionBankQuestion::getQuestionId).toList();
+
+        QuestionCountVO vo = new QuestionCountVO();
+
+
+        if (groupType.equals(GroupType.CERTIFICATION)) {
+            LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
+            certificateQueryWrapper.in(CertificateQuestionInfo::getId, questionIds)
+                    .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
+                    .eq(CertificateQuestionInfo::getIsReleased, true);
+            Long totalCount = certificateQuestionInfoMapper.selectCount(certificateQueryWrapper);
+            vo.setTotalCount(totalCount);
+
+            LambdaQueryWrapper<UserQuestionAnswer> userAnswerQueryWrapper = new LambdaQueryWrapper<>();
+            userAnswerQueryWrapper.eq(UserQuestionAnswer::getUserId, userId)
+                    .eq(UserQuestionAnswer::getBankId, bankId)
+                    .in(UserQuestionAnswer::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
+
+            Long answeredCount = userQuestionAnswerMapper.selectCount(userAnswerQueryWrapper);
+
+            LambdaQueryWrapper<UserQuestionAnswer> correctAnswerQueryWrapper = new LambdaQueryWrapper<>();
+            correctAnswerQueryWrapper.eq(UserQuestionAnswer::getUserId, userId)
+                    .eq(UserQuestionAnswer::getBankId, bankId)
+                    .eq(UserQuestionAnswer::getIsCorrect, true);
+            Long correctCount = userQuestionAnswerMapper.selectCount(correctAnswerQueryWrapper);
+
+            // 9. 设置用户答对的题目数量。
+            vo.setCorrectCount(correctCount);
+
+            // 10. 计算正确率。
+            // 这里用 correctCount / totalCount，表示整套题的正确率。
+            BigDecimal correctRate = BigDecimal.valueOf(correctCount)
+                    .divide(
+                            BigDecimal.valueOf(totalCount),
+                            2,
+                            RoundingMode.HALF_UP
+                    );
+            vo.setCorrectRate(correctRate);
+        }
+
+        //返回的是用户作答的interview题库的题目的平均正确率
+        if (groupType.equals(GroupType.INTERVIEW)) {
+            LambdaQueryWrapper<InterviewQuestionInfo> interviewQueryWrapper = new LambdaQueryWrapper<>();
+            interviewQueryWrapper.in(InterviewQuestionInfo::getId, questionIds)
+                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
+            Long totalCount = interviewQuestionInfoMapper.selectCount(interviewQueryWrapper);
+            vo.setTotalCount(totalCount);
+
+            LambdaQueryWrapper<UserQuestionAnswer> userAnswerQueryWrapper = new LambdaQueryWrapper<>();
+            userAnswerQueryWrapper.eq(UserQuestionAnswer::getUserId, userId)
+                    .eq(UserQuestionAnswer::getBankId, bankId)
+                    .eq(UserQuestionAnswer::getQuestionType, QuestionInfoQuestionType.ESSAY);
+
+            Long answeredCount = userQuestionAnswerMapper.selectCount(userAnswerQueryWrapper);
+            vo.setAnsweredCount(answeredCount);
+
+            List<UserQuestionAnswer> userQuestionAnswers = userQuestionAnswerMapper.selectList(userAnswerQueryWrapper);
+            if (answeredCount == 0) {
+                BigDecimal correctRate = BigDecimal.ZERO;
+                vo.setCorrectRate(correctRate);
+            } else {
+                BigDecimal sum = BigDecimal.ZERO;
+                for (int i = 0; i < userQuestionAnswers.size(); i++) {
+                    sum = sum.add(userQuestionAnswers.get(i).getAiScoreRate());
+                }
+
+                BigDecimal correctRate = sum.divide(BigDecimal.valueOf(answeredCount), 2, RoundingMode.HALF_UP);
+                vo.setCorrectRate(correctRate);
+            }
+        }
+        return vo;
+    }
+
+    @Override
+    public AiChatVO startAiChat(Long bankId, GroupType groupType) {
+        // 这个接口用于用户点击“追问AI”按钮时，先查询当前题库下已有的历史会话。
+        if (bankId == null || groupType == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        Long userId = LoginUserHolder.getUserId();
+
+        // 查询 userId下的 bankId，是否有session
+        AiChatSession session = aiChatSessionMapper.selectOne(
+                new LambdaQueryWrapper<AiChatSession>()
+                        .eq(AiChatSession::getUserId, userId)
+                        .eq(AiChatSession::getBankId, bankId)
+        );
+
+        if (session == null) {//没有session，创建一个session
+            AiChatSession newSession = new AiChatSession();
+            newSession.setUserId(userId);
+            newSession.setBankId(bankId);
+            newSession.setGroupType(groupType);
+            newSession.setStatus(AiChatSessionStatus.ACTIVE);
+            aiChatSessionMapper.insert(newSession);
+            session = newSession;
+
+
+            //还要创建一个AiChatMessage，因为你要写一个第一次的欢迎语
+            AiChatMessage welcomeMessage = new AiChatMessage();
+            welcomeMessage.setSessionId(newSession.getId());
+            welcomeMessage.setGroupType(groupType);
+            welcomeMessage.setMessageContent("你好，有关于这道题的知识点想深入了解吗？");
+            welcomeMessage.setSenderType(AiChatMessageSenderType.AI);
+            welcomeMessage.setModelName("mock-llm");
+            aiChatMessageMapper.insert(welcomeMessage);
+        }
+
+        if (session.getStatus().equals(AiChatSessionStatus.CLOSED)) {
+            //注意：session不删除，它只是一个分类，跟你的group和module一样，它不是容器，实体类里不存放AiChatMessage
+            //所以，重新把状态打开即可
+            session.setStatus(AiChatSessionStatus.ACTIVE);
+            aiChatSessionMapper.updateById(session);
+
+            LambdaQueryWrapper<AiChatMessage> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(AiChatMessage::getSessionId, session.getId());
+            aiChatMessageMapper.delete(queryWrapper); //逻辑删除：根据sessionId查询出的所有message
+            //重新创建第一条message（欢迎语）
+            //每一条实际的消息，是存放在AiChatMessage表中
+            AiChatMessage welcomeMessage = new AiChatMessage();
+            welcomeMessage.setSessionId(session.getId());
+            welcomeMessage.setQuestionId(null);
+            welcomeMessage.setGroupType(groupType);
+            welcomeMessage.setMessageContent("你好，有关于这道题的知识点想深入了解吗？");
+            welcomeMessage.setSenderType(AiChatMessageSenderType.AI);
+            welcomeMessage.setModelName("mock-llm");
+            aiChatMessageMapper.insert(welcomeMessage);
+        }
+
+        return buildAiChatVO(session); //把 保存到AiChatVO 的动作抽象到一个方法中
+    }
+
+    private AiChatVO buildAiChatVO(AiChatSession session) {
+        AiChatVO vo = new AiChatVO();
+        vo.setSessionId(session.getId());
+        vo.setBankId(session.getBankId());
+
+        List<AiChatMessage> aiChatMessages = aiChatMessageMapper.selectList(
+                new LambdaQueryWrapper<AiChatMessage>()
+                        .eq(AiChatMessage::getSessionId, session.getId())
+                        .orderByAsc(AiChatMessage::getId)
+        );
+        List<AiChatMessageVO> messageVos = new ArrayList<>();
+
+        aiChatMessages.forEach(aiChatMessage -> {
+            AiChatMessageVO messageVo = new AiChatMessageVO();
+            messageVo.setMessageId(aiChatMessage.getId());
+            messageVo.setSenderType(aiChatMessage.getSenderType());
+            messageVo.setMessageContent(aiChatMessage.getMessageContent());
+            messageVo.setCreatedTime(aiChatMessage.getCreatedTime()); //AI弹窗是需要显示会话时间的
+            messageVos.add(messageVo);
+        });
+        vo.setMessages(messageVos);
+        return vo;
+    }
+
+
+    @Transactional
+    @Override
+    public AiChatVO followUpAi(AiFollowUpDTO dto) { //真正发送问题时创建 session
+        // 1. 校验追问请求。bankId 决定复用哪个 AI 会话，questionId + bankType 决定本轮追问取哪道题的解析。
+        if (dto == null
+                || dto.getBankId() == null
+                || dto.getQuestionId() == null
+                || dto.getBankType() == null
+                || dto.getMessage() == null
+                || dto.getMessage().isBlank()) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        // 2. 获取当前登录用户。AI 会话必须归属于用户，不能让用户读到别人的追问记录。
+        Long userId = LoginUserHolder.getUserId();
+
+        // 3. 获取这个用户在当前题库下的 AI 会话。
+        // 同一个 userId + bankId 只保留一个会话，所以用户切到下一题时仍然能看到原会话。
+        AiChatSession session = aiChatSessionMapper.selectOne(
+                new LambdaQueryWrapper<AiChatSession>()
+                        .eq(AiChatSession::getUserId, userId)
+                        .eq(AiChatSession::getBankId, dto.getBankId())
+                        .eq(AiChatSession::getStatus, AiChatSessionStatus.ACTIVE)
+        );
+        if (session == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+
+        // 4. 查询本次提问之前已经存在的历史消息，用来给大模型提供上下文。
+        List<AiChatMessage> history = aiChatMessageMapper.selectList(
+                new LambdaQueryWrapper<AiChatMessage>()
+                        .eq(AiChatMessage::getSessionId, session.getId())
+                        .orderByAsc(AiChatMessage::getId)
+        );
+
+        // 5. 构造题目上下文和最终 prompt。
+        // 具体怎么查面试题/认证题、怎么拼 prompt，交给 AiPromptBuilder，避免 Service 变得太臃肿。
+        String questionContext = aiPromptBuilder.buildQuestionContext(dto);
+        String prompt = aiPromptBuilder.buildAiChatPrompt(questionContext, history, dto.getMessage());
+
+        // 6. 保存用户这次输入的追问。
+        AiChatMessage userMessage = new AiChatMessage();
+        userMessage.setSessionId(session.getId());
+        userMessage.setQuestionId(dto.getQuestionId());
+        userMessage.setGroupType(dto.getBankType());
+        userMessage.setSenderType(AiChatMessageSenderType.USER);
+        userMessage.setMessageContent(dto.getMessage());
+        aiChatMessageMapper.insert(userMessage);
+
+        // 7. 调用大模型生成回复。
+        String aiReply = llmClient.chat(prompt);
+
+        // 8. 保存 AI 回复。这样下一次打开“追问AI”弹窗时，可以恢复完整上下文。
+        AiChatMessage aiMessage = new AiChatMessage();
+        aiMessage.setSessionId(session.getId());
+        aiMessage.setQuestionId(dto.getQuestionId());
+        aiMessage.setGroupType(dto.getBankType());
+        aiMessage.setSenderType(AiChatMessageSenderType.AI);
+        aiMessage.setMessageContent(aiReply);
+        aiMessage.setModelName("mock-llm");
+        aiChatMessageMapper.insert(aiMessage);
+
+        // 9. 返回最新完整会话，前端可以直接用 messages 渲染弹窗。
+        return buildAiChatVO(session);
+    }
+
+    @Override
+    public void closeAiChat(Long bankId) {//前端要设计调用这个方法的逻辑
+        if (bankId == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        Long userId = LoginUserHolder.getUserId();
+
+        AiChatSession session = aiChatSessionMapper.selectOne(
+                new LambdaQueryWrapper<AiChatSession>()
+                        .eq(AiChatSession::getUserId, userId)
+                        .eq(AiChatSession::getBankId, bankId)
+                        .eq(AiChatSession::getStatus, AiChatSessionStatus.ACTIVE)
+        );
+
+        if (session == null) {
+            return;
+        }
+
+        session.setStatus(AiChatSessionStatus.CLOSED);
+        aiChatSessionMapper.updateById(session);
+    }
+
+
+    //查到数据，覆盖；没查到数据，插入
+    private Long saveOrUpdateLatestAnswer(UserQuestionAnswer userQuestionAnswer) {
+        LambdaQueryWrapper<UserQuestionAnswer> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(UserQuestionAnswer::getUserId, userQuestionAnswer.getUserId())
+                .eq(UserQuestionAnswer::getBankId, userQuestionAnswer.getBankId())
+                .eq(UserQuestionAnswer::getQuestionId, userQuestionAnswer.getQuestionId());
+
+        UserQuestionAnswer userAnswer = userQuestionAnswerMapper.selectOne(queryWrapper);
+        if (userAnswer == null) {
+            userQuestionAnswerMapper.insert(userQuestionAnswer);
+            return userQuestionAnswer.getId(); //MyBatis-Plus 的 insert(entity) 在自增主键场景下，通常会把数据库生成的 id 自动回填到 entity 里。
+        }
+
+        //MyBatis-Plus 的 update 方法没有自动回填 id 功能，所以要手动 set一下
+        //根据 where 条件更新已有行，但数据库不会“生成新 id”，MyBatis-Plus 也不会自动查询旧 id 回填
+        userQuestionAnswer.setId(userAnswer.getId());
+        userQuestionAnswerMapper.updateById(userQuestionAnswer);
+        return userQuestionAnswer.getId();
+    }
+
+    private void saveOrUpdateLatestEvaluation(QuestionAiEvaluation questionAiEvaluation) {
+        LambdaQueryWrapper<QuestionAiEvaluation> evaluationQueryWrapper = new LambdaQueryWrapper<>();
+        evaluationQueryWrapper.eq(QuestionAiEvaluation::getAnswerId, questionAiEvaluation.getAnswerId())
+                .eq(QuestionAiEvaluation::getQuestionId, questionAiEvaluation.getQuestionId())
+                .eq(QuestionAiEvaluation::getUserId, questionAiEvaluation.getUserId());
+        QuestionAiEvaluation latestEvaluation = questionAiEvaluationMapper.selectOne(evaluationQueryWrapper);
+        if (latestEvaluation == null) {
+            questionAiEvaluationMapper.insert(questionAiEvaluation);
+        } else {
+            questionAiEvaluation.setId(latestEvaluation.getId());
+            questionAiEvaluationMapper.updateById(questionAiEvaluation);
+        }
+    }
+
+    //sameOptions() 是一个返回 boolean 的工具方法，如果它里面直接抛业务异常，会让方法职责变重。
+    //
+    private boolean sameOptions(List<String> userOptions, List<String> correctOptions) {
+        if (userOptions == null || correctOptions == null) {
+            return false;
+        }
+
+        //这一步把两个 List (userOptions和correctOptions) 转成 HashSet, 集合不关心顺序。
+        //但前提是两个 List 长度要相同，也就是选项的数量要相同
+        boolean result = userOptions.size() == correctOptions.size() && new HashSet<>(userOptions).equals(new HashSet<>(correctOptions));
+        return result;
+    }
 }
