@@ -26,6 +26,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 @Service
@@ -87,7 +89,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
     @Transactional
     @Override
-    public InterViewAnswerPageVO getAnswer(InterviewQuestionSubmitDTO submitDTO) {
+    public InterViewAnswerPageVO getInterviewAnswer(InterviewQuestionSubmitDTO submitDTO) {
         //允许用户输入的回答为空
         if (submitDTO == null || submitDTO.getQuestionId() == null || submitDTO.getTimeSpentSeconds() == null || submitDTO.getBankId() == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -103,7 +105,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                 .eq(QuestionBankQuestion::getQuestionId, questionId);
         QuestionBankQuestion questionBankQuestion = questionBankQuestionMapper.selectOne(queryWrapper);
         if (questionBankQuestion == null) {
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
         LambdaQueryWrapper<InterviewQuestionInfo> interviewQueryWrapper = new LambdaQueryWrapper<>();
@@ -162,6 +164,98 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         return answer;
     }
 
+    @Transactional
+    @Override
+    public List<InterviewQuestionReviewVO> getInterviewQuestionReview(Long bankId) {
+        if (bankId == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
+        List<QuestionBankQuestion> questions = questionBankQuestionMapper.selectList(queryWrapper);
+        if (questions.isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+        List<Long> questionIds = questions.stream().map(QuestionBankQuestion::getQuestionId).toList();
+
+        LambdaQueryWrapper<InterviewQuestionInfo> interviewQueryWrapper = new LambdaQueryWrapper<>();
+        interviewQueryWrapper.in(InterviewQuestionInfo::getId, questionIds)
+                .eq(InterviewQuestionInfo::getIsReleased, true)
+                .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
+                .orderByAsc(InterviewQuestionInfo::getSortOrder)
+                .orderByAsc(InterviewQuestionInfo::getId);
+
+        List<InterviewQuestionInfo> interviewQuestionInfos = interviewQuestionInfoMapper.selectList(interviewQueryWrapper);
+        if (interviewQuestionInfos.isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        Long userId = LoginUserHolder.getUserId();
+        LambdaQueryWrapper<UserQuestionAnswer> userAnswerQueryWrapper = new LambdaQueryWrapper<>();
+        userAnswerQueryWrapper.eq(UserQuestionAnswer::getBankId, bankId)
+                .eq(UserQuestionAnswer::getUserId, userId)
+                .in(UserQuestionAnswer::getQuestionId,questionIds);
+
+        List<UserQuestionAnswer> userQuestionAnswers = userQuestionAnswerMapper.selectList(userAnswerQueryWrapper);
+        //允许列表为空，那就是一道题没做就提交答案了
+
+        //设计成Map集合，就不用每一次都QueryWrapper查询了，提高性能
+        Map<Long, UserQuestionAnswer> questionAnswerMap = userQuestionAnswers.stream()
+                .collect(Collectors.toMap(UserQuestionAnswer::getQuestionId, userQuestionAnswer -> userQuestionAnswer));
+
+        //一个userAnswer对应一个aiResult，也就是有一条userAnswer，就有一次AI评价，这次AI评价也会被记录在ai_evaluation_result表中
+        //实际上一条userAnswer就是对应一个questionId，因为UserQuestionAnswer表中，userId+bankId+questionId有唯一索引，且saveOrUpdateLatestAnswer用的就是更新，而非插入第二条（插入也会失败）
+        List<Long> userAnswerIds = userQuestionAnswers.stream().map(UserQuestionAnswer::getId).collect(Collectors.toList());
+
+        //所以，查询ai_evaluation_result表中中，answer_id 对应 user_question_answer.id的数据
+        LambdaQueryWrapper<QuestionAiEvaluation> questionAiEvaluationQueryWrapper = new LambdaQueryWrapper<>();
+        questionAiEvaluationQueryWrapper.eq(QuestionAiEvaluation::getUserId, userId)
+                .in(QuestionAiEvaluation::getAnswerId, userAnswerIds);
+        List<QuestionAiEvaluation> questionAiEvaluations = questionAiEvaluationMapper.selectList(questionAiEvaluationQueryWrapper);
+        if (questionAiEvaluations.isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        //同样也做成Map集合，避免反复查询
+        //一个userAnswerId 对应 一个 questionId 对应一个 questionAiEvaluation
+        Map<Long, QuestionAiEvaluation> questionAiEvaluationMap = questionAiEvaluations.stream()
+                .collect(Collectors.toMap(QuestionAiEvaluation::getAnswerId, questionAiEvaluation -> questionAiEvaluation));
+
+        //开始组装 List<InterviewQuestionReviewVO>
+        List<InterviewQuestionReviewVO> questionReviewVos = new ArrayList<>();
+        interviewQuestionInfos.forEach(questionInfo -> {
+            InterviewQuestionReviewVO vo = new InterviewQuestionReviewVO();
+            vo.setQuestionId(questionInfo.getId());
+            vo.setTitle(questionInfo.getTitle());
+            vo.setAnalysis(questionInfo.getAnalysis());
+            vo.setQuestionType(questionInfo.getQuestionType());
+            UserQuestionAnswer userQuestionAnswer = questionAnswerMap.get(questionInfo.getId());
+            if(userQuestionAnswer != null){
+                vo.setContent(userQuestionAnswer.getContent());
+                QuestionAiEvaluation questionAiEvaluation = questionAiEvaluationMap.get(userQuestionAnswer.getId());
+                if(questionAiEvaluation != null){
+                    vo.setAiResult(fetchAiResult(questionAiEvaluation));
+                }
+            }
+            questionReviewVos.add(vo);
+        });
+        return questionReviewVos;
+    }
+
+    public AiEvaluationResult fetchAiResult(QuestionAiEvaluation questionAiEvaluation) {
+        AiEvaluationResult aiResult = new AiEvaluationResult();
+        aiResult.setScoreRate(questionAiEvaluation.getScoreRate());
+        aiResult.setSummary(questionAiEvaluation.getSummary());
+        aiResult.setAccurateComment(questionAiEvaluation.getAccurateComment());
+        aiResult.setInnovativeComment(questionAiEvaluation.getInnovativeComment());
+        aiResult.setMissingComment(questionAiEvaluation.getMissingComment());
+        aiResult.setWrongComment(questionAiEvaluation.getWrongComment());
+        aiResult.setModelName(questionAiEvaluation.getModelName());
+        return aiResult;
+    }
+
+
     @Override
     public void saveUserQuestionNote(UserQuestionNoteDTO noteDTO) {
         if (noteDTO == null) {
@@ -173,6 +267,15 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
+        //同样做bankId和questionId关联验证
+        LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(QuestionBankQuestion::getBankId, noteDTO.getBankId())
+                .eq(QuestionBankQuestion::getQuestionId, noteDTO.getQuestionId());
+        QuestionBankQuestion questionBankQuestion = questionBankQuestionMapper.selectOne(queryWrapper);
+        if (questionBankQuestion == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR); //PARAM_ERROR = 前端传参问题；
+        }
+
         Long userId = LoginUserHolder.getUserId();
         UserQuestionNote userQuestionNote = new UserQuestionNote();
         userQuestionNote.setUserId(userId);
@@ -180,8 +283,6 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         userQuestionNote.setQuestionId(noteDTO.getQuestionId()); //空格字符串可以保存，但null和空字符串不行
         userQuestionNote.setNoteContent(noteDTO.getNoteContent());
         userQuestionNoteMapper.insert(userQuestionNote);
-
-
     }
 
     @Override
@@ -240,7 +341,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                 .eq(QuestionBankQuestion::getQuestionId, questionId);
         QuestionBankQuestion questionBankQuestion = questionBankQuestionMapper.selectOne(queryWrapper);
         if (questionBankQuestion == null) {
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR); //PARAM_ERROR = 前端传参问题；
         }
 
         LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
@@ -282,8 +383,181 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         return answer;
     }
 
+    @Transactional
     @Override
-    public QuestionCountVO finishBank(Long bankId, GroupType groupType) {
+    //用户每次“进入或重新进入题库页面”时，前端都应该执行一次初始化查询：
+    //有答题记录，reload；没有答题记录，正常返回 CertificateQuestionPageVO
+    public List<CertificateQuestionReviewVO> getCertificateRecordReview(Long bankId){
+        if (bankId == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        // 查询题库包含的题目
+        LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
+        List<QuestionBankQuestion> questions = questionBankQuestionMapper.selectList(queryWrapper);
+        if (questions.isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+        List<Long> bankQuestionIds = questions.stream().map(QuestionBankQuestion::getQuestionId).toList();
+
+        LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
+        certificateQueryWrapper.in(CertificateQuestionInfo::getId, bankQuestionIds)
+                .eq(CertificateQuestionInfo::getIsReleased, true)
+                .in(CertificateQuestionInfo::getQuestionType,QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
+                .orderByAsc(CertificateQuestionInfo::getSortOrder)
+                .orderByAsc(CertificateQuestionInfo::getId);
+
+        List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(certificateQueryWrapper);
+        if (certificateQuestionInfos.isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+        List<Long> certificateQuestionIds = certificateQuestionInfos.stream().map(CertificateQuestionInfo::getId).toList();
+        Map<Long, CertificateQuestionInfo> certificateQuestionMap = certificateQuestionInfos.stream()
+                .collect(Collectors.toMap(CertificateQuestionInfo::getId, certificateQuestionInfo -> certificateQuestionInfo));
+
+
+
+        Long userId = LoginUserHolder.getUserId();
+        LambdaQueryWrapper<UserQuestionAnswer> userAnswerQueryWrapper = new LambdaQueryWrapper<>();
+        userAnswerQueryWrapper.eq(UserQuestionAnswer::getBankId, bankId)
+                .in(UserQuestionAnswer::getQuestionId,certificateQuestionIds)
+                .eq(UserQuestionAnswer::getUserId, userId)
+                .in(UserQuestionAnswer::getQuestionType,QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
+
+        List<UserQuestionAnswer> userQuestionAnswers = userQuestionAnswerMapper.selectList(userAnswerQueryWrapper);
+        if(userQuestionAnswers.isEmpty()){
+            return List.of(); //用户一道题都没做，那么就返回空列表
+        }
+        List<CertificateQuestionReviewVO> questionReviewVos = new ArrayList<>();
+        userQuestionAnswers.forEach(userQuestionAnswer -> {
+            CertificateQuestionReviewVO vo = new CertificateQuestionReviewVO();
+            CertificateQuestionInfo certificateQuestionInfo = certificateQuestionMap.get(userQuestionAnswer.getQuestionId());
+
+            vo.setQuestionId(userQuestionAnswer.getQuestionId());
+            vo.setTitle(certificateQuestionInfo.getTitle());
+            vo.setOptions(certificateQuestionInfo.getOptions());
+            vo.setQuestionType(certificateQuestionInfo.getQuestionType());
+            vo.setCorrectAnswer(certificateQuestionInfo.getCorrectAnswer());
+            vo.setAnalysis(certificateQuestionInfo.getAnalysis());
+            vo.setImageUrl(certificateQuestionInfo.getImageUrl());
+            vo.setIsCorrect(userQuestionAnswer.getIsCorrect());
+            vo.setChosonOptions(userQuestionAnswer.getChosonOptions());
+            questionReviewVos.add(vo);
+        });
+        return questionReviewVos;
+        /*
+        前端代码：
+        const [questions, answeredRecords] = await Promise.all([
+            getCertificateQuestions(bankId),
+            getCertificateRecordReview(bankId)
+        ]);
+
+        const answeredMap = new Map(
+            answeredRecords.map(item => [item.questionId, item])
+        );
+        const questionStates = questions.map(question => {
+            const answeredRecord = answeredMap.get(question.questionId);
+
+            return answeredRecord
+                ? { ...question, ...answeredRecord, answered: true }
+                : { ...question, answered: false };
+        });
+
+        前端展示逻辑：
+        answeredMap 中存在该 questionId：展示 CertificateQuestionReviewVO。
+        不存在：展示原来的 CertificateQuestionPageVO。
+         */
+
+    }
+
+    @Transactional
+    @Override
+    public List<CertificateQuestionReviewVO> getCertificateQuestionReview(Long bankId) {
+        if (bankId == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
+        List<QuestionBankQuestion> questions = questionBankQuestionMapper.selectList(queryWrapper);
+        if (questions.isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+        List<Long> questionIds = questions.stream().map(QuestionBankQuestion::getQuestionId).toList();
+
+        LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
+        certificateQueryWrapper.in(CertificateQuestionInfo::getId, questionIds)
+                .eq(CertificateQuestionInfo::getIsReleased, true)
+                .in(CertificateQuestionInfo::getQuestionType,QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
+                .orderByAsc(CertificateQuestionInfo::getSortOrder)
+                .orderByAsc(CertificateQuestionInfo::getId);
+
+        List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(certificateQueryWrapper);
+        if (certificateQuestionInfos.isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+
+        Long userId = LoginUserHolder.getUserId();
+        LambdaQueryWrapper<UserQuestionAnswer> userAnswerQueryWrapper = new LambdaQueryWrapper<>();
+        userAnswerQueryWrapper.eq(UserQuestionAnswer::getBankId, bankId)
+                .eq(UserQuestionAnswer::getUserId, userId)
+                .in(UserQuestionAnswer::getQuestionId,questionIds);
+
+        List<UserQuestionAnswer> userQuestionAnswers = userQuestionAnswerMapper.selectList(userAnswerQueryWrapper);
+        //允许列表为空，那就是一道题没做就提交答案了
+
+        //设计成Map集合，就不用每一次都QueryWrapper查询了，提高性能
+        Map<Long, UserQuestionAnswer> questionAnswerMap = userQuestionAnswers.stream()
+                .collect(Collectors.toMap(UserQuestionAnswer::getQuestionId, userQuestionAnswer -> userQuestionAnswer));
+
+
+        //开始组装 List<InterviewQuestionReviewVO>
+        List<CertificateQuestionReviewVO> questionReviewVos = new ArrayList<>();
+        certificateQuestionInfos.forEach(questionInfo -> {
+            CertificateQuestionReviewVO vo = new CertificateQuestionReviewVO();
+            vo.setQuestionId(questionInfo.getId());
+            vo.setTitle(questionInfo.getTitle());
+            vo.setOptions(questionInfo.getOptions());
+            vo.setCorrectAnswer(questionInfo.getCorrectAnswer());
+            vo.setAnalysis(questionInfo.getAnalysis());
+            vo.setQuestionType(questionInfo.getQuestionType());
+            vo.setImageUrl(questionInfo.getImageUrl());
+            UserQuestionAnswer userQuestionAnswer = questionAnswerMap.get(questionInfo.getId());
+            if(userQuestionAnswer != null){
+                vo.setChosonOptions(userQuestionAnswer.getChosonOptions());
+                vo.setIsCorrect(userQuestionAnswer.getIsCorrect());
+            }
+            questionReviewVos.add(vo);
+        });
+        return questionReviewVos;
+    }
+
+    //点击“提交试卷”/“完成题库”按钮后，调用此接口方法
+    //返回 题库正确率 + 题库中题目全套信息的列表（做过的+没做过的）
+    @Override
+    public BankFinishVO finishBank(Long bankId, GroupType groupType) {
+
+        BankFinishVO finishVO = new BankFinishVO();
+        if(groupType.equals(GroupType.INTERVIEW)){
+            List<InterviewQuestionReviewVO> interviewQuestionReviewVos = getInterviewQuestionReview(bankId);
+            finishVO.setInterviewQuestionReviewVos(interviewQuestionReviewVos);
+        }
+
+        if(groupType.equals(GroupType.CERTIFICATION)){
+            List<CertificateQuestionReviewVO> certificateQuestionReviewVos = getCertificateQuestionReview(bankId);
+            finishVO.setCertificateQuestionReviewVos(certificateQuestionReviewVos);
+        }
+
+        QuestionCountVO questionCountVO = buildQuestionCountVO(bankId, groupType);
+        finishVO.setQuestionCount(questionCountVO);
+
+        return finishVO;
+    }
+
+    public QuestionCountVO buildQuestionCountVO(Long bankId, GroupType groupType){
+        QuestionCountVO countVO = new QuestionCountVO();
 
         // 1. 参数校验：bankId 不能为空。
         // bankId 表示用户当前完成的是哪一个题库。
@@ -298,13 +572,11 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
         LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
-        List<QuestionBankQuestion> questionBankQuestions = questionBankQuestionMapper.selectList(queryWrapper);
-        if (questionBankQuestions.isEmpty()) {
+        List<QuestionBankQuestion> questions = questionBankQuestionMapper.selectList(queryWrapper);
+        if (questions.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
-        List<Long> questionIds = questionBankQuestions.stream().map(QuestionBankQuestion::getQuestionId).toList();
-
-        QuestionCountVO vo = new QuestionCountVO();
+        List<Long> questionIds = questions.stream().map(QuestionBankQuestion::getQuestionId).toList();
 
 
         if (groupType.equals(GroupType.CERTIFICATION)) {
@@ -313,7 +585,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                     .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
                     .eq(CertificateQuestionInfo::getIsReleased, true);
             Long totalCount = certificateQuestionInfoMapper.selectCount(certificateQueryWrapper);
-            vo.setTotalCount(totalCount);
+            countVO.setTotalCount(totalCount);
 
             LambdaQueryWrapper<UserQuestionAnswer> userAnswerQueryWrapper = new LambdaQueryWrapper<>();
             userAnswerQueryWrapper.eq(UserQuestionAnswer::getUserId, userId)
@@ -321,15 +593,17 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                     .in(UserQuestionAnswer::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
 
             Long answeredCount = userQuestionAnswerMapper.selectCount(userAnswerQueryWrapper);
+            countVO.setAnsweredCount(answeredCount);
 
             LambdaQueryWrapper<UserQuestionAnswer> correctAnswerQueryWrapper = new LambdaQueryWrapper<>();
             correctAnswerQueryWrapper.eq(UserQuestionAnswer::getUserId, userId)
                     .eq(UserQuestionAnswer::getBankId, bankId)
+                    .in(UserQuestionAnswer::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
                     .eq(UserQuestionAnswer::getIsCorrect, true);
             Long correctCount = userQuestionAnswerMapper.selectCount(correctAnswerQueryWrapper);
 
             // 9. 设置用户答对的题目数量。
-            vo.setCorrectCount(correctCount);
+            countVO.setCorrectCount(correctCount);
 
             // 10. 计算正确率。
             // 这里用 correctCount / totalCount，表示整套题的正确率。
@@ -339,7 +613,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                             2,
                             RoundingMode.HALF_UP
                     );
-            vo.setCorrectRate(correctRate);
+            countVO.setCorrectRate(correctRate);
         }
 
         //返回的是用户作答的interview题库的题目的平均正确率
@@ -349,7 +623,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                     .eq(InterviewQuestionInfo::getIsReleased, true)
                     .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
             Long totalCount = interviewQuestionInfoMapper.selectCount(interviewQueryWrapper);
-            vo.setTotalCount(totalCount);
+            countVO.setTotalCount(totalCount);
 
             LambdaQueryWrapper<UserQuestionAnswer> userAnswerQueryWrapper = new LambdaQueryWrapper<>();
             userAnswerQueryWrapper.eq(UserQuestionAnswer::getUserId, userId)
@@ -357,12 +631,12 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                     .eq(UserQuestionAnswer::getQuestionType, QuestionInfoQuestionType.ESSAY);
 
             Long answeredCount = userQuestionAnswerMapper.selectCount(userAnswerQueryWrapper);
-            vo.setAnsweredCount(answeredCount);
+            countVO.setAnsweredCount(answeredCount);
 
             List<UserQuestionAnswer> userQuestionAnswers = userQuestionAnswerMapper.selectList(userAnswerQueryWrapper);
             if (answeredCount == 0) {
                 BigDecimal correctRate = BigDecimal.ZERO;
-                vo.setCorrectRate(correctRate);
+                countVO.setCorrectRate(correctRate);
             } else {
                 BigDecimal sum = BigDecimal.ZERO;
                 for (int i = 0; i < userQuestionAnswers.size(); i++) {
@@ -370,11 +644,12 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                 }
 
                 BigDecimal correctRate = sum.divide(BigDecimal.valueOf(answeredCount), 2, RoundingMode.HALF_UP);
-                vo.setCorrectRate(correctRate);
+                countVO.setCorrectRate(correctRate);
             }
         }
-        return vo;
+        return countVO;
     }
+
 
     @Override
     public AiChatVO startAiChat(Long bankId, GroupType groupType) {
@@ -468,7 +743,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (dto == null
                 || dto.getBankId() == null
                 || dto.getQuestionId() == null
-                || dto.getBankType() == null
+                || dto.getGroupType() == null
                 || dto.getMessage() == null
                 || dto.getMessage().isBlank()) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -498,17 +773,22 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         );
 
         // 5. 构造题目上下文和最终 prompt。
-        // 具体怎么查面试题/认证题、怎么拼 prompt，交给 AiPromptBuilder，避免 Service 变得太臃肿。
+        // questionContext 是当前用户停留题目的题目内容 + 答案解析（字符串）
         String questionContext = aiPromptBuilder.buildQuestionContext(dto);
+
+        //questionContext 是当前用户停留题目的题目内容 + 答案解析（字符串）
+        //history 是这个session内的历史收发信息
+        //message 是本次用户输入的问题
+        //将这三个部分，通过格式化，一次性喂给AI
         String prompt = aiPromptBuilder.buildAiChatPrompt(questionContext, history, dto.getMessage());
 
         // 6. 保存用户这次输入的追问。
         AiChatMessage userMessage = new AiChatMessage();
         userMessage.setSessionId(session.getId());
         userMessage.setQuestionId(dto.getQuestionId());
-        userMessage.setGroupType(dto.getBankType());
+        userMessage.setGroupType(dto.getGroupType());
         userMessage.setSenderType(AiChatMessageSenderType.USER);
-        userMessage.setMessageContent(dto.getMessage());
+        userMessage.setMessageContent(dto.getMessage()); //一条来自用户输入的信息，保存到ai_chat_message表
         aiChatMessageMapper.insert(userMessage);
 
         // 7. 调用大模型生成回复。
@@ -518,9 +798,9 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         AiChatMessage aiMessage = new AiChatMessage();
         aiMessage.setSessionId(session.getId());
         aiMessage.setQuestionId(dto.getQuestionId());
-        aiMessage.setGroupType(dto.getBankType());
+        aiMessage.setGroupType(dto.getGroupType());
         aiMessage.setSenderType(AiChatMessageSenderType.AI);
-        aiMessage.setMessageContent(aiReply);
+        aiMessage.setMessageContent(aiReply); //一条来自AI回复的消息，也保存到ai_chat_message表
         aiMessage.setModelName("mock-llm");
         aiChatMessageMapper.insert(aiMessage);
 

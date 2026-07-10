@@ -13,7 +13,7 @@ public class AiFollowUpDTO {
     private Long questionId;
 
     /** 题库类型：1.面试题库；2.认证题库。决定从哪张题表查询题目解析。 */
-    private GroupType bankType;
+    private GroupType groupType;
 
     /** 用户在“追问AI”输入框中提交的问题。 */
     private String message;

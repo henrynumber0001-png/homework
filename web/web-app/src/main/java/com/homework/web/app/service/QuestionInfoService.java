@@ -13,7 +13,7 @@ import java.util.List;
 public interface QuestionInfoService {
     List<InterviewQuestionPageVO> getQuestionsByBankId(Long bankId);
 
-    InterViewAnswerPageVO getAnswer(InterviewQuestionSubmitDTO submitDTO);
+    InterViewAnswerPageVO getInterviewAnswer(InterviewQuestionSubmitDTO submitDTO);
 
 
     void saveUserQuestionNote(UserQuestionNoteDTO noteDTO);
@@ -22,7 +22,7 @@ public interface QuestionInfoService {
 
     CertificateAnswerPageVO getCertificateAnswer(CertificateQuestionSubmitDTO submitDTO);
 
-    QuestionCountVO finishBank(Long bankId, GroupType groupType);
+    BankFinishVO finishBank(Long bankId, GroupType groupType);
 
     /**
      * 获取当前用户在某个题库下的 AI 追问历史。
@@ -37,4 +37,8 @@ public interface QuestionInfoService {
     AiChatVO followUpAi(AiFollowUpDTO dto);
 
     void closeAiChat(Long bankId);
+
+    List<InterviewQuestionReviewVO> getInterviewQuestionReview(Long bankId);
+    List<CertificateQuestionReviewVO> getCertificateQuestionReview(Long bankId);
+    List<CertificateQuestionReviewVO> getCertificateRecordReview(Long bankId);
 }

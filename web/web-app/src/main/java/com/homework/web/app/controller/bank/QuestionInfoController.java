@@ -29,8 +29,8 @@ public class QuestionInfoController {
 
     //这个部分用于返回AI反馈和参考答案给前端
     @PostMapping("/interview/answer")
-    public Result<InterViewAnswerPageVO> getAnswer(@RequestBody InterviewQuestionSubmitDTO submitDTO){
-        InterViewAnswerPageVO answer = questionInfoService.getAnswer(submitDTO);
+    public Result<InterViewAnswerPageVO> getInterviewAnswer(@RequestBody InterviewQuestionSubmitDTO submitDTO){
+        InterViewAnswerPageVO answer = questionInfoService.getInterviewAnswer(submitDTO);
         return Result.success(answer);
     }
     @PostMapping("/answer/note")
@@ -53,13 +53,29 @@ public class QuestionInfoController {
         return Result.success(answer);
     }
 
-    //完成题库之后的成绩统计
-    //面试题库：统计AiRate 平均数；认证题库：统计 答对题目/总题目数
-    @GetMapping("/finish")
-    public Result<QuestionCountVO> finishBank(@RequestParam Long bankId, @RequestParam GroupType groupType){
-         QuestionCountVO questionCountVO = questionInfoService.finishBank(bankId,groupType);
-        return Result.success(questionCountVO);
+    @GetMapping("/interview/review")
+    public Result<List<InterviewQuestionReviewVO>> getInterviewQuestionReview(@RequestParam Long bankId) {
+        List<InterviewQuestionReviewVO> questions = questionInfoService.getInterviewQuestionReview(bankId);
+        return Result.success(questions);
+    }
 
+    @GetMapping("certificate/review")
+    public Result<List<CertificateQuestionReviewVO>> getCertificateQuestionReview(@RequestParam Long bankId){
+        List<CertificateQuestionReviewVO> questions = questionInfoService.getCertificateQuestionReview(bankId);
+        return Result.success(questions);
+    }
+
+    @GetMapping("/certificate/record/review")
+    public Result<List<CertificateQuestionReviewVO>> getCertificateRecordReview(@RequestParam Long bankId) {
+        List<CertificateQuestionReviewVO> records = questionInfoService.getCertificateRecordReview(bankId);
+        return Result.success(records);
+    }
+
+
+    @GetMapping("/finish")
+    public Result<BankFinishVO> finishBank(@RequestParam Long bankId, @RequestParam GroupType groupType){
+        BankFinishVO finishVO = questionInfoService.finishBank(bankId,groupType);
+        return Result.success(finishVO);
     }
 
     //用户点击答案解析里的“追问AI”按钮时，先调用这个接口拉取当前题库已有的 AI 会话。

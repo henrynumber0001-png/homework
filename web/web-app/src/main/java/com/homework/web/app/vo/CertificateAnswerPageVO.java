@@ -8,6 +8,7 @@ import java.util.List;
 
 @Data
 public class CertificateAnswerPageVO {
+
     @Schema(description = "正确选项")
     private List<String> correctAnswer;
 
