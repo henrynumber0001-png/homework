@@ -16,6 +16,7 @@ public class CertificateAnswerPageVO {
     private String analysis;
 
     private Long questionId;
+
     private Boolean correct;
 
 }

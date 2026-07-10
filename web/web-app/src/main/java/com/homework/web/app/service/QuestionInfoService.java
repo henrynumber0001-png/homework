@@ -39,6 +39,12 @@ public interface QuestionInfoService {
     void closeAiChat(Long bankId);
 
     List<InterviewQuestionReviewVO> getInterviewQuestionReview(Long bankId);
+    List<InterviewQuestionReviewVO> getInterviewRecord(Long bankId);
+
     List<CertificateQuestionReviewVO> getCertificateQuestionReview(Long bankId);
-    List<CertificateQuestionReviewVO> getCertificateRecordReview(Long bankId);
+    List<CertificateQuestionReviewVO> getCertificateRecord(Long bankId);
+
+    void clearRecord(Long bankId, GroupType groupType);
+
+
 }

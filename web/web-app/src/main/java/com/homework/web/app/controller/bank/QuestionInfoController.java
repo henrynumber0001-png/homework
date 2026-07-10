@@ -39,8 +39,8 @@ public class QuestionInfoController {
         return Result.success();
     }
 
-    //认证题库 -> 练习模式
-    @GetMapping("/certificate/practice/question")
+    //认证题库 -> 练习模式 + 考试模式
+    @GetMapping("/certificate/question")
     public Result<List<CertificateQuestionPageVO>> getCertByPractice(@RequestParam Long bankId) {
         List<CertificateQuestionPageVO> questions = questionInfoService.getCertificateByBankId(bankId);
         return Result.success(questions);
@@ -65,12 +65,24 @@ public class QuestionInfoController {
         return Result.success(questions);
     }
 
-    @GetMapping("/certificate/record/review")
-    public Result<List<CertificateQuestionReviewVO>> getCertificateRecordReview(@RequestParam Long bankId) {
-        List<CertificateQuestionReviewVO> records = questionInfoService.getCertificateRecordReview(bankId);
+    @GetMapping("/certificate/record")
+    public Result<List<CertificateQuestionReviewVO>> getCertificateRecord(@RequestParam Long bankId) {
+        List<CertificateQuestionReviewVO> records = questionInfoService.getCertificateRecord(bankId);
         return Result.success(records);
     }
 
+    @GetMapping("/interview/record")
+    public Result<List<InterviewQuestionReviewVO>> getInterviewRecord(@RequestParam Long bankId) {
+        List<InterviewQuestionReviewVO> records = questionInfoService.getInterviewRecord(bankId);
+        return Result.success(records);
+    }
+
+    //给用户的功能：清除当前所答题目的全部记录
+    @DeleteMapping("/clear/record")
+    public Result<Void> clearRecord(@RequestParam Long bankId, @RequestParam GroupType groupType){
+        questionInfoService.clearRecord(bankId,groupType);
+        return Result.success();
+    }
 
     @GetMapping("/finish")
     public Result<BankFinishVO> finishBank(@RequestParam Long bankId, @RequestParam GroupType groupType){
