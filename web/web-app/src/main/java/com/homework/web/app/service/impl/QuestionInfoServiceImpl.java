@@ -661,7 +661,6 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
-
         Long userId = LoginUserHolder.getUserId();
         LambdaQueryWrapper<UserQuestionAnswer> userAnswerQueryWrapper = new LambdaQueryWrapper<>();
         userAnswerQueryWrapper.eq(UserQuestionAnswer::getBankId, bankId)

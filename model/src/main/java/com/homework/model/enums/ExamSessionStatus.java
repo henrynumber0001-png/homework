@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
-public enum ExamAttemptStatus implements BaseEnum {
+public enum ExamSessionStatus implements BaseEnum {
     IN_PROGRESS(1, "in_progress"),
     SUBMITTED(2, "submitted"),
     EXPIRED(3, "expired"),
@@ -15,7 +15,7 @@ public enum ExamAttemptStatus implements BaseEnum {
     @JsonValue
     private final Integer value;
     private final String label;
-    ExamAttemptStatus(Integer value, String label) {
+    ExamSessionStatus(Integer value, String label) {
         this.value = value; this.label = label;
     }
 }

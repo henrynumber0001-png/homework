@@ -39,6 +39,8 @@ public enum ResultCodeEnum {
 
     APP_AI_EVALUATION_EMPTY_SCORE(513, "该用户并未作答"),
 
+    EXAM_EXPIRED(514, "考试已到期，系统已自动交卷"),
+
 
 
     TOKEN_EXPIRED(601, "token过期"),
