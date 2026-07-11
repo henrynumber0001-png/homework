@@ -8,8 +8,7 @@ import lombok.Getter;
 public enum ExamSessionStatus implements BaseEnum {
     IN_PROGRESS(1, "in_progress"),
     SUBMITTED(2, "submitted"),
-    EXPIRED(3, "expired"),
-    ABANDONED(4, "abandoned");
+    EXPIRED(3, "expired");
 
     @EnumValue
     @JsonValue

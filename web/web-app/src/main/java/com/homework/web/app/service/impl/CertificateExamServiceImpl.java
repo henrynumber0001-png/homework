@@ -36,12 +36,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * 认证题库考试模式的业务实现。
- *
- * <p>这个类只负责考试模式，不负责练习模式。考试进行中的答案先保存在
- * certificate_exam_answer，提交后再根据这些临时答案统一判题。</p>
- */
+
 @Service
 @RequiredArgsConstructor
 public class CertificateExamServiceImpl implements CertificateExamService {
@@ -61,11 +56,11 @@ public class CertificateExamServiceImpl implements CertificateExamService {
     // 查询题库与题目的关联关系，防止把其他题库的题混进考试。
     private final QuestionBankQuestionMapper questionBankQuestionMapper;
 
-    /**
-     * 开始一场新考试，或者恢复当前题库中尚未结束的考试。
-     */
+
     @Transactional
     @Override
+    //前端只有 bankId，还不知道 sessionId 时调用，例如用户从题库列表点击“开始考试”。
+    //它更像“进入考试的总入口”。
     public CertificateExamVO startOrResume(Long bankId) {
 
         if (bankId == null) {
@@ -96,8 +91,35 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             return buildExamVO(activeSession);
         }
 
-        // 如果CertificateExamSession 中没有最新一条 activeSession，查询当前题库全部有效认证题。
-        List<CertificateQuestionInfo> questionInfos = findReleasedQuestions(bankId);
+        List<QuestionBankQuestion> bankQuestions = questionBankQuestionMapper.selectList(
+                new LambdaQueryWrapper<QuestionBankQuestion>()
+                        .eq(QuestionBankQuestion::getBankId, bankId)
+        );
+
+        if (bankQuestions.isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        List<Long> questionIds = bankQuestions.stream()
+                .map(QuestionBankQuestion::getQuestionId)
+                .toList();
+
+        List<CertificateQuestionInfo> certQuestionInfos = certificateQuestionInfoMapper.selectList(
+                new LambdaQueryWrapper<CertificateQuestionInfo>()
+                        .in(CertificateQuestionInfo::getId, questionIds)
+                        .eq(CertificateQuestionInfo::getIsReleased, true)
+                        .in(
+                                CertificateQuestionInfo::getQuestionType,
+                                QuestionInfoQuestionType.SINGLE_CHOICE,
+                                QuestionInfoQuestionType.MULTIPLE
+                        )
+        );
+        if (certQuestionInfos .isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        // 返回可修改列表，因为 startOrResume 随后需要调用 Collections.shuffle。
+        ArrayList<CertificateQuestionInfo> questionInfos = new ArrayList<>(certQuestionInfos);
 
         // 只在创建新场次时随机一次；随机后的结果马上保存到 questionOrder，今后只要进入这个 session，题目就按照这个 questionOrder 排列。
         Collections.shuffle(questionInfos);
@@ -110,6 +132,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         // 获取一次当前时间，避免 startedAt 和 expiresAt 因两次取值产生细小偏差。
         LocalDateTime now = LocalDateTime.now();
 
+        //没有session，就创建一个session
         CertificateExamSession newSession = new CertificateExamSession();
         newSession.setUserId(userId);
         newSession.setBankId(bankId);
@@ -124,46 +147,65 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         return buildExamVO(newSession);//这个时候还没返回题目列表给前端呢，必须要调用buildExamVO之后
     }
 
-    /**
-     * 根据 sessionId 恢复某一场属于当前用户的考试。
-     */
+
     @Transactional
     @Override
+    //前端已经知道 sessionId，希望精确恢复这一场考试时调用（浏览器刷新页面/从考试页面重新加载）
     public CertificateExamVO getSession(Long sessionId) {
-        // sessionId 为空时无法确定要恢复哪一场考试。
         if (sessionId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
-        // 查询时同时校验 userId，防止用户读取其他人的考试。
-        CertificateExamSession session = getOwnedSession(sessionId);
+        Long userId = LoginUserHolder.getUserId();
+        CertificateExamSession session = certificateExamSessionMapper.selectOne(
+                new LambdaQueryWrapper<CertificateExamSession>()
+                        .eq(CertificateExamSession::getId, sessionId)
+                        .eq(CertificateExamSession::getUserId, userId));
 
-        // 只有进行中的考试才需要检查是否刚刚超时。
+        if (session == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        // 能查到，接下来看看这个session的状态是否过期
+        if (session.getStatus() == ExamSessionStatus.IN_PROGRESS && isExpired(session)) {
+            // 超时后统一判题，并把状态改为 EXPIRED。
+            finishSession(session, ExamSessionStatus.EXPIRED);
+        }
+        // 没过期，查数据，返回给前端
+        return buildExamVO(session);
+    }
+
+
+    @Transactional(noRollbackFor = HomeworkException.class)
+    @Override
+    public void saveAnswer(CertificateExamAnswerDTO dto) {
+        // buildExamVO() 是“后端向前端返回数据”，而 saveAnswer() 是“后端接收前端传回的数据”。
+        // 后端不能因为之前返回过正确数据，就默认之后收到的数据一定没被修改。
+
+        if (dto == null || dto.getChosenOptions() == null || dto.getSessionId() == null || dto.getQuestionId() == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        Long userId = LoginUserHolder.getUserId();
+        CertificateExamSession session = certificateExamSessionMapper.selectOne(
+                new LambdaQueryWrapper<CertificateExamSession>()
+                        .eq(CertificateExamSession::getId, dto.getSessionId())
+                        .eq(CertificateExamSession::getUserId, userId));
+
+        if (session == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        // 能查到，接下来看看这个session的状态是否过期
         if (session.getStatus() == ExamSessionStatus.IN_PROGRESS && isExpired(session)) {
             // 超时后统一判题，并把状态改为 EXPIRED。
             finishSession(session, ExamSessionStatus.EXPIRED);
         }
 
-        // 返回固定题序和已暂存的选择，供前端恢复页面。
-        return buildExamVO(session);
-    }
-
-    /**
-     * 覆盖保存用户对某一道题的临时选择。
-     */
-    @Transactional(noRollbackFor = HomeworkException.class)
-    @Override
-    public void saveAnswer(Long sessionId, Long questionId, CertificateExamAnswerDTO dto) {
-        // 三个参数共同决定“哪场考试、哪道题、保存什么”，缺一不可。
-        if (sessionId == null || questionId == null || dto == null || dto.getChosenOptions() == null) {
-            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        // 题库（试卷）已提交、已超时或已放弃的考试都不能继续修改答案。
+        if (session.getStatus() != ExamSessionStatus.IN_PROGRESS) {
+            throw new HomeworkException(ResultCodeEnum.REPEAT_SUBMIT);
         }
-
-        // 查询并验证考试确实属于当前登录用户。
-        CertificateExamSession session = getOwnedSession(sessionId);
-
-        // 已提交、已超时或已放弃的考试都不能继续修改答案。
-        ensureInProgress(session);
 
         // 截止时间已到时，先自动交卷，再通知前端考试已过期。
         if (isExpired(session)) {
@@ -172,12 +214,12 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         }
 
         // questionOrder 是本场考试允许作答的题目白名单。
-        if (session.getQuestionOrder() == null || !session.getQuestionOrder().contains(questionId)) {
+        if (session.getQuestionOrder() == null || !session.getQuestionOrder().contains(dto.getQuestionId())) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
         // 从数据库读取真实题目，不能相信前端自己声明题型或选项范围。
-        CertificateQuestionInfo questionInfo = certificateQuestionInfoMapper.selectById(questionId);
+        CertificateQuestionInfo questionInfo = certificateQuestionInfoMapper.selectById(dto.getQuestionId());
 
         // 题目被删除或题型不属于认证题时，当前考试数据已经不完整。
         if (questionInfo == null || !isCertificateQuestionType(questionInfo.getQuestionType())) {
@@ -190,171 +232,59 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         // 同一场考试的同一道题只允许有一条临时答案，因此先查询旧记录。
         CertificateExamAnswer savedAnswer = certificateExamAnswerMapper.selectOne(
                 new LambdaQueryWrapper<CertificateExamAnswer>()
-                        .eq(CertificateExamAnswer::getSessionId, sessionId)
-                        .eq(CertificateExamAnswer::getQuestionId, questionId)
+                        .eq(CertificateExamAnswer::getSessionId, dto.getSessionId())
+                        .eq(CertificateExamAnswer::getQuestionId, dto.getQuestionId())
         );
 
-        // 第一次选择这道题时，需要插入一条新记录。
+        ArrayList<String> chosenOptionsList = new ArrayList<>(dto.getChosenOptions());
+        // 如果没旧记录，插入一条新记录。
         if (savedAnswer == null) {
-            // 创建临时答案实体。
             CertificateExamAnswer newAnswer = new CertificateExamAnswer();
-
-            // 关联到当前考试场次。
-            newAnswer.setSessionId(sessionId);
-
-            // 冗余保存 userId，方便后续按用户审计和查询。
+            newAnswer.setSessionId(dto.getSessionId());
             newAnswer.setUserId(session.getUserId());
-
-            // 记录用户正在回答哪一道题。
-            newAnswer.setQuestionId(questionId);
-
-            // 保存用户当前的选择；空列表表示用户主动清空选择。
-            newAnswer.setChosenOptions(new ArrayList<>(dto.getChosenOptions()));
-
-            // 使用服务器时间记录最后作答时间。
+            newAnswer.setQuestionId(dto.getQuestionId());
+            newAnswer.setChosenOptions(chosenOptionsList);
             newAnswer.setAnsweredAt(LocalDateTime.now());
-
-            // 把临时答案插入数据库。
             certificateExamAnswerMapper.insert(newAnswer);
-
-            // 插入完成后即可结束本方法，不需要继续执行更新逻辑。
             return;
         }
 
-        // 已经有记录时直接覆盖选择，保证每场考试每道题只有一个最新状态。
-        savedAnswer.setChosenOptions(new ArrayList<>(dto.getChosenOptions()));
-
-        // 每次修改答案都刷新最后作答时间。
+        // 如果有旧记录，直接覆盖选择，保证每场考试每道题只有一个最新状态。
+        savedAnswer.setChosenOptions(chosenOptionsList);
         savedAnswer.setAnsweredAt(LocalDateTime.now());
-
-        // 根据临时答案主键更新数据库。
         certificateExamAnswerMapper.updateById(savedAnswer);
     }
 
-    /**
-     * 主动提交试卷；重复请求时不会重复创建结果，而是重新计算并返回同一场结果。
-     */
     @Transactional
     @Override
     public BankFinishVO submit(Long sessionId) {
-        // sessionId 不能为空。
         if (sessionId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
-        // 只能提交属于当前用户自己的考试。
-        CertificateExamSession session = getOwnedSession(sessionId);
-
-        // 放弃后的考试不允许再次提交。
-        if (session.getStatus() == ExamSessionStatus.ABANDONED) {
+        //先检查session是否存在
+        Long userId = LoginUserHolder.getUserId();
+        LambdaQueryWrapper<CertificateExamSession> sessionQuerywrapper = new LambdaQueryWrapper<>();
+        sessionQuerywrapper.eq(CertificateExamSession::getId, sessionId)
+                .eq(CertificateExamSession::getUserId,userId);
+        CertificateExamSession session = certificateExamSessionMapper.selectOne(sessionQuerywrapper);
+        if(session == null){
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
-        // 已提交或已自动交卷时，直接返回已有场次对应的结算结果，保证接口幂等。
-        if (session.getStatus() == ExamSessionStatus.SUBMITTED
-                || session.getStatus() == ExamSessionStatus.EXPIRED) {
+        //这个条件判断用于解决：
+        // 用户重复点击提交的问题，比如双击“提交试卷”，可能发出两个请求
+        // 第一次提交实际上已经成功，但后端响应在网络中断了。前端没有收到结果，可能重新发送一次。
+        // 前端倒计时与后端时间不同步：即使页面上按钮还能点击，也不代表服务器认为考试没有结束（前端慢了，实际上服务器端已经自动提交了）。
+        if (session.getStatus() == ExamSessionStatus.SUBMITTED || session.getStatus() == ExamSessionStatus.EXPIRED) {
             return buildFinishVO(session);
         }
 
-        // 用户在截止时间之后才点击提交时，应按超时交卷处理。
-        ExamSessionStatus finalStatus = isExpired(session)
-                ? ExamSessionStatus.EXPIRED
-                : ExamSessionStatus.SUBMITTED;
+        // 用户在截止时间之后被动交卷，归类为expired。
+        ExamSessionStatus finalStatus = isExpired(session) ? ExamSessionStatus.EXPIRED : ExamSessionStatus.SUBMITTED;
 
         // 统一判题、保存统计结果并返回答案解析。
         return finishSession(session, finalStatus);
-    }
-
-    /**
-     * 用户主动放弃考试。这里保留场次和临时答案，不执行物理删除。
-     */
-    @Transactional
-    @Override
-    public void abandon(Long sessionId) {
-        // sessionId 不能为空。
-        if (sessionId == null) {
-            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
-        }
-
-        // 只能放弃属于当前用户自己的考试。
-        CertificateExamSession session = getOwnedSession(sessionId);
-
-        // 非进行中状态已经是终态，重复放弃时直接返回即可。
-        if (session.getStatus() != ExamSessionStatus.IN_PROGRESS) {
-            return;
-        }
-
-        // 如果用户点击放弃时已经超时，应当按超时交卷，而不是按主动放弃处理。
-        if (isExpired(session)) {
-            finishSession(session, ExamSessionStatus.EXPIRED);
-            return;
-        }
-
-        // 将状态改为 ABANDONED，startOrResume 下次会创建一个全新的随机场次。
-        session.setStatus(ExamSessionStatus.ABANDONED);
-
-        // 保存放弃状态。
-        certificateExamSessionMapper.updateById(session);
-    }
-
-    /**
-     * 查询题库当前有效的认证题；这个方法只在创建新考试时调用。
-     */
-    private List<CertificateQuestionInfo> findReleasedQuestions(Long bankId) {
-        // 先查询题库与题目的关联记录。
-        List<QuestionBankQuestion> bankQuestions = questionBankQuestionMapper.selectList(
-                new LambdaQueryWrapper<QuestionBankQuestion>()
-                        .eq(QuestionBankQuestion::getBankId, bankId)
-        );
-
-        if (bankQuestions.isEmpty()) {
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
-        }
-
-        List<Long> questionIds = bankQuestions.stream()
-                .map(QuestionBankQuestion::getQuestionId)
-                .toList();
-
-        List<CertificateQuestionInfo> questionInfos = certificateQuestionInfoMapper.selectList(
-                new LambdaQueryWrapper<CertificateQuestionInfo>()
-                        .in(CertificateQuestionInfo::getId, questionIds)
-                        .eq(CertificateQuestionInfo::getIsReleased, true)
-                        .in(
-                                CertificateQuestionInfo::getQuestionType,
-                                QuestionInfoQuestionType.SINGLE_CHOICE,
-                                QuestionInfoQuestionType.MULTIPLE
-                        )
-        );
-        if (questionInfos.isEmpty()) {
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
-        }
-        List<Long> validQuestionIds = questionInfos.stream().map(CertificateQuestionInfo::getId).toList();
-
-        // 返回可修改列表，因为 startOrResume 随后需要调用 Collections.shuffle。
-        return new ArrayList<>(questionInfos);
-    }
-
-    /**
-     * 查询考试，同时验证它属于当前登录用户。
-     */
-    private CertificateExamSession getOwnedSession(Long sessionId) {
-        // 从登录上下文取得当前用户。
-        Long userId = LoginUserHolder.getUserId();
-
-        // id 和 userId 必须同时匹配，避免越权读取或修改其他用户的考试。
-        CertificateExamSession session = certificateExamSessionMapper.selectOne(
-                new LambdaQueryWrapper<CertificateExamSession>()
-                        .eq(CertificateExamSession::getId, sessionId)
-                        .eq(CertificateExamSession::getUserId, userId)
-        );
-
-        // 查不到时对外统一表现为参数或数据无效，不泄露其他用户是否存在该场次。
-        if (session == null) {
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
-        }
-
-        // 返回已经完成归属校验的考试实体。
-        return session;
     }
 
     /**
@@ -389,7 +319,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
-        // 空列表表示清空当前选择，属于合法操作，不需要继续校验。
+        // 空列表表示清空当前选择，属于合法操作，不需要继续校验下面的内容了。
         if (chosenOptions.isEmpty()) {
             return;
         }
@@ -415,7 +345,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
     //CertificateExamVO = CertificateExamSession + CertificateExamAnswer + CertificationQuestionInfo
     //这个方法的作用：把创建好的session，和题目信息 + 考试已经作答信息（如有） 一起返回给前端，这样浏览器在点击“考试模式”后，才能显示具体的考试题目
     private CertificateExamVO buildExamVO(CertificateExamSession session) {
-        if(session == null) {
+        if (session == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
@@ -424,12 +354,12 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         }
         List<Long> questionOrder = session.getQuestionOrder();
 
-        // 这里不再过滤 isReleased，因为考试开始后取消发布也不应破坏正在进行的场次。
         //其实这一步queryWrapper，主要是为了查出来 题目列表，然后最终目的是制作成 questionMap
         //这个 questionOrder(verifiedQuestionIds) 都是筛选过的，而且只能是这些questionIds
         LambdaQueryWrapper<CertificateQuestionInfo> questionQueryWrapper = new LambdaQueryWrapper<>();
         questionQueryWrapper.in(CertificateQuestionInfo::getId, questionOrder)
-                        .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
+                .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
+                .eq(CertificateQuestionInfo::getIsReleased, true); //应该加上，否则两次登录间隔时长很久，且某题目下架，那么就不能过滤，还会传给前端
 
         List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(questionQueryWrapper);
 
@@ -457,7 +387,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         questionOrder.forEach(questionId -> {
             CertificateExamQuestionVO vo = new CertificateExamQuestionVO();
             CertificateQuestionInfo questionInfo = questionMap.get(questionId);
-            if(questionInfo == null) {
+            if (questionInfo == null) {
                 throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
             }
             vo.setQuestionId(questionInfo.getId());
@@ -467,9 +397,9 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             vo.setImageUrl(questionInfo.getImageUrl());
 
             CertificateExamAnswer answer = answerMap.get(questionId); //这一步就是看用户答没答
-            if(answer != null) { //答了，就把用户选择的选项返回
+            if (answer != null) { //答了，就把用户选择的选项返回
                 vo.setChosenOptions(answer.getChosenOptions());
-                if(answer.getChosenOptions() != null && !answer.getChosenOptions().isEmpty()) {
+                if (answer.getChosenOptions() != null && !answer.getChosenOptions().isEmpty()) {
                     vo.setAnswered(true);
                 }
             }
@@ -484,9 +414,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         return examVO;
     }
 
-    /**
-     * 统一判题并保存考试最终状态。
-     */
+    //用于表示 用户首次点击“提交试卷”之后， 返回结算页面 + 保存正确率和答题时间到当前certificate_exam_session
     private BankFinishVO finishSession(CertificateExamSession session, ExamSessionStatus finalStatus) {
         // 先根据本场题目和临时答案生成结算结果。
         BankFinishVO finishVO = buildFinishVO(session);
@@ -494,42 +422,47 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         // 从结算结果中取得统计信息。
         QuestionCountVO questionCount = finishVO.getQuestionCount();
 
-        // 保存最终答对数量，方便以后查询历史成绩时直接读取。
         session.setCorrectCount(questionCount.getCorrectCount());
-
-        // 保存最终正确率。
         session.setCorrectRate(questionCount.getCorrectRate());
-
-        // 保存实际结束时间；超时场次也记录系统结算时间。
         session.setSubmittedAt(LocalDateTime.now());
-
-        // 状态可能是用户主动提交，也可能是系统判定超时。
         session.setStatus(finalStatus);
 
-        // 更新考试场次记录。
         certificateExamSessionMapper.updateById(session);
 
-        // 返回包含答案解析和统计数据的结算页面。
         return finishVO;
     }
 
-    /**
-     * 根据临时答案构造提交后的完整结算结果。
-     */
+    // 这个方法单纯的返回 结算页面 给前端，用于处理重复提交问题
     private BankFinishVO buildFinishVO(CertificateExamSession session) {
-        // 取得本场考试的固定题目顺序。
-        List<Long> questionOrder = requireQuestionOrder(session);
+        if (session == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
 
-        // 查询所有题目并转成 Map，避免循环查询数据库。
-        Map<Long, CertificateQuestionInfo> questionMap = findSessionQuestions(questionOrder).stream()
+        if (session.getQuestionOrder() == null || session.getQuestionOrder().isEmpty()) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+        List<Long> questionOrder = session.getQuestionOrder();
+
+        //根据 questionOrder(verifiedQuestionIds) 再去CertificateQuestionInfo 查询一遍 题目列表
+        LambdaQueryWrapper<CertificateQuestionInfo> questionQueryWrapper = new LambdaQueryWrapper<>();
+        questionQueryWrapper.in(CertificateQuestionInfo::getId, questionOrder)
+                .eq(CertificateQuestionInfo::getIsReleased, true)
+                .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
+
+        List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(questionQueryWrapper);
+        if(certificateQuestionInfos.isEmpty()){
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        Map<Long, CertificateQuestionInfo> questionMap = certificateQuestionInfos.stream()
                 .collect(Collectors.toMap(CertificateQuestionInfo::getId, question -> question));
 
-        // 查询本场考试的全部临时答案。
-        List<CertificateExamAnswer> answers = certificateExamAnswerMapper.selectList(
-                new LambdaQueryWrapper<CertificateExamAnswer>()
-                        .eq(CertificateExamAnswer::getSessionId, session.getId())
-                        .eq(CertificateExamAnswer::getUserId, session.getUserId())
-        );
+        // 查询该 userId 在这个 session 之下，答了多少题
+        LambdaQueryWrapper<CertificateExamAnswer> answerQueryWrapper = new LambdaQueryWrapper<>();
+        answerQueryWrapper.eq(CertificateExamAnswer::getSessionId, session.getId())
+                .eq(CertificateExamAnswer::getUserId, session.getUserId());
+        List<CertificateExamAnswer> answers = certificateExamAnswerMapper.selectList(answerQueryWrapper);
+//        long answeredCount = certificateExamAnswerMapper.selectCount(answerQueryWrapper);
 
         // 转成 questionId 到答案的 Map，方便 O(1) 查找。
         Map<Long, CertificateExamAnswer> answerMap = answers.stream()
@@ -544,15 +477,11 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         // 记录答对数量。
         long correctCount = 0L;
 
-        // 按考试时的随机顺序组装结算页面。
         for (Long questionId : questionOrder) {
-            // 取得题目详情。
             CertificateQuestionInfo questionInfo = questionMap.get(questionId);
 
-            // 缺少题目时不能继续判题。
-            if (questionInfo == null
-                    || questionInfo.getCorrectAnswer() == null
-                    || questionInfo.getCorrectAnswer().isEmpty()) {
+            // 题目缺少“正确答案”时，抛异常
+            if (questionInfo == null || questionInfo.getCorrectAnswer() == null || questionInfo.getCorrectAnswer().isEmpty()) {
                 throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
             }
 
@@ -560,15 +489,13 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             CertificateExamAnswer answer = answerMap.get(questionId);
 
             // 只有选择列表非空时才算已经作答。
-            boolean answered = answer != null
-                    && answer.getChosenOptions() != null
-                    && !answer.getChosenOptions().isEmpty();
+            boolean answered =
+                    answer != null && answer.getChosenOptions() != null && !answer.getChosenOptions().isEmpty();
 
             // 未作答题默认不算正确；已作答题比较选项集合。
-            boolean correct = answered
-                    && sameOptions(answer.getChosenOptions(), questionInfo.getCorrectAnswer());
+            boolean correct = answered && sameOptions(answer.getChosenOptions(), questionInfo.getCorrectAnswer());
 
-            // 已作答时累计 answeredCount。
+            // 已作答时累计 answeredCount（因为空选项也会被存入CertificateExamAnswer,所以不能直接selectCount）
             if (answered) {
                 answeredCount++;
             }
@@ -578,38 +505,29 @@ public class CertificateExamServiceImpl implements CertificateExamService {
                 correctCount++;
             }
 
-            // 创建提交后单道题的 ReviewVO。
             CertificateQuestionReviewVO reviewVO = new CertificateQuestionReviewVO();
-
-            // 设置题目基本信息。
             reviewVO.setQuestionId(questionInfo.getId());
             reviewVO.setTitle(questionInfo.getTitle());
             reviewVO.setOptions(questionInfo.getOptions());
             reviewVO.setQuestionType(questionInfo.getQuestionType());
             reviewVO.setImageUrl(questionInfo.getImageUrl());
-
-            // 正式交卷后才返回正确答案与解析。
             reviewVO.setCorrectAnswer(questionInfo.getCorrectAnswer());
             reviewVO.setAnalysis(questionInfo.getAnalysis());
 
-            // 未作答时 chosenOptions 保持 null。
             reviewVO.setChosonOptions(answer == null ? null : answer.getChosenOptions());
+            reviewVO.setIsCorrect(answered ? correct : null); //answered 本身结果就是 true/false
 
-            // 未作答时 isCorrect 保持 null；已作答时返回真实判题结果。
-            reviewVO.setIsCorrect(answered ? correct : null);
-
-            // 加入整套题的结算列表。
             reviewVOs.add(reviewVO);
         }
 
-        // 本场考试题目总数就是固定题序的长度。
         long totalCount = questionOrder.size();
-
-        // 正确率按“答对题数 / 整套题总数”计算，未答题相当于错误。
-        BigDecimal correctRate = totalCount == 0L
-                ? BigDecimal.ZERO
-                : BigDecimal.valueOf(correctCount)
-                .divide(BigDecimal.valueOf(totalCount), 2, RoundingMode.HALF_UP);
+        BigDecimal correctRate;
+        if(totalCount == 0){
+            correctRate = BigDecimal.ZERO;
+        }else {
+            correctRate = BigDecimal.valueOf(correctCount)
+                    .divide(BigDecimal.valueOf(totalCount), 2, RoundingMode.HALF_UP);
+        }
 
         // 组装统计对象。
         QuestionCountVO questionCountVO = new QuestionCountVO();
@@ -627,29 +545,6 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         return finishVO;
     }
 
-    /**
-     * 读取并校验考试场次中的固定题序。
-     */
-    private List<Long> requireQuestionOrder(CertificateExamSession session) {
-        // 空题序意味着考试创建不完整，无法恢复或判题。
-
-    }
-
-    /**
-     * 查询某场考试题序中的全部题目。
-     */
-    private List<CertificateQuestionInfo> findSessionQuestions(List<Long> questionOrder) {
-        // 这里不再过滤 isReleased，因为考试开始后取消发布也不应破坏正在进行的场次。
-        return certificateQuestionInfoMapper.selectList(
-                new LambdaQueryWrapper<CertificateQuestionInfo>()
-                        .in(CertificateQuestionInfo::getId, questionOrder)
-                        .in(
-                                CertificateQuestionInfo::getQuestionType,
-                                QuestionInfoQuestionType.SINGLE_CHOICE,
-                                QuestionInfoQuestionType.MULTIPLE
-                        )
-        );
-    }
 
     /**
      * 判断题型是否属于当前支持的认证题类型。
@@ -664,7 +559,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
      * 忽略选项顺序比较用户答案和正确答案。
      */
     private boolean sameOptions(List<String> userOptions, List<String> correctOptions) {
-        // 任意一边为空引用都不能判定为正确。
+        // 为什么 userOptions == null 不报错？ 因为这是一个 boolean 判断对错的方法，不应该赋予它过重的职责
         if (userOptions == null || correctOptions == null) {
             return false;
         }
@@ -672,5 +567,6 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         // 数量必须相等，并且转换成 Set 后包含完全相同的选项。
         return userOptions.size() == correctOptions.size()
                 && new HashSet<>(userOptions).equals(new HashSet<>(correctOptions));
+        //第二步把 List 转成 Set：原因是多选题不应该关心选项顺序。
     }
 }

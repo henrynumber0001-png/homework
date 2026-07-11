@@ -11,6 +11,9 @@ import java.util.List;
 @Data
 public class CertificateExamAnswerDTO {
 
+    private Long sessionId;
+    private Long questionId;
+
     /**
      * 用户本次选择的选项。
      * 空列表表示用户清空了这道题的选择，null 表示请求参数不完整。

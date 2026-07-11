@@ -30,10 +30,9 @@ public class CertificateExamController {
     }
 
     // 用户选择或取消选项时，覆盖保存这道题的临时答案。
-    @PutMapping("/{sessionId}/questions/{questionId}/answer")
-    public Result<Void> saveExamAnswer(@PathVariable Long sessionId,
-                                       @PathVariable Long questionId, @RequestBody CertificateExamAnswerDTO dto) {
-        certificateExamService.saveAnswer(sessionId, questionId, dto);
+    @PostMapping("/answer")
+    public Result<Void> saveExamAnswer(@RequestBody CertificateExamAnswerDTO dto) {
+        certificateExamService.saveAnswer(dto);
         return Result.success();
     }
 
@@ -41,12 +40,5 @@ public class CertificateExamController {
     @PostMapping("/{sessionId}/submit")
     public Result<BankFinishVO> submitExam(@PathVariable Long sessionId) {
         return Result.success(certificateExamService.submit(sessionId));
-    }
-
-    // 用户明确点击“放弃考试”时结束本场考试，不删除历史场次。
-    @PostMapping("/{sessionId}/abandon")
-    public Result<Void> abandonExam(@PathVariable Long sessionId) {
-        certificateExamService.abandon(sessionId);
-        return Result.success();
     }
 }
