@@ -50,10 +50,11 @@ public class LoginInterceptor implements HandlerInterceptor {
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
 
         LoginUserHolder.removeUserId();
+        LoginUserHolder.removeAccountNo();
         /*
-        LoginUserHolder 使用了 ThreadLocal。
-        而 Web 服务器的线程会复用。
-        不清理可能导致下一个请求读取到旧用户 ID。
+         LoginUserHolder 使用了 ThreadLocal。
+         而 Web 服务器的线程会复用。
+        不清理可能导致下一个请求读取到旧用户信息。
          */
     }
 }

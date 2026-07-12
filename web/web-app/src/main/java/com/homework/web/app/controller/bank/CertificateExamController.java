@@ -1,4 +1,4 @@
-package com.homework.web.app.controller;
+package com.homework.web.app.controller.bank;
 
 
 import com.homework.common.result.Result;

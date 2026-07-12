@@ -20,7 +20,7 @@ public class UserNotification extends BaseEntity {
     /** 1.reply;2.like;3.system;4.private_message;5.favorite;6.repost;7.follow */
     private UserNotificationNotificationType notificationType;
 
-    /** 1.hit_post;2.hit_comment;3.question;4.bank;5.user */
+    /** 1.hit_post;2.hit_comment;3.question;4.bank;5.user;6.private_message */
     private UserNotificationTargetType targetType;
 
     private Long targetId;

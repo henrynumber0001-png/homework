@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
-public enum HitActionActionType implements BaseEnum {
+public enum HitActionType implements BaseEnum {
 
     LIKE(1, "like"),
     FAVORITE(2, "favorite"),
@@ -17,7 +17,7 @@ public enum HitActionActionType implements BaseEnum {
 
     private final String label;
 
-    HitActionActionType(Integer value, String label) {
+    HitActionType(Integer value, String label) {
         this.value = value;
         this.label = label;
     }

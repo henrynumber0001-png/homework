@@ -19,9 +19,13 @@ public class GlobalExceptionHandler {
         return Result.fail(e.getResultCodeEnum());
     }
 
-    @ExceptionHandler({IllegalArgumentException.class, MethodArgumentTypeMismatchException.class}) //这里接收的异常，都不是你主动抛出的，而是被动触发的
+    @ExceptionHandler({IllegalArgumentException.class, MethodArgumentTypeMismatchException.class})
     public Result<Void> handleException(Exception e){
-        log.error("系统异常：{}", e.getMessage(),e);
-        return Result.fail(ResultCodeEnum.SYSTEM_ERROR);
+        // 参数校验失败属于客户端可修正的问题，不应伪装成系统故障。
+        log.warn("参数异常：{}", e.getMessage());
+        Result<Void> result = Result.fail(ResultCodeEnum.PARAM_ERROR);
+        // 将“最多 140 字”等可操作提示返回给前端，便于直接展示给用户。
+        result.setMessage(e.getMessage());
+        return result;
     }
 }

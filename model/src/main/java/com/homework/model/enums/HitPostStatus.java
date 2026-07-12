@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
-public enum HitPostPostStatus implements BaseEnum {
+public enum HitPostStatus implements BaseEnum {
 
     PUBLISHED(1, "published"),
     HIDDEN(2, "hidden"),
@@ -17,7 +17,7 @@ public enum HitPostPostStatus implements BaseEnum {
 
     private final String label;
 
-    HitPostPostStatus(Integer value, String label) {
+    HitPostStatus(Integer value, String label) {
         this.value = value;
         this.label = label;
     }

@@ -1,13 +1,28 @@
 package com.homework.web.app.service;
 
 import com.homework.web.app.dto.PrivateMessageCreateDTO;
+import com.homework.web.app.vo.MessageUnreadSummaryVO;
+import com.homework.web.app.vo.NotificationVO;
+import com.homework.web.app.vo.PrivateMessageVO;
 
 import java.util.List;
-import java.util.Map;
 
 public interface MessageService {
-    List<Map<String, Object>> listNotifications(Long userId, Integer type, String tab);
+
+    List<NotificationVO> listNotifications(Long userId, Integer type, String tab,
+                                           Integer pageNum, Integer pageSize);
+
     Long countUnread(Long userId);
-    List<Map<String, Object>> listPrivateMessages(Long userId);
-    Long sendPrivateMessage(PrivateMessageCreateDTO dto);
+
+    MessageUnreadSummaryVO unreadSummary(Long userId);
+
+    void markNotificationRead(Long userId, Long notificationId);
+
+    void markTabRead(Long userId, String tab);
+
+    List<PrivateMessageVO> listPrivateMessages(Long userId, Integer pageNum, Integer pageSize);
+
+    Long sendPrivateMessage(Long senderUserId, PrivateMessageCreateDTO dto);
+
+    void markPrivateMessageRead(Long userId, Long messageId);
 }
