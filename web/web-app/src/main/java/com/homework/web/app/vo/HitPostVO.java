@@ -8,7 +8,7 @@ import java.util.List;
 /** 公共 Hit 时间线返回给前端的动态数据。 */
 @Data
 public class HitPostVO {
-    private Long id;
+    private Long postId;
     private Long userId;
     private String displayName;
     private String avatar;

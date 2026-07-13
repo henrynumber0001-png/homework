@@ -18,7 +18,7 @@ import lombok.EqualsAndHashCode;
 public class HitPost extends BaseEntity {
 
     /** 发布者用户 ID。 */
-    private Long userId;
+    private Long postUserId;
 
     /** 打卡正文，业务规则限制为 1～140 个 Unicode 字符。 */
     private String content;

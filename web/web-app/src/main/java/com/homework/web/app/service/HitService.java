@@ -15,9 +15,9 @@ public interface HitService {
 
     List<HitCommentVO> listComments(Long postId, Integer pageNum, Integer pageSize);
 
-    Long publish(Long currentUserId, HitPostCreateDTO dto);
+    Long publish(String content);
 
-    Long comment(Long currentUserId, Long postId, HitCommentCreateDTO dto);
+    Long comment(Long postId, HitCommentCreateDTO dto);
 
     Map<String, Object> action(Long currentUserId, Long postId, HitActionDTO dto);
 }

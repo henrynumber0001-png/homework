@@ -1,6 +1,6 @@
 package com.homework.web.app.vo;
 
-import com.homework.model.enums.UserNotificationNotificationType;
+import com.homework.model.enums.UserNotificationType;
 import com.homework.model.enums.UserNotificationReadStatus;
 import com.homework.model.enums.UserNotificationTargetType;
 import lombok.Data;
@@ -14,7 +14,7 @@ public class NotificationVO {
     private Long senderUserId;
     private String senderDisplayName;
     private String senderAvatar;
-    private UserNotificationNotificationType notificationType;
+    private UserNotificationType notificationType;
     private UserNotificationTargetType targetType;
     private Long targetId;
     private String title;

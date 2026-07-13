@@ -30,20 +30,22 @@ public class HitController {
     }
 
     @PostMapping
-    public Result<Long> publish(@RequestBody HitPostCreateDTO dto) {
-        return Result.success(hitService.publish(LoginUserHolder.getUserId(), dto));
+    public Result<Long> publish(@RequestBody String content) {
+        Long postId = hitService.publish(content);//返回postId，是为了让前端知道刚刚创建的 Hit 在数据库中的唯一标识。
+        return Result.success();
     }
 
     @GetMapping("/{postId}/comments")
-    public Result<List<HitCommentVO>> comments(@PathVariable Long postId,
-                                               @RequestParam(required = false) Integer pageNum,
+    public Result<List<HitCommentVO>> comments(@RequestParam Long postId,@RequestParam(required = false) Integer pageNum,
                                                @RequestParam(required = false) Integer pageSize) {
-        return Result.success(hitService.listComments(postId, pageNum, pageSize));
+        List<HitCommentVO> hitCommentVOS = hitService.listComments(postId,pageNum, pageSize);
+        return Result.success(hitCommentVOS);
     }
 
     @PostMapping("/{postId}/comments")
-    public Result<Long> comment(@PathVariable Long postId, @RequestBody HitCommentCreateDTO dto) {
-        return Result.success(hitService.comment(LoginUserHolder.getUserId(), postId, dto));
+    public Result<Long> comment(@RequestParam Long postId,@RequestBody HitCommentCreateDTO dto) {
+        Long commentId = hitService.comment(postId, dto);
+        return Result.success(commentId);
     }
 
     @PostMapping("/{postId}/actions")

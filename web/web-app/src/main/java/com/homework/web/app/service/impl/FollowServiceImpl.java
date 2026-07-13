@@ -3,7 +3,7 @@ package com.homework.web.app.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.homework.model.entity.UserFollow;
 import com.homework.model.entity.UserNotification;
-import com.homework.model.enums.UserNotificationNotificationType;
+import com.homework.model.enums.UserNotificationType;
 import com.homework.model.enums.UserNotificationReadStatus;
 import com.homework.model.enums.UserNotificationTargetType;
 import com.homework.web.app.mapper.UserFollowMapper;
@@ -63,7 +63,7 @@ public class FollowServiceImpl implements FollowService {
             UserNotification notification = new UserNotification();
             notification.setReceiverUserId(targetUserId);
             notification.setSenderUserId(currentUserId);
-            notification.setNotificationType(UserNotificationNotificationType.FOLLOW);
+            notification.setNotificationType(UserNotificationType.FOLLOW);
             notification.setTargetType(UserNotificationTargetType.USER);
             notification.setTargetId(currentUserId);
             notification.setTitle("新增关注");
@@ -74,7 +74,7 @@ public class FollowServiceImpl implements FollowService {
             userNotificationMapper.delete(new QueryWrapper<UserNotification>()
                     .eq("receiver_user_id", targetUserId)
                     .eq("sender_user_id", currentUserId)
-                    .eq("notification_type", UserNotificationNotificationType.FOLLOW.getValue())
+                    .eq("notification_type", UserNotificationType.FOLLOW.getValue())
                     .eq("target_type", UserNotificationTargetType.USER.getValue())
                     .eq("target_id", currentUserId));
         }

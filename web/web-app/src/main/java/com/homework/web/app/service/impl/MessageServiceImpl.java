@@ -50,7 +50,7 @@ public class MessageServiceImpl implements MessageService {
                 .eq("receiver_user_id", userId);
         if (type != null) {
             // 显式 type 适合跳转到某一种通知；tab 用于“我的消息”四个主模块。
-            EnumUtils.fromValue(UserNotificationNotificationType.class, type);
+            EnumUtils.fromValue(UserNotificationType.class, type);
             wrapper.eq("notification_type", type);
         } else if (tab != null && !tab.isBlank()) {
             wrapper.in("notification_type", resolveTabTypes(tab));
@@ -79,11 +79,11 @@ public class MessageServiceImpl implements MessageService {
     public MessageUnreadSummaryVO unreadSummary(Long userId) {
         requireUserId(userId);
         MessageUnreadSummaryVO summary = new MessageUnreadSummaryVO();
-        summary.setReplies(countUnreadByTypes(userId, List.of(UserNotificationNotificationType.REPLY.getValue())));
+        summary.setReplies(countUnreadByTypes(userId, List.of(UserNotificationType.REPLY.getValue())));
         summary.setLikes(countUnreadByTypes(userId, interactionTypes()));
         summary.setSystem(countUnreadByTypes(userId, systemTypes()));
         summary.setPrivateMessages(countUnreadByTypes(userId,
-                List.of(UserNotificationNotificationType.PRIVATE_MESSAGE.getValue())));
+                List.of(UserNotificationType.PRIVATE_MESSAGE.getValue())));
         return summary;
     }
 
@@ -104,7 +104,7 @@ public class MessageServiceImpl implements MessageService {
                 .eq("id", notificationId)
                 .eq("receiver_user_id", userId)
                 .eq("read_status", UserNotificationReadStatus.UNREAD.getValue()));
-        if (notification.getNotificationType() == UserNotificationNotificationType.PRIVATE_MESSAGE
+        if (notification.getNotificationType() == UserNotificationType.PRIVATE_MESSAGE
                 && notification.getTargetType() == UserNotificationTargetType.PRIVATE_MESSAGE) {
             privateMessageMapper.markRead(notification.getTargetId(), userId);
         }
@@ -119,7 +119,7 @@ public class MessageServiceImpl implements MessageService {
                 .eq("receiver_user_id", userId)
                 .eq("read_status", UserNotificationReadStatus.UNREAD.getValue())
                 .in("notification_type", types));
-        if (types.contains(UserNotificationNotificationType.PRIVATE_MESSAGE.getValue())) {
+        if (types.contains(UserNotificationType.PRIVATE_MESSAGE.getValue())) {
             // 私信模块“全部已读”同时同步消息本身，避免通知角标与会话状态不一致。
             privateMessageMapper.update(null, new UpdateWrapper<PrivateMessage>()
                     .set("message_status", PrivateMessageMessageStatus.READ.getValue())
@@ -187,7 +187,7 @@ public class MessageServiceImpl implements MessageService {
         UserNotification notification = new UserNotification();
         notification.setReceiverUserId(receiverUserId);
         notification.setSenderUserId(senderUserId);
-        notification.setNotificationType(UserNotificationNotificationType.PRIVATE_MESSAGE);
+        notification.setNotificationType(UserNotificationType.PRIVATE_MESSAGE);
         notification.setTargetType(UserNotificationTargetType.PRIVATE_MESSAGE);
         notification.setTargetId(message.getId());
         notification.setTitle("新私信");
@@ -208,7 +208,7 @@ public class MessageServiceImpl implements MessageService {
         userNotificationMapper.update(null, new UpdateWrapper<UserNotification>()
                 .set("read_status", UserNotificationReadStatus.READ.getValue())
                 .eq("receiver_user_id", userId)
-                .eq("notification_type", UserNotificationNotificationType.PRIVATE_MESSAGE.getValue())
+                .eq("notification_type", UserNotificationType.PRIVATE_MESSAGE.getValue())
                 .eq("target_type", UserNotificationTargetType.PRIVATE_MESSAGE.getValue())
                 .eq("target_id", messageId));
     }
@@ -218,25 +218,25 @@ public class MessageServiceImpl implements MessageService {
             throw new IllegalArgumentException("消息模块不能为空");
         }
         return switch (tab.trim().toLowerCase(Locale.ROOT)) {
-            case "replies" -> List.of(UserNotificationNotificationType.REPLY.getValue());
+            case "replies" -> List.of(UserNotificationType.REPLY.getValue());
             // “收到的赞”模块按产品需求统一承载赞、收藏与转发通知。
             case "likes", "interactions" -> interactionTypes();
             case "system" -> systemTypes();
-            case "dm", "private" -> List.of(UserNotificationNotificationType.PRIVATE_MESSAGE.getValue());
+            case "dm", "private" -> List.of(UserNotificationType.PRIVATE_MESSAGE.getValue());
             default -> throw new IllegalArgumentException("未知的消息模块: " + tab);
         };
     }
 
     private List<Integer> interactionTypes() {
-        return List.of(UserNotificationNotificationType.LIKE.getValue(),
-                UserNotificationNotificationType.FAVORITE.getValue(),
-                UserNotificationNotificationType.REPOST.getValue());
+        return List.of(UserNotificationType.LIKE.getValue(),
+                UserNotificationType.FAVORITE.getValue(),
+                UserNotificationType.REPOST.getValue());
     }
 
     private List<Integer> systemTypes() {
         // 新增关注属于系统消息，和平台公告共用该模块。
-        return List.of(UserNotificationNotificationType.SYSTEM.getValue(),
-                UserNotificationNotificationType.FOLLOW.getValue());
+        return List.of(UserNotificationType.SYSTEM.getValue(),
+                UserNotificationType.FOLLOW.getValue());
     }
 
     private long countUnreadByTypes(Long userId, List<Integer> types) {

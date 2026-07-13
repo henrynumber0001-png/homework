@@ -11,13 +11,17 @@ import lombok.EqualsAndHashCode;
 @TableName("hit_comment")
 public class HitComment extends BaseEntity {
 
+    //注意：hit_comment 是一张 自关联关系表，评论和父评论都在同一张 hit_comment 表中。
+    //所以 子评论的 parent_comment_id = 父评论的 id。
+
     private Long postId;
 
-    private Long userId;
+    //发表评论的人Id（无论是子评论还是父评论，都要有一个真正写comment的人）
+    private Long commentUserId;
 
-    /** 被回复的评论 ID；顶级评论为 null。 */
-    private Long parentId;
+    //外键：父评论id（父评论的主键id）
+    private Long parentCommentId;
 
     /** 评论正文，当前限制为 1～500 个 Unicode 字符。 */
-    private String content;
+    private String comment;
 }

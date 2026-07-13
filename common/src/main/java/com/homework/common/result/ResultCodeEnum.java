@@ -41,10 +41,18 @@ public enum ResultCodeEnum {
 
     EXAM_EXPIRED(514, "考试已到期，系统已自动交卷"),
 
-
-
     TOKEN_EXPIRED(601, "token过期"),
-    TOKEN_INVALID(602, "token非法");
+    TOKEN_INVALID(602, "token非法"),
+
+    HIT_ID_ERROR(701,"Hit ID 不能为空"),
+    HIT_NOT_EXIST(702,"Hit 不存在或不可访问"),
+    HIT_CONTENT_EMPTY_ERROR(703,"Hit 内容不能为空"),
+    HIT_CONTENT_TOO_LONG_ERROR(704,"Hit 内容最多 140 字"),
+    HIT_TAG_TOO_LONG_ERROR(705,"单个标签最多 30 字"),
+    HIT_TAG_COUNT_ERROR(706,"一条 Hit 最多添加 10 个标签"),
+    HIT_TAG_FORMAT_ERROR(707,"Hit 标签格式不正确"),
+    HIT_COMMENT_TOO_LONG_ERROR(708,"Hit 评论最多 300 字"),
+    COMMENT_NOT_EXIST(709,"评论不存在");
 
     private final Integer code;
     private final String message;
