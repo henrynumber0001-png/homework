@@ -212,8 +212,8 @@ public class HitServiceImpl implements HitService {
 
         String normalizeContent = normalizeContent(content, MAX_POST_LENGTH);
 
-        //从正文中提取tag 并转换成JSON格式的字符串，例如：["React","Hooks"]
-        String tagJson = extractAndParseTags(normalizeContent);
+        //从正文中提取tag 然后序列化成 JSON，例如：["React","Hooks"]
+        String tagJson = extractAndSerializeTags(normalizeContent);
 
         HitPost post = new HitPost();
         post.setPostUserId(postUserId);
@@ -430,7 +430,7 @@ public class HitServiceImpl implements HitService {
      * 从完整正文中提取所有以 # 开头的标签。
      * 不会修改原始正文。
      */
-    private String extractAndParseTags(String content) {
+    private String extractAndSerializeTags(String content) {
 
         LinkedHashSet<String> tagSet = new LinkedHashSet<>(); //标签为了去重，用set集合
 
@@ -447,7 +447,7 @@ public class HitServiceImpl implements HitService {
 
             tagSet.add(normalizedTag);
 
-            if (tagSet.size() > MAX_TAG_COUNT) {
+            if (tagSet.size() > MAX_TAG_COUNT) { //同一条 Post 去重后的有效标签不能超过 10 个。
                 throw new HomeworkException(ResultCodeEnum.HIT_TAG_COUNT_ERROR);
             }
         }
@@ -457,7 +457,7 @@ public class HitServiceImpl implements HitService {
         try {
             return objectMapper.writeValueAsString(tagSet); // 把有序标签 Set 转换为 JSON 数组字符串。
         } catch (JsonProcessingException e) {
-            throw new HomeworkException(ResultCodeEnum.HIT_TAG_FORMAT_ERROR);
+            throw new HomeworkException(ResultCodeEnum.HIT_TAG_FORMAT_ERROR,e);
         }
     }
 
