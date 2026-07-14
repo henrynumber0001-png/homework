@@ -37,7 +37,7 @@ public class ProfileServiceImpl implements ProfileService {
         }
         vo.setFollowingCount(userFollowMapper.selectCount(new QueryWrapper<UserFollow>().eq("follower_user_id", userId).eq("is_deleted", 0)));
         vo.setFollowerCount(userFollowMapper.selectCount(new QueryWrapper<UserFollow>().eq("following_user_id", userId).eq("is_deleted", 0)));
-        vo.setPostCount(hitPostMapper.selectCount(new QueryWrapper<HitPost>().eq("user_id", userId).eq("is_deleted", 0)));
+        vo.setPostCount(hitPostMapper.selectCount(new QueryWrapper<HitPost>().eq("post_user_id", userId).eq("is_deleted", 0)));
         vo.setAnsweredCount(userQuestionAnswerMapper.selectCount(new QueryWrapper<UserQuestionAnswer>().eq("user_id", userId).eq("is_deleted", 0)));
         vo.setLearnedBankCount((long) userQuestionAnswerMapper.selectObjs(new QueryWrapper<UserQuestionAnswer>()
                 .select("DISTINCT bank_id")

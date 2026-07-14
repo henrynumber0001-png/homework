@@ -1,12 +1,18 @@
 package com.homework.web.app.dto;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.homework.model.enums.ActionStatus;
+import com.homework.model.enums.HitActionType;
+import com.homework.web.app.converter.HitActionTypeJsonDeserializer;
 import lombok.Data;
 
 @Data
 public class HitActionDTO {
-    /** 操作者从 JWT 登录上下文获取，防止替其他用户点赞。 */
-    /** 1.like;2.favorite;3.repost */
-    private Integer actionType;
-    /** true 表示强制选中，false 表示强制取消；不传时按原型交互做切换。 */
-    private Boolean active;
+
+    /** 1=点赞，2=收藏，3=转发。 */
+    @JsonDeserialize(using = HitActionTypeJsonDeserializer.class)
+    private HitActionType actionType;
+
+    /** ACTIVATE=执行互动，DEACTIVATE=取消互动。 */
+    private ActionStatus actionStatus;
 }

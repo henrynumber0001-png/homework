@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS hit_post (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
-    user_id BIGINT NOT NULL COMMENT '发布者用户 ID',
+    post_user_id BIGINT NOT NULL COMMENT '发布者用户 ID',
     content VARCHAR(560) NOT NULL COMMENT 'Hit 正文，应用层限制 140 个 Unicode 字符',
     tags_json JSON NULL COMMENT '标签 JSON 数组',
     post_status TINYINT NOT NULL DEFAULT 1 COMMENT '1 published, 2 hidden, 3 deleted',
@@ -16,34 +16,34 @@ CREATE TABLE IF NOT EXISTS hit_post (
     is_deleted TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     KEY idx_hit_post_timeline (post_status, is_deleted, created_time DESC, id DESC),
-    KEY idx_hit_post_user (user_id, is_deleted, created_time DESC)
+    KEY idx_hit_post_user (post_user_id, is_deleted, created_time DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Hit 学习打卡动态';
 
 CREATE TABLE IF NOT EXISTS hit_comment (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
     post_id BIGINT NOT NULL COMMENT '所属 Hit ID',
-    user_id BIGINT NOT NULL COMMENT '评论者用户 ID',
-    parent_id BIGINT NULL COMMENT '被回复评论 ID，顶级评论为空',
-    content VARCHAR(2000) NOT NULL COMMENT '评论正文，应用层限制 500 个 Unicode 字符',
+    comment_user_id BIGINT NOT NULL COMMENT '评论者用户 ID',
+    parent_comment_id BIGINT NULL COMMENT '被回复评论 ID，顶级评论为空',
+    comment VARCHAR(2000) NOT NULL COMMENT '评论正文，应用层限制 500 个 Unicode 字符',
     created_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     is_deleted TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     KEY idx_hit_comment_post (post_id, is_deleted, created_time, id),
-    KEY idx_hit_comment_parent (parent_id, is_deleted)
+    KEY idx_hit_comment_parent (parent_comment_id, is_deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Hit 评论';
 
 CREATE TABLE IF NOT EXISTS hit_action (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
     post_id BIGINT NOT NULL COMMENT 'Hit ID',
-    user_id BIGINT NOT NULL COMMENT '互动用户 ID',
+    action_user_id BIGINT NOT NULL COMMENT '互动用户 ID',
     action_type TINYINT NOT NULL COMMENT '1 like, 2 favorite, 3 repost',
     created_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     is_deleted TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_hit_action_user (post_id, user_id, action_type),
-    KEY idx_hit_action_user (user_id, is_deleted, post_id)
+    UNIQUE KEY uk_hit_action_user (post_id, action_user_id, action_type),
+    KEY idx_hit_action_user (action_user_id, is_deleted, post_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Hit 点赞、收藏、转发';
 
 CREATE TABLE IF NOT EXISTS user_notification (

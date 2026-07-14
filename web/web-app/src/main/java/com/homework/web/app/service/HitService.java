@@ -19,5 +19,5 @@ public interface HitService {
 
     Long comment(Long postId, HitCommentCreateDTO dto);
 
-    Map<String, Object> action(Long currentUserId, Long postId, HitActionDTO dto);
+    Map<String, Object> action(Long postId, HitActionDTO dto);
 }

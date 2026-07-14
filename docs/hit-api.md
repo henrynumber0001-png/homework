@@ -30,12 +30,12 @@
 }
 ```
 
-互动示例。`actionType`：1 点赞、2 收藏、3 转发；`active` 不传时切换当前状态，显式传值时接口幂等：
+互动示例。`actionType`：1 点赞、2 收藏、3 转发；`actionStatus` 必须明确传 `ACTIVATE` 或 `DEACTIVATE`：
 
 ```json
 {
   "actionType": 1,
-  "active": true
+  "actionStatus": "ACTIVATE"
 }
 ```
 

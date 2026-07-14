@@ -50,6 +50,7 @@ public class HitController {
 
     @PostMapping("/{postId}/actions")
     public Result<Map<String, Object>> action(@PathVariable Long postId, @RequestBody HitActionDTO dto) {
-        return Result.success(hitService.action(LoginUserHolder.getUserId(), postId, dto));
+         Map<String, Object> actionResult = hitService.action(postId, dto);
+        return Result.success(actionResult);
     }
 }

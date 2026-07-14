@@ -9,14 +9,14 @@ public interface HitActionMapper extends BaseMapper<HitAction> {
 
     /** MyBatis-Plus 会自动过滤逻辑删除记录，因此这里显式查询历史互动。 */
     @Select("""
-            SELECT id, post_id, user_id, action_type, created_time, updated_time, is_deleted
+            SELECT id, post_id, action_user_id, action_type, created_time, updated_time, is_deleted
             FROM hit_action
-            WHERE post_id = #{postId} AND user_id = #{userId} AND action_type = #{actionType}
+            WHERE post_id = #{postId} AND action_user_id = #{actionUserId} AND action_type = #{actionType}
             LIMIT 1
             FOR UPDATE
             """)
     HitAction selectIncludingDeletedForUpdate(@Param("postId") Long postId,
-                                              @Param("userId") Long userId,
+                                              @Param("actionUserId") Long actionUserId,
                                               @Param("actionType") Integer actionType);
 
     /** 恢复曾取消的互动，复用唯一键对应的历史记录。 */
