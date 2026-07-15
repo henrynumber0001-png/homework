@@ -4,10 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.model.entity.*;
-import com.homework.model.enums.AiChatMessageSenderType;
-import com.homework.model.enums.AiChatSessionStatus;
-import com.homework.model.enums.GroupType;
-import com.homework.model.enums.QuestionInfoQuestionType;
+import com.homework.model.enums.*;
 import com.homework.web.app.context.LoginUserHolder;
 import com.homework.web.app.dto.*;
 import com.homework.web.app.mapper.*;
@@ -23,10 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -43,6 +38,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     private final AiChatMessageMapper aiChatMessageMapper;
     private final LlmClient llmClient;
     private final AiPromptBuilder aiPromptBuilder;
+    private final UserFavoriteQuestionMapper userFavoriteQuestionMapper;
 
     @Override
     public List<InterviewQuestionPageVO> getQuestionsByBankId(Long bankId) {
@@ -59,17 +55,26 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
-        List<Long> questionIds = questionBankQuestions.stream().map(QuestionBankQuestion::getQuestionId).toList();
+        List<Long> bankQuestionIds = questionBankQuestions.stream().map(QuestionBankQuestion::getQuestionId).toList();
 
 
         LambdaQueryWrapper<InterviewQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
-        questionInfoQueryWrapper.in(InterviewQuestionInfo::getId, questionIds)
+        questionInfoQueryWrapper.in(InterviewQuestionInfo::getId, bankQuestionIds)
                 .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
                 .eq(InterviewQuestionInfo::getIsReleased, true)
                 .orderByAsc(InterviewQuestionInfo::getSortOrder) //用sort_order字段，在查询时候给题目一个排序，就能保持每次顺序的固定了
                 .orderByAsc(InterviewQuestionInfo::getId);
 
         List<InterviewQuestionInfo> questionInfos = interviewQuestionInfoMapper.selectList(questionInfoQueryWrapper);
+        List<Long> questionIds = questionInfos.stream().map(InterviewQuestionInfo::getId).collect(Collectors.toList());
+
+        LambdaQueryWrapper<UserFavoriteQuestion> userFavoriteQueryWrapper = new LambdaQueryWrapper<>();
+        userFavoriteQueryWrapper.in(UserFavoriteQuestion::getQuestionId, questionIds)
+                .eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId());
+
+        List<UserFavoriteQuestion> userFavoriteQuestions = userFavoriteQuestionMapper.selectList(userFavoriteQueryWrapper);
+        Map<Long,UserFavoriteQuestion> userFavoriteQuestionMap = userFavoriteQuestions.stream()
+                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
 
         if (questionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
@@ -77,10 +82,13 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
         List<InterviewQuestionPageVO> list = new ArrayList<>();
         questionInfos.forEach(questionInfo -> {
+            UserFavoriteQuestion userFavoriteQuestion = userFavoriteQuestionMap.get(questionInfo.getId());
             InterviewQuestionPageVO vo = new InterviewQuestionPageVO();
+
             vo.setQuestionId(questionInfo.getId());
             vo.setTitle(questionInfo.getTitle());
             vo.setQuestionType(questionInfo.getQuestionType());
+            vo.setIsFavorite(userFavoriteQuestion != null);
             list.add(vo);
         });
 
@@ -305,10 +313,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (questionBankQuestions.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
-        List<Long> questionIds = questionBankQuestions.stream().map(QuestionBankQuestion::getQuestionId).toList();
+        List<Long> bankQuestionIds = questionBankQuestions.stream().map(QuestionBankQuestion::getQuestionId).toList();
 
         LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
-        certificateQueryWrapper.in(CertificateQuestionInfo::getId, questionIds)
+        certificateQueryWrapper.in(CertificateQuestionInfo::getId, bankQuestionIds)
                 .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
                 .eq(CertificateQuestionInfo::getIsReleased, true)
                 .orderByAsc(CertificateQuestionInfo::getSortOrder)
@@ -318,15 +326,27 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (certificateQuestionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
+        List<Long> questionIds = certificateQuestionInfos.stream().map(CertificateQuestionInfo::getId).toList();
+
+        LambdaQueryWrapper<UserFavoriteQuestion> userFavoriteQueryWrapper = new LambdaQueryWrapper<>();
+        userFavoriteQueryWrapper.in(UserFavoriteQuestion::getQuestionId, questionIds)
+                .eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId());
+
+        List<UserFavoriteQuestion> userFavoriteQuestions = userFavoriteQuestionMapper.selectList(userFavoriteQueryWrapper);
+        Map<Long,UserFavoriteQuestion> userFavoriteQuestionMap = userFavoriteQuestions.stream()
+                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
 
         List<CertificateQuestionPageVO> certificateQuestionPageVos = new ArrayList<>();
         certificateQuestionInfos.forEach(certificateQuestionInfo -> {
+            UserFavoriteQuestion userFavoriteQuestion = userFavoriteQuestionMap.get(certificateQuestionInfo.getId());
             CertificateQuestionPageVO vo = new CertificateQuestionPageVO();
+
             vo.setQuestionId(certificateQuestionInfo.getId());
             vo.setTitle(certificateQuestionInfo.getTitle());
             vo.setOptions(certificateQuestionInfo.getOptions());
             vo.setQuestionType(certificateQuestionInfo.getQuestionType());
             vo.setImageUrl(certificateQuestionInfo.getImageUrl());
+            vo.setIsFavorite(userFavoriteQuestion != null);
             certificateQuestionPageVos.add(vo);
         });
         return certificateQuestionPageVos;
@@ -632,6 +652,62 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
             userQuestionAnswerMapper.delete(userAnswerQueryWrapper);
         }
+    }
+
+    @Transactional
+    @Override
+    public void collect(Long bankId, Long questionId, ActionStatus actionStatus) {
+        if(bankId == null || questionId == null || actionStatus == null){
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        Long userId = LoginUserHolder.getUserId();
+
+        LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId)
+                .eq(QuestionBankQuestion::getQuestionId, questionId);
+        QuestionBankQuestion questionBankQuestion = questionBankQuestionMapper.selectOne(queryWrapper);
+        if(questionBankQuestion == null){
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+
+        UserFavoriteQuestion userFavoriteQuestion = userFavoriteQuestionMapper.selectById(questionId);
+
+        boolean changed = false;
+        if(userFavoriteQuestion != null && Boolean.TRUE.equals(userFavoriteQuestion.getDeleted())){
+            if(actionStatus == ActionStatus.ACTIVATE){
+                int result = userFavoriteQuestionMapper.restoreById(questionId);
+                if(result != 1){
+                    throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+                }
+                changed = true;
+
+            }
+        } else if (userFavoriteQuestion != null && !Boolean.TRUE.equals(userFavoriteQuestion.getDeleted())) {
+            if(actionStatus == ActionStatus.DEACTIVATE){
+                int result = userFavoriteQuestionMapper.deleteById(questionId);
+                if(result != 1){
+                    throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+                }
+                changed = true;
+            }
+        }else {
+            if(actionStatus == ActionStatus.ACTIVATE){
+                UserFavoriteQuestion newFavorite = new UserFavoriteQuestion();
+                newFavorite.setQuestionId(questionId);
+                newFavorite.setSaveTime(LocalDateTime.now());
+                newFavorite.setUserId(userId);
+                int result = userFavoriteQuestionMapper.insert(newFavorite);
+                if(result != 1){
+                    throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+                }
+                changed = true;
+            }
+        }
+
+        
+
     }
 
     @Transactional

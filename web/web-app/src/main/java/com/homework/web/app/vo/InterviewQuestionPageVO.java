@@ -12,4 +12,6 @@ public class InterviewQuestionPageVO {
     private String title;
 
     private QuestionInfoQuestionType questionType;
+
+    private Boolean isFavorite;
 }

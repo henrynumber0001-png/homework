@@ -2,7 +2,6 @@ package com.homework.web.app.controller;
 
 import com.homework.common.result.Result;
 import com.homework.web.app.context.LoginUserHolder;
-import com.homework.web.app.dto.FollowActionDTO;
 import com.homework.web.app.service.FollowService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -15,10 +14,9 @@ public class FollowController {
 
     private final FollowService followService;
 
-    @PostMapping("/{targetUserId}/follow")
-    public Result<Boolean> follow(@PathVariable Long targetUserId,
-                                  @RequestBody(required = false) FollowActionDTO dto) {
-        Boolean active = dto == null ? null : dto.getActive();
-        return Result.success(followService.follow(LoginUserHolder.getUserId(), targetUserId, active));
-    }
+//    @PostMapping("/{targetUserId}/follow")
+//    public Result<Boolean> follow(@PathVariable Long targetUserId, @RequestBody(required = false) FollowActionDTO dto) {
+//        Boolean active = dto == null ? null : dto.getActive();
+//        return Result.success(followService.follow(LoginUserHolder.getUserId(), targetUserId, active));
+//    }
 }

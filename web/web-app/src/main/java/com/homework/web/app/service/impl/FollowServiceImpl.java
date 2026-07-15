@@ -1,7 +1,7 @@
 package com.homework.web.app.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.homework.model.entity.UserFollow;
+import com.homework.model.entity.UserFollower;
 import com.homework.model.entity.UserNotification;
 import com.homework.model.enums.UserNotificationType;
 import com.homework.model.enums.UserNotificationReadStatus;
@@ -41,13 +41,13 @@ public class FollowServiceImpl implements FollowService {
             throw new IllegalArgumentException("被关注用户不存在");
         }
 
-        UserFollow existing = userFollowMapper.selectIncludingDeletedForUpdate(currentUserId, targetUserId);
+        UserFollower existing = userFollowMapper.selectIncludingDeletedForUpdate(currentUserId, targetUserId);
         boolean currentlyActive = existing != null && !Boolean.TRUE.equals(existing.getDeleted());
         boolean nextActive = active == null ? !currentlyActive : active;
         boolean changed = false;
         if (nextActive && !currentlyActive) {
             if (existing == null) {
-                UserFollow follow = new UserFollow();
+                UserFollower follow = new UserFollower();
                 follow.setFollowerUserId(currentUserId);
                 follow.setFollowingUserId(targetUserId);
                 userFollowMapper.insert(follow);

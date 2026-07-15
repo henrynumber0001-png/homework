@@ -2,18 +2,17 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import java.time.LocalDateTime;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("user_medal")
-public class UserMedal extends BaseEntity {
+@TableName("user_follow")
+public class UserFollower extends BaseEntity {
 
-    private Long userId;
+    private long userId;
 
-    private Long medalId;
+    private long followerId;
 
-    private LocalDateTime earnedTime;
+
 }

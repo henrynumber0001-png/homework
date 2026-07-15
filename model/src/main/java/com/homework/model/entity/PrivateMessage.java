@@ -3,7 +3,7 @@ package com.homework.model.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
 import com.homework.model.enums.PrivateMessageAllowReason;
-import com.homework.model.enums.PrivateMessageMessageStatus;
+import com.homework.model.enums.PrivateMessageStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -19,7 +19,7 @@ public class PrivateMessage extends BaseEntity {
     private String content;
 
     /** 1.sent;2.read;3.blocked */
-    private PrivateMessageMessageStatus messageStatus;
+    private PrivateMessageStatus messageStatus;
 
     /** 1.mutual_follow;2.first_non_mutual_message */
     private PrivateMessageAllowReason allowReason;

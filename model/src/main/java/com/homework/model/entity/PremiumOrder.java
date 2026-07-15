@@ -2,9 +2,9 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.model.enums.PremiumOrderOrderStatus;
+import com.homework.model.enums.PremiumOrderStatus;
 import com.homework.model.enums.PremiumOrderPayType;
-import com.homework.model.enums.PremiumOrderPremiumScope;
+import com.homework.model.enums.PremiumOrderScope;
 import com.homework.model.enums.PremiumOrderType;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -18,10 +18,8 @@ public class PremiumOrder extends BaseEntity {
 
     private Long userId;
 
-    private Long planId;
-
     /** 1.interview;2.certification */
-    private PremiumOrderPremiumScope premiumScope;
+    private PremiumOrderScope premiumScope;
 
     private String orderNo;
 
@@ -32,7 +30,7 @@ public class PremiumOrder extends BaseEntity {
 
     private LocalDateTime expiredTime;
 
-    private BigDecimal payAmount;
+    private BigDecimal price;
 
     /** 1.wechat;2.alipay; */
     private PremiumOrderPayType payType;
@@ -40,5 +38,5 @@ public class PremiumOrder extends BaseEntity {
     private LocalDateTime payTime;
 
     /** 1.pending;2.paid;3.cancelled;4.expired;5.refund */
-    private PremiumOrderOrderStatus orderStatus;
+    private PremiumOrderStatus orderStatus;
 }

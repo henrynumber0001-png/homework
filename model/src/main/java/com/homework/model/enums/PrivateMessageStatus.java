@@ -5,13 +5,11 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
-public enum PremiumOrderOrderStatus implements BaseEnum {
+public enum PrivateMessageStatus implements BaseEnum {
 
-    PENDING(1, "pending"),
-    PAID(2, "paid"),
-    CANCELLED(3, "cancelled"),
-    EXPIRED(4, "expired"),
-    REFUND(5, "refund");
+    SENT(1, "sent"),
+    READ(2, "read"),
+    BLOCKED(3, "blocked");
 
     @EnumValue
     @JsonValue
@@ -19,7 +17,7 @@ public enum PremiumOrderOrderStatus implements BaseEnum {
 
     private final String label;
 
-    PremiumOrderOrderStatus(Integer value, String label) {
+    PrivateMessageStatus(Integer value, String label) {
         this.value = value;
         this.label = label;
     }

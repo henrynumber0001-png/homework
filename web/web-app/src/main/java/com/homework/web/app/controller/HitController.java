@@ -14,7 +14,16 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
-/** Hit 学习打卡的公共时间线、评论和互动接口。 */
+/*
+前端：识别用户点击了哪个导航标签，切换页面，并请求对应的后端 API。
+后端：根据 HTTP 方法和 URL，把请求交给对应的 Controller。
+一句话概括：前端决定“用户要去哪个页面、请求哪个 API”，后端根据 URL 决定“由哪个 Controller 处理请求”。
+ */
+
+/*
+1. 前端页面路由跳转：router.push("/hits");
+2. HIT 页面加载时请求后端：fetch("/api/app/hits?pageNum=1&pageSize=20");
+ */
 @RestController
 @RequestMapping("/api/app/hits")
 @RequiredArgsConstructor

@@ -18,4 +18,6 @@ public class CertificateQuestionPageVO {
     private QuestionInfoQuestionType questionType;
 
     private String imageUrl;
+
+    private Boolean isFavorite;
 }

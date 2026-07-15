@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.model.entity.PrivateMessage;
-import com.homework.model.entity.UserFollow;
+import com.homework.model.entity.UserFollower;
 import com.homework.model.entity.UserInfo;
 import com.homework.model.entity.UserNotification;
 import com.homework.model.enums.*;
@@ -122,9 +122,9 @@ public class MessageServiceImpl implements MessageService {
         if (types.contains(UserNotificationType.PRIVATE_MESSAGE.getValue())) {
             // 私信模块“全部已读”同时同步消息本身，避免通知角标与会话状态不一致。
             privateMessageMapper.update(null, new UpdateWrapper<PrivateMessage>()
-                    .set("message_status", PrivateMessageMessageStatus.READ.getValue())
+                    .set("message_status", PrivateMessageStatus.READ.getValue())
                     .eq("receiver_user_id", userId)
-                    .eq("message_status", PrivateMessageMessageStatus.SENT.getValue()));
+                    .eq("message_status", PrivateMessageStatus.SENT.getValue()));
         }
     }
 
@@ -135,7 +135,7 @@ public class MessageServiceImpl implements MessageService {
         List<PrivateMessage> messages = privateMessageMapper.selectPage(page,
                         new QueryWrapper<PrivateMessage>()
                                 .and(w -> w.eq("sender_user_id", userId).or().eq("receiver_user_id", userId))
-                                .ne("message_status", PrivateMessageMessageStatus.BLOCKED.getValue())
+                                .ne("message_status", PrivateMessageStatus.BLOCKED.getValue())
                                 .orderByDesc("created_time")
                                 .orderByDesc("id"))
                 .getRecords();
@@ -173,7 +173,7 @@ public class MessageServiceImpl implements MessageService {
         message.setSenderUserId(senderUserId);
         message.setReceiverUserId(receiverUserId);
         message.setContent(content);
-        message.setMessageStatus(PrivateMessageMessageStatus.SENT);
+        message.setMessageStatus(PrivateMessageStatus.SENT);
         message.setAllowReason(mutualFollow
                 ? PrivateMessageAllowReason.MUTUAL_FOLLOW
                 : PrivateMessageAllowReason.FIRST_NON_MUTUAL_MESSAGE);
@@ -247,10 +247,10 @@ public class MessageServiceImpl implements MessageService {
     }
 
     private boolean isMutualFollow(Long senderUserId, Long receiverUserId) {
-        Long senderFollowsReceiver = userFollowMapper.selectCount(new QueryWrapper<UserFollow>()
+        Long senderFollowsReceiver = userFollowMapper.selectCount(new QueryWrapper<UserFollower>()
                 .eq("follower_user_id", senderUserId)
                 .eq("following_user_id", receiverUserId));
-        Long receiverFollowsSender = userFollowMapper.selectCount(new QueryWrapper<UserFollow>()
+        Long receiverFollowsSender = userFollowMapper.selectCount(new QueryWrapper<UserFollower>()
                 .eq("follower_user_id", receiverUserId)
                 .eq("following_user_id", senderUserId));
         return senderFollowsReceiver > 0 && receiverFollowsSender > 0;

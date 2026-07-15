@@ -1,6 +1,8 @@
 package com.homework.web.app.controller.bank;
 
 import com.homework.common.result.Result;
+import com.homework.model.entity.UserFavoriteQuestion;
+import com.homework.model.enums.ActionStatus;
 import com.homework.model.enums.GroupType;
 import com.homework.web.app.dto.AiFollowUpDTO;
 import com.homework.web.app.dto.CertificateQuestionSubmitDTO;
@@ -20,14 +22,14 @@ public class QuestionInfoController {
 
     private final QuestionInfoService questionInfoService;
 
-    //这个部分用于返回问题给前端
+    //用于返回问题给前端
     @GetMapping("/interview/question")
     public Result<List<InterviewQuestionPageVO>> getQuestionsByBankId(@RequestParam Long bankId) {
        List<InterviewQuestionPageVO> questions = questionInfoService.getQuestionsByBankId(bankId);
        return Result.success(questions);
     }
 
-    //这个部分用于返回AI反馈和参考答案给前端
+    //用于返回AI反馈和参考答案给前端
     @PostMapping("/interview/answer")
     public Result<InterViewAnswerPageVO> getInterviewAnswer(@RequestBody InterviewQuestionSubmitDTO submitDTO){
         InterViewAnswerPageVO answer = questionInfoService.getInterviewAnswer(submitDTO);
@@ -39,7 +41,7 @@ public class QuestionInfoController {
         return Result.success();
     }
 
-    //认证题库 -> 练习模式 + 考试模式
+    //认证题库 -> 练习模式
     @GetMapping("/certificate/question")
     public Result<List<CertificateQuestionPageVO>> getCertByPractice(@RequestParam Long bankId) {
         List<CertificateQuestionPageVO> questions = questionInfoService.getCertificateByBankId(bankId);
@@ -110,6 +112,13 @@ public class QuestionInfoController {
     @PostMapping("/ai/chat/close")
     public Result<Void> closeAiChat(@RequestParam Long bankId) {
         questionInfoService.closeAiChat(bankId);
+        return Result.success();
+    }
+
+    //收藏题目
+    @PostMapping("/collect")
+    public Result<Void> collect(@RequestParam Long bankId, @RequestParam Long questionId, ActionStatus actionStatus) {
+        questionInfoService.collect(bankId,questionId,actionStatus);
         return Result.success();
     }
 }

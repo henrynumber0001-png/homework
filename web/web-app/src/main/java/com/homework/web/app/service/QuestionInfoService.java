@@ -1,5 +1,7 @@
 package com.homework.web.app.service;
 
+import com.homework.model.entity.UserFavoriteQuestion;
+import com.homework.model.enums.ActionStatus;
 import com.homework.model.enums.GroupType;
 import com.homework.model.enums.QuestionInfoQuestionType;
 import com.homework.web.app.dto.AiFollowUpDTO;
@@ -47,4 +49,5 @@ public interface QuestionInfoService {
     void clearRecord(Long bankId, GroupType groupType);
 
 
+    void collect(Long bankId, Long questionId, ActionStatus actionStatus);
 }

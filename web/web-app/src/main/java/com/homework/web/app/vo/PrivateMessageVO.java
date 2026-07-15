@@ -1,7 +1,7 @@
 package com.homework.web.app.vo;
 
 import com.homework.model.enums.PrivateMessageAllowReason;
-import com.homework.model.enums.PrivateMessageMessageStatus;
+import com.homework.model.enums.PrivateMessageStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -15,7 +15,7 @@ public class PrivateMessageVO {
     private String senderAvatar;
     private Long receiverUserId;
     private String content;
-    private PrivateMessageMessageStatus messageStatus;
+    private PrivateMessageStatus messageStatus;
     private PrivateMessageAllowReason allowReason;
     private LocalDateTime createdTime;
 }
