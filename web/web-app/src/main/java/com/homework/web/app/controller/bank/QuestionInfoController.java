@@ -1,7 +1,6 @@
 package com.homework.web.app.controller.bank;
 
 import com.homework.common.result.Result;
-import com.homework.model.entity.UserFavoriteQuestion;
 import com.homework.model.enums.ActionStatus;
 import com.homework.model.enums.GroupType;
 import com.homework.web.app.dto.AiFollowUpDTO;
@@ -117,7 +116,9 @@ public class QuestionInfoController {
 
     //收藏题目
     @PostMapping("/collect")
-    public Result<Void> collect(@RequestParam Long bankId, @RequestParam Long questionId, ActionStatus actionStatus) {
+    public Result<Void> collect(@RequestParam Long bankId,
+                                @RequestParam Long questionId,
+                                @RequestParam ActionStatus actionStatus) {
         questionInfoService.collect(bankId,questionId,actionStatus);
         return Result.success();
     }

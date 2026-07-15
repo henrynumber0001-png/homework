@@ -1,6 +1,5 @@
 package com.homework.web.app.service;
 
-import com.homework.model.entity.UserFavoriteQuestion;
 import com.homework.model.enums.ActionStatus;
 import com.homework.model.enums.GroupType;
 import com.homework.model.enums.QuestionInfoQuestionType;

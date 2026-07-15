@@ -66,29 +66,22 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                 .orderByAsc(InterviewQuestionInfo::getId);
 
         List<InterviewQuestionInfo> questionInfos = interviewQuestionInfoMapper.selectList(questionInfoQueryWrapper);
-        List<Long> questionIds = questionInfos.stream().map(InterviewQuestionInfo::getId).collect(Collectors.toList());
-
-        LambdaQueryWrapper<UserFavoriteQuestion> userFavoriteQueryWrapper = new LambdaQueryWrapper<>();
-        userFavoriteQueryWrapper.in(UserFavoriteQuestion::getQuestionId, questionIds)
-                .eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId());
-
-        List<UserFavoriteQuestion> userFavoriteQuestions = userFavoriteQuestionMapper.selectList(userFavoriteQueryWrapper);
-        Map<Long,UserFavoriteQuestion> userFavoriteQuestionMap = userFavoriteQuestions.stream()
-                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
-
         if (questionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
+        List<Long> questionIds = questionInfos.stream().map(InterviewQuestionInfo::getId).toList();
+
+        // 以 questionId 为键，既能 O(1) 判断收藏状态，也保留完整收藏记录供后续使用。
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, questionIds);
 
         List<InterviewQuestionPageVO> list = new ArrayList<>();
         questionInfos.forEach(questionInfo -> {
-            UserFavoriteQuestion userFavoriteQuestion = userFavoriteQuestionMap.get(questionInfo.getId());
             InterviewQuestionPageVO vo = new InterviewQuestionPageVO();
 
             vo.setQuestionId(questionInfo.getId());
             vo.setTitle(questionInfo.getTitle());
             vo.setQuestionType(questionInfo.getQuestionType());
-            vo.setIsFavorite(userFavoriteQuestion != null);
+            vo.setIsFavorite(favoriteQuestionMap.containsKey(questionInfo.getId())); //containsKey 比 favoriteQuestionMap.get(questionInfo.getId()) != null 更优雅
             list.add(vo);
         });
 
@@ -123,6 +116,9 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
         InterviewQuestionInfo questionInfo = interviewQuestionInfoMapper.selectOne(interviewQueryWrapper);
 
+        List<Long> questionIdList = List.of(questionId); //把单个对象转换成List集合
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId,questionIdList);
+
         if (questionInfo == null) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
@@ -144,6 +140,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         answer.setQuestionId(questionId);
         answer.setAnalysis(questionInfo.getAnalysis());
         answer.setAiResult(aiResult);
+        answer.setIsFavorite(favoriteQuestionMap.containsKey(questionId));
 
         //把用户输入的回答放到 用户ID下的专门的一张表 user_question_answer, 用于用户其他信息查询功能（如答题历史、收藏、错题）
         //后端先保存 UserQuestionAnswer，拿到 answerId
@@ -200,6 +197,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         }
 
         List<Long> interviewQuestionIds = interviewQuestionInfos.stream().map(InterviewQuestionInfo::getId).toList();
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, interviewQuestionIds);
 
         Long userId = LoginUserHolder.getUserId();
 
@@ -246,6 +244,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             vo.setTitle(questionInfo.getTitle());
             vo.setAnalysis(questionInfo.getAnalysis());
             vo.setQuestionType(questionInfo.getQuestionType());
+            vo.setIsFavorite(favoriteQuestionMap.containsKey(questionInfo.getId()));
             UserQuestionAnswer userQuestionAnswer = questionAnswerMap.get(questionInfo.getId());
             if (userQuestionAnswer != null) {
                 vo.setContent(userQuestionAnswer.getContent());
@@ -328,17 +327,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         }
         List<Long> questionIds = certificateQuestionInfos.stream().map(CertificateQuestionInfo::getId).toList();
 
-        LambdaQueryWrapper<UserFavoriteQuestion> userFavoriteQueryWrapper = new LambdaQueryWrapper<>();
-        userFavoriteQueryWrapper.in(UserFavoriteQuestion::getQuestionId, questionIds)
-                .eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId());
-
-        List<UserFavoriteQuestion> userFavoriteQuestions = userFavoriteQuestionMapper.selectList(userFavoriteQueryWrapper);
-        Map<Long,UserFavoriteQuestion> userFavoriteQuestionMap = userFavoriteQuestions.stream()
-                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, questionIds);
 
         List<CertificateQuestionPageVO> certificateQuestionPageVos = new ArrayList<>();
         certificateQuestionInfos.forEach(certificateQuestionInfo -> {
-            UserFavoriteQuestion userFavoriteQuestion = userFavoriteQuestionMap.get(certificateQuestionInfo.getId());
             CertificateQuestionPageVO vo = new CertificateQuestionPageVO();
 
             vo.setQuestionId(certificateQuestionInfo.getId());
@@ -346,7 +338,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             vo.setOptions(certificateQuestionInfo.getOptions());
             vo.setQuestionType(certificateQuestionInfo.getQuestionType());
             vo.setImageUrl(certificateQuestionInfo.getImageUrl());
-            vo.setIsFavorite(userFavoriteQuestion != null);
+            vo.setIsFavorite(favoriteQuestionMap.containsKey(certificateQuestionInfo.getId()));
             certificateQuestionPageVos.add(vo);
         });
         return certificateQuestionPageVos;
@@ -381,6 +373,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (certificateQuestionInfo == null) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
+
+        List<Long> questionIdList = List.of(questionId);
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, questionIdList);
+
         if (certificateQuestionInfo.getCorrectAnswer() == null || certificateQuestionInfo.getCorrectAnswer().isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
@@ -407,7 +403,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         answer.setAnalysis(certificateQuestionInfo.getAnalysis());
         answer.setQuestionId(questionId);
         answer.setCorrect(correct);
-
+        answer.setIsFavorite(favoriteQuestionMap.containsKey(questionId));
         return answer;
     }
 
@@ -441,6 +437,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
         List<Long> certificateQuestionIds = certificateQuestionInfos.stream().map(CertificateQuestionInfo::getId).toList();
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, certificateQuestionIds);
         Map<Long, CertificateQuestionInfo> certificateQuestionMap = certificateQuestionInfos.stream()
                 .collect(Collectors.toMap(CertificateQuestionInfo::getId, certificateQuestionInfo -> certificateQuestionInfo));
 
@@ -469,6 +466,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             vo.setAnalysis(certificateQuestionInfo.getAnalysis());
             vo.setImageUrl(certificateQuestionInfo.getImageUrl());
             vo.setIsCorrect(userQuestionAnswer.getIsCorrect());
+            vo.setIsFavorite(favoriteQuestionMap.containsKey(userQuestionAnswer.getQuestionId()));
             vo.setChosonOptions(userQuestionAnswer.getChosonOptions());
             questionReviewVos.add(vo);
         });
@@ -529,6 +527,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         }
 
         List<Long> interviewQuestionIds = interviewQuestionInfos.stream().map(InterviewQuestionInfo::getId).toList();
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, interviewQuestionIds);
         Map<Long, InterviewQuestionInfo> questionInfoMap = interviewQuestionInfos.stream().
                 collect(Collectors.toMap(InterviewQuestionInfo::getId, interviewQuestionInfo -> interviewQuestionInfo));
 
@@ -572,6 +571,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             questionReviewVo.setQuestionType(userQuestionAnswer.getQuestionType());
             questionReviewVo.setAnalysis(interviewQuestionInfo.getAnalysis());
             questionReviewVo.setContent(userQuestionAnswer.getContent());
+            questionReviewVo.setIsFavorite(favoriteQuestionMap.containsKey(interviewQuestionInfo.getId()));
             if (questionAiEvaluation != null) {
                 questionReviewVo.setAiResult(fetchAiResult(questionAiEvaluation));
             }
@@ -657,57 +657,57 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public void collect(Long bankId, Long questionId, ActionStatus actionStatus) {
-        if(bankId == null || questionId == null || actionStatus == null){
+        if (bankId == null || questionId == null || actionStatus == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
         Long userId = LoginUserHolder.getUserId();
-
-        LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId)
-                .eq(QuestionBankQuestion::getQuestionId, questionId);
-        QuestionBankQuestion questionBankQuestion = questionBankQuestionMapper.selectOne(queryWrapper);
-        if(questionBankQuestion == null){
+        QuestionBankQuestion bankQuestion = questionBankQuestionMapper.selectOne(
+                new LambdaQueryWrapper<QuestionBankQuestion>()
+                        .eq(QuestionBankQuestion::getBankId, bankId)
+                        .eq(QuestionBankQuestion::getQuestionId, questionId)
+        );
+        if (bankQuestion == null) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
+        //关键点在这一步，加一个数据库锁 操作，解决并发问题
+        //并且查询 is_deleted = 1 的历史数据
+        //因为如果你直接使用 LambdaQueryWrapper，无法查询 is_deleted = 1 的历史数据，因为Mybatis-plus默认 is_deleted = 0
+        //FOR UPDATE 倒是可以通过 LambdaQueryWrapper 实现，即 .last("FOR UPDATE")
+        //所以调用mapper方法的主要目的是为了加锁，防止并发问题 + 能查询 逻辑删除的 历史数据
+        UserFavoriteQuestion existing = userFavoriteQuestionMapper.selectIncludingDeletedForUpdate(userId, bankId, questionId);
 
-        UserFavoriteQuestion userFavoriteQuestion = userFavoriteQuestionMapper.selectById(questionId);
-
-        boolean changed = false;
-        if(userFavoriteQuestion != null && Boolean.TRUE.equals(userFavoriteQuestion.getDeleted())){
-            if(actionStatus == ActionStatus.ACTIVATE){
-                int result = userFavoriteQuestionMapper.restoreById(questionId);
-                if(result != 1){
+        if (existing == null) {
+            if (actionStatus == ActionStatus.ACTIVATE) {
+                UserFavoriteQuestion favorite = new UserFavoriteQuestion();
+                favorite.setUserId(userId);
+                favorite.setBankId(bankId);
+                favorite.setQuestionId(questionId);
+                favorite.setCollectedTime(LocalDateTime.now());
+                int result = userFavoriteQuestionMapper.insert(favorite);
+                if (result != 1) {
                     throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
                 }
-                changed = true;
-
             }
-        } else if (userFavoriteQuestion != null && !Boolean.TRUE.equals(userFavoriteQuestion.getDeleted())) {
-            if(actionStatus == ActionStatus.DEACTIVATE){
-                int result = userFavoriteQuestionMapper.deleteById(questionId);
-                if(result != 1){
+        } else if (existing != null && Boolean.TRUE.equals(existing.getDeleted())) {
+            if (actionStatus == ActionStatus.ACTIVATE) {
+                int result = userFavoriteQuestionMapper.restoreById(existing.getId());
+                if (result != 1) {
                     throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
                 }
-                changed = true;
             }
-        }else {
-            if(actionStatus == ActionStatus.ACTIVATE){
-                UserFavoriteQuestion newFavorite = new UserFavoriteQuestion();
-                newFavorite.setQuestionId(questionId);
-                newFavorite.setSaveTime(LocalDateTime.now());
-                newFavorite.setUserId(userId);
-                int result = userFavoriteQuestionMapper.insert(newFavorite);
-                if(result != 1){
+        } else {
+            if (actionStatus == ActionStatus.DEACTIVATE) {
+                int result = userFavoriteQuestionMapper.deleteById(existing.getId());
+                if (result != 1) {
                     throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
                 }
-                changed = true;
             }
         }
-
-        
-
+        /*
+        你不需要更新 点赞/收藏/转发 的数量，所以不需要 changed 标识 和 数据库原子操作
+         */
     }
 
     @Transactional
@@ -737,6 +737,9 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
+        List<Long> certificateIds = certificateQuestionInfos.stream().map(CertificateQuestionInfo::getId).toList();
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, certificateIds);
+
         Long userId = LoginUserHolder.getUserId();
         LambdaQueryWrapper<UserQuestionAnswer> userAnswerQueryWrapper = new LambdaQueryWrapper<>();
         userAnswerQueryWrapper.eq(UserQuestionAnswer::getBankId, bankId)
@@ -755,6 +758,8 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         List<CertificateQuestionReviewVO> questionReviewVos = new ArrayList<>();
         certificateQuestionInfos.forEach(questionInfo -> {
             CertificateQuestionReviewVO vo = new CertificateQuestionReviewVO();
+            UserFavoriteQuestion userFavoriteQuestion = favoriteQuestionMap.get(questionInfo.getId());
+
             vo.setQuestionId(questionInfo.getId());
             vo.setTitle(questionInfo.getTitle());
             vo.setOptions(questionInfo.getOptions());
@@ -762,6 +767,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             vo.setAnalysis(questionInfo.getAnalysis());
             vo.setQuestionType(questionInfo.getQuestionType());
             vo.setImageUrl(questionInfo.getImageUrl());
+            vo.setIsFavorite(userFavoriteQuestion != null);
             UserQuestionAnswer userQuestionAnswer = questionAnswerMap.get(questionInfo.getId());
             if (userQuestionAnswer != null) {
                 vo.setChosonOptions(userQuestionAnswer.getChosonOptions());
@@ -1121,6 +1127,21 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             questionAiEvaluation.setId(latestEvaluation.getId());
             questionAiEvaluationMapper.updateById(questionAiEvaluation);
         }
+    }
+
+    private Map<Long, UserFavoriteQuestion> getFavoriteQuestionMap(Long bankId, Collection<Long> questionIds) {
+        if (questionIds == null || questionIds.isEmpty()) {
+            return Map.of();
+        }
+
+        LambdaQueryWrapper<UserFavoriteQuestion> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId())
+                .eq(UserFavoriteQuestion::getBankId, bankId)
+                .in(UserFavoriteQuestion::getQuestionId, questionIds);
+        List<UserFavoriteQuestion> favorites = userFavoriteQuestionMapper.selectList(queryWrapper);
+
+        return favorites.stream()
+                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
     }
 
     //sameOptions() 是一个返回 boolean 的工具方法，如果它里面直接抛业务异常，会让方法职责变重。

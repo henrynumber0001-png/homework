@@ -19,4 +19,6 @@ public class CertificateAnswerPageVO {
 
     private Boolean correct;
 
+    private Boolean isFavorite;
+
 }

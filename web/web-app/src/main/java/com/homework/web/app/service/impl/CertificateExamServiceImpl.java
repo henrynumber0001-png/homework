@@ -8,6 +8,7 @@ import com.homework.model.entity.CertificateExamAnswer;
 import com.homework.model.entity.CertificateExamSession;
 import com.homework.model.entity.CertificateQuestionInfo;
 import com.homework.model.entity.QuestionBankQuestion;
+import com.homework.model.entity.UserFavoriteQuestion;
 import com.homework.model.enums.ExamSessionStatus;
 import com.homework.model.enums.QuestionInfoQuestionType;
 import com.homework.web.app.context.LoginUserHolder;
@@ -27,6 +28,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -51,6 +53,8 @@ public class CertificateExamServiceImpl implements CertificateExamService {
     private final QuestionBankQuestionMapper questionBankQuestionMapper;
 
     private final CertificateExamLockMapper certificateExamLockMapper;
+
+    private final UserFavoriteQuestionMapper userFavoriteQuestionMapper;
 
 
     @Transactional(noRollbackFor = ExamExpiredException.class)
@@ -332,6 +336,8 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
         List<Long> questionOrder = session.getQuestionOrder();
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(
+                session.getUserId(), session.getBankId(), questionOrder);
 
         //其实这一步queryWrapper，主要是为了查出来 题目列表，然后最终目的是制作成 questionMap
         //这个 questionOrder(verifiedQuestionIds) 都是筛选过的，而且只能是这些questionIds
@@ -373,6 +379,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             vo.setOptions(questionInfo.getOptions());
             vo.setQuestionType(questionInfo.getQuestionType());
             vo.setImageUrl(questionInfo.getImageUrl());
+            vo.setIsFavorite(favoriteQuestionMap.containsKey(questionId));
 
             CertificateExamAnswer answer = answerMap.get(questionId); //这一步就是看用户答没答
             if (answer != null) { //答了，就把用户选择的选项返回
@@ -420,6 +427,8 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
         List<Long> questionOrder = session.getQuestionOrder();
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(
+                session.getUserId(), session.getBankId(), questionOrder);
 
         //根据 questionOrder(verifiedQuestionIds) 再去CertificateQuestionInfo 查询一遍 题目列表
         //普通下架情况下，结算时继续显示并判定这道题是合理的，因此只在创建session的时候，拿到questionOrder之前 执行 isReleased 过滤
@@ -491,6 +500,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             reviewVO.setImageUrl(questionInfo.getImageUrl());
             reviewVO.setCorrectAnswer(questionInfo.getCorrectAnswer());
             reviewVO.setAnalysis(questionInfo.getAnalysis());
+            reviewVO.setIsFavorite(favoriteQuestionMap.containsKey(questionId));
 
             reviewVO.setChosonOptions(answer == null ? null : answer.getChosenOptions());
             reviewVO.setIsCorrect(answered ? correct : null); //answered 本身结果就是 true/false
@@ -531,6 +541,20 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         // 当前考试模式只支持单选题和多选题。
         return questionType == QuestionInfoQuestionType.SINGLE_CHOICE
                 || questionType == QuestionInfoQuestionType.MULTIPLE;
+    }
+
+    private Map<Long, UserFavoriteQuestion> getFavoriteQuestionMap(Long userId, Long bankId,
+                                                                   Collection<Long> questionIds) {
+        if (questionIds == null || questionIds.isEmpty()) {
+            return Map.of();
+        }
+        return userFavoriteQuestionMapper.selectList(
+                        new LambdaQueryWrapper<UserFavoriteQuestion>()
+                                .eq(UserFavoriteQuestion::getUserId, userId)
+                                .eq(UserFavoriteQuestion::getBankId, bankId)
+                                .in(UserFavoriteQuestion::getQuestionId, questionIds)
+                ).stream()
+                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, favorite -> favorite));
     }
 
     /**

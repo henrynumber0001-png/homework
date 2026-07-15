@@ -13,4 +13,5 @@ public class CertificateExamQuestionVO {
     private String imageUrl;
     private List<String> chosenOptions; // 只恢复用户选择，不返回正确答案
     private Boolean answered;
+    private Boolean isFavorite;
 }

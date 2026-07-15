@@ -30,4 +30,6 @@ public class CertificateQuestionReviewVO {
     private String analysis;
 
     private Boolean isCorrect;
+
+    private Boolean isFavorite;
 }
