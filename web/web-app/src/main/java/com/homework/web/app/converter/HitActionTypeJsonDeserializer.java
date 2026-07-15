@@ -18,8 +18,7 @@ import java.io.IOException;
  * 3 -> REPOST
  */
 @Component
-public class HitActionTypeJsonDeserializer
-        extends JsonDeserializer<HitActionType> {
+public class HitActionTypeJsonDeserializer extends JsonDeserializer<HitActionType> {
 
     @Override
     public HitActionType deserialize(JsonParser parser, DeserializationContext context) throws IOException {

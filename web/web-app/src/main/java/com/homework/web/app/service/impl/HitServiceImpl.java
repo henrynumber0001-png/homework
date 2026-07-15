@@ -385,7 +385,7 @@ public class HitServiceImpl implements HitService {
 
         // 执行原子计数 SQL，避免“先查询后更新”造成并发覆盖。
         int result = hitPostMapper.changeActionCounters(postId, likeDelta, favoriteDelta, repostDelta);
-        if(result != 1) {
+        if(result != 1) { //没更新成功，要报错回滚
             throw new HomeworkException(ResultCodeEnum.HIT_NOT_EXIST);
         }
         //如果 Post 在校验后被隐藏或删除，评论/互动可能已经写入，但计数没有更新。
