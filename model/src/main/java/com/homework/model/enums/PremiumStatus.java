@@ -8,7 +8,8 @@ import lombok.Getter;
 public enum PremiumStatus implements BaseEnum {
 
     ACTIVE(1, "active"),
-    DISABLED(2, "disabled");
+    EXPIRED(2, "expired"),
+    DISABLED(3, "disabled");
 
     @EnumValue
     @JsonValue

@@ -26,8 +26,10 @@ public class PremiumOrder extends BaseEntity {
     /** 1.monthly;2.yearly */
     private PremiumOrderType type;
 
+    /** 这笔订单对应的权益开始时间。 */
     private LocalDateTime startTime;
 
+    /** 这笔订单对应的权益结束时间。 */
     private LocalDateTime expiredTime;
 
     private BigDecimal price;

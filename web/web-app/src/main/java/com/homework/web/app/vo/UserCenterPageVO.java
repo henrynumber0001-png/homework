@@ -1,5 +1,8 @@
 package com.homework.web.app.vo;
 
+import com.homework.model.entity.PremiumUserInfo;
+import com.homework.model.enums.PremiumOrderScope;
+import com.homework.model.enums.PremiumStatus;
 import lombok.Data;
 
 import java.util.List;
@@ -7,27 +10,19 @@ import java.util.List;
 @Data
 public class UserCenterPageVO {
 
-     private GraphInfoVO graphInfoVO;
+    //返回Banner的图片和图片上的文字
+    private GraphInfoVO graphInfoVO;
 
-     private UserInfoVO userInfoVO;
+    //个人信息栏（包含会员信息）
+    private UserInfoVO userInfoVO;
+    //     private List<PremiumUserInfoVO> premiumUserInfoVOList;
 
-     private PremiumUserInfoVO premiumUserInfoVO;
 
-     private long followerCount;
-     private long followingCount;
-     private long postCount;
+    //userCenter首次返回页面，目前的设计修改为：只需要返回 Premium标识，如果是普通Premium(Interview/Certificate)，则返回蓝色标识；如果是FullAccess，则返回皇冠颜色标识
+    private boolean isPremium;
+    private boolean isSuperPremium;
 
-     private long questionCount;
-     private long bankCount;
-
-     private long learningHours;
-
-     private List<WrongQuestionVO> wrongQuestionVOList;
-
-     private List<FavoriteQuestionVO> favoriteQuestionVOList;
-
-     private List<NoteVO> noteVOList;
-
+    private UserCenterCountsVO countsVO;
 
 
 

@@ -8,11 +8,11 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("user_follow")
-public class UserFollower extends BaseEntity {
+public class UserFollow extends BaseEntity {
 
-    private long userId;
+    /** 发起关注的人。 */
+    private Long followerUserId;
 
-    private long followerId;
-
-
+    /** 被关注的人。 */
+    private Long followeeUserId;
 }

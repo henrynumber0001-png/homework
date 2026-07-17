@@ -11,5 +11,6 @@ public class WrongQuestionVO {
     private long moduleId;
     private long subModuleId;
     private long bankId;
-    private List<Long> wrongQuestionIds;
+
+    private List<WrongQuestionInfoVO> wrongQuestionInfoVOList;
 }

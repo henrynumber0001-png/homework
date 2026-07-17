@@ -2,15 +2,14 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.homework.common.entity.BaseEntity;
 import com.homework.model.enums.ItemType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
 @TableName(value = "graph_info")
-public class GraphInfo {
-
-    private Long id;
+public class GraphInfo extends BaseEntity {
 
     @Schema(description = "图片名称")
     @TableField(value = "name")

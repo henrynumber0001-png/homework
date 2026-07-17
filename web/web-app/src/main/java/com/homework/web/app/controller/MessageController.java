@@ -3,7 +3,6 @@ package com.homework.web.app.controller;
 import com.homework.common.result.Result;
 import com.homework.web.app.context.LoginUserHolder;
 import com.homework.web.app.dto.PrivateMessageCreateDTO;
-import com.homework.web.app.service.MessageService;
 import com.homework.web.app.vo.MessageUnreadSummaryVO;
 import com.homework.web.app.vo.NotificationVO;
 import com.homework.web.app.vo.PrivateMessageVO;

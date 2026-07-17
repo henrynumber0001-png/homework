@@ -8,7 +8,8 @@ import lombok.Getter;
 public enum PremiumOrderScope implements BaseEnum {
 
     INTERVIEW(1, "interview"),
-    CERTIFICATION(2, "certification");
+    CERTIFICATION(2, "certification"),
+    FULLACCESS(3, "all");
 
     @EnumValue
     @JsonValue

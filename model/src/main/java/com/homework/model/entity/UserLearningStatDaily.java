@@ -3,6 +3,8 @@ package com.homework.model.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -13,13 +15,12 @@ public class UserLearningStatDaily extends BaseEntity {
 
     private Long userId;
 
+    //打卡日期
     private LocalDate statDate;
 
-    private Integer answeredCount;
+    /** 当天累计学习时间。 */
+    private Long studySeconds;
 
-    private Integer correctCount;
-
-    private Integer learnedBankCount;
-
-    private Integer studySeconds;
+    /** 后端最后一次接受的心跳时间。 */
+    private LocalDateTime lastHeartbeatTime;
 }
