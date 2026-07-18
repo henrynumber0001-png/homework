@@ -92,7 +92,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Override
     public InterViewAnswerPageVO getInterviewAnswer(InterviewQuestionSubmitDTO submitDTO) {
         //允许用户输入的回答为空
-        if (submitDTO == null || submitDTO.getQuestionId() == null || submitDTO.getTimeSpentSeconds() == null || submitDTO.getBankId() == null) {
+        if (submitDTO == null || submitDTO.getQuestionId() == null || submitDTO.getBankId() == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
@@ -152,7 +152,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         userAnswer.setContent(submitDTO.getContent());
         userAnswer.setQuestionType(QuestionInfoQuestionType.ESSAY);
         userAnswer.setAiScoreRate(aiResult.getScoreRate());
-        userAnswer.setTimeSpentSeconds(submitDTO.getTimeSpentSeconds());//用户在这道题上花费了多少秒，这个数据用于后续一系列统计功能的开发
+        userAnswer.setIsCorrect(aiResult.getScoreRate().compareTo(BigDecimal.valueOf(60)) >= 0);
         userAnswer.setAnsweredTime(LocalDateTime.now());
 
         Long answerId = saveOrUpdateLatestAnswer(userAnswer);
@@ -250,7 +250,9 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                 vo.setContent(userQuestionAnswer.getContent());
                 QuestionAiEvaluation questionAiEvaluation = questionAiEvaluationMap.get(userQuestionAnswer.getId());
                 if (questionAiEvaluation != null) {
-                    vo.setAiResult(fetchAiResult(questionAiEvaluation));
+                    AiEvaluationResult aiResult = fetchAiResult(questionAiEvaluation);
+                    vo.setAiResult(aiResult);
+                    vo.setIsCorrect(aiResult.getScoreRate().compareTo(BigDecimal.valueOf(60)) >= 0);
                 }
             }
             questionReviewVos.add(vo);
@@ -349,7 +351,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Override
     public CertificateAnswerPageVO getCertificateAnswer(CertificateQuestionSubmitDTO submitDTO) {
         if (submitDTO == null || submitDTO.getQuestionId() == null || submitDTO.getQuestionType() == null ||
-                submitDTO.getChosonOptions() == null || submitDTO.getTimeSpentSeconds() == null || submitDTO.getBankId() == null) {
+                submitDTO.getChosonOptions() == null || submitDTO.getBankId() == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
@@ -394,7 +396,6 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         userQuestionAnswer.setQuestionType(certificateQuestionInfo.getQuestionType());
         userQuestionAnswer.setChosonOptions(submitDTO.getChosonOptions());
         userQuestionAnswer.setIsCorrect(correct);
-        userQuestionAnswer.setTimeSpentSeconds(submitDTO.getTimeSpentSeconds());
         userQuestionAnswer.setAnsweredTime(LocalDateTime.now());
         saveOrUpdateLatestAnswer(userQuestionAnswer);
 
@@ -573,7 +574,9 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             questionReviewVo.setContent(userQuestionAnswer.getContent());
             questionReviewVo.setIsFavorite(favoriteQuestionMap.containsKey(interviewQuestionInfo.getId()));
             if (questionAiEvaluation != null) {
-                questionReviewVo.setAiResult(fetchAiResult(questionAiEvaluation));
+                AiEvaluationResult aiResult = fetchAiResult(questionAiEvaluation);
+                questionReviewVo.setAiResult(aiResult);
+                questionReviewVo.setIsCorrect(aiResult.getScoreRate().compareTo(BigDecimal.valueOf(60)) >= 0);
             }
             questionReviewVos.add(questionReviewVo);
         });

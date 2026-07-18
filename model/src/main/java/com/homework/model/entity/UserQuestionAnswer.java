@@ -40,7 +40,5 @@ public class UserQuestionAnswer extends BaseEntity {
     @Schema(description = "面试简答题的AI评分")
     private BigDecimal aiScoreRate;
 
-    private Integer timeSpentSeconds;
-
     private LocalDateTime answeredTime;
 }

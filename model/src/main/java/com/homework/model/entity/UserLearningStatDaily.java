@@ -15,7 +15,7 @@ public class UserLearningStatDaily extends BaseEntity {
 
     private Long userId;
 
-    //打卡日期
+    //统计日期
     private LocalDate statDate;
 
     /** 当天累计学习时间。 */

@@ -11,5 +11,4 @@ public class CertificateQuestionSubmitDTO {
     private Long questionId;
     private QuestionInfoQuestionType questionType;
     private List<String> chosonOptions;
-    private Integer timeSpentSeconds;
 }

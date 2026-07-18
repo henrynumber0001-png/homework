@@ -23,7 +23,4 @@ public class UserCenterPageVO {
     private boolean isSuperPremium;
 
     private UserCenterCountsVO countsVO;
-
-
-
 }

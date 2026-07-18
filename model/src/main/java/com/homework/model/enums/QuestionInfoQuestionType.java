@@ -9,8 +9,7 @@ public enum QuestionInfoQuestionType implements BaseEnum {
 
     SINGLE_CHOICE(1, "single_choice"),
     MULTIPLE(2, "multiple"),
-    TRUE_FALSE(3, "true_false"),
-    ESSAY(4, "essay");
+    ESSAY(3, "essay");
 
     @EnumValue
     @JsonValue

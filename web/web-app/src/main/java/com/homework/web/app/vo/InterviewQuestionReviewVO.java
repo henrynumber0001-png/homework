@@ -23,6 +23,8 @@ public class InterviewQuestionReviewVO {
 
     private Boolean isFavorite;
 
+    private Boolean isCorrect;
+
     //浏览器如果刷新恢复，后端 review 接口就需要返回 content 给前端，告诉前端，用户的输入文本是什么
     private String content;
 

@@ -1,6 +1,7 @@
 package com.homework.web.app.vo;
 
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.homework.model.entity.BankTag;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -31,5 +32,6 @@ public class QuestionBankVO {
 
     private Integer questionCount;
 
+    private List<String> tagNames;
 
 }

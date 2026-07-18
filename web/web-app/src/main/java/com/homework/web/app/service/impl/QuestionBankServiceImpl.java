@@ -4,10 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
-import com.homework.model.entity.CategoryModule;
-import com.homework.model.entity.CategorySubModule;
-import com.homework.model.entity.GraphInfo;
-import com.homework.model.entity.QuestionBank;
+import com.homework.model.entity.*;
+import com.homework.model.enums.GroupType;
 import com.homework.model.enums.ItemType;
 import com.homework.model.enums.SortType;
 import com.homework.web.app.mapper.*;
@@ -27,6 +25,7 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
     private final CategorySubModuleMapper categorySubModuleMapper;
     private final QuestionBankMapper questionBankMapper;
     private final GraphInfoMapper graphInfoMapper;
+    private final BankTagMapper bankTagMapper;
 
     @Override
     public GroupPageVO getGroupPage(Long groupId) {
@@ -281,6 +280,11 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
     }
 
     private QuestionBankVO toQuestionBankVO(QuestionBank entity) {
+        LambdaQueryWrapper<BankTag> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(BankTag::getBankId, entity.getId()); //bankId 不会出现 像 questionId 那样可能重复的情况，因为question_bank 只有一张表
+        List<BankTag> bankTags = bankTagMapper.selectList(queryWrapper);
+        List<String> tagNames = bankTags.stream().map(BankTag::getTagName).toList();
+
         QuestionBankVO vo = new QuestionBankVO();
         vo.setId(entity.getId()); //用于标记题库，这样后续用户再点击每一个题库，就可以知道是哪个题库了
         vo.setBankName(entity.getBankName());
@@ -288,6 +292,7 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         vo.setCompleteUserCount(entity.getCompleteUserCount());
         vo.setAvgCorrectRate(entity.getAvgCorrectRate());
         vo.setIsPremium(entity.getIsPremium());
+        vo.setTagNames(tagNames);
         return vo;
     }
 

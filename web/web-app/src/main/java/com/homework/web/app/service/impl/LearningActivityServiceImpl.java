@@ -6,6 +6,7 @@ import com.homework.common.result.ResultCodeEnum;
 import com.homework.model.entity.UserLearningStatDaily;
 import com.homework.web.app.mapper.UserLearningStatDailyMapper;
 import com.homework.web.app.service.LearningActivityService;
+import com.homework.web.app.vo.LearningCalendarItemVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -51,7 +53,7 @@ public class LearningActivityServiceImpl implements LearningActivityService {
             daily = new UserLearningStatDaily();
             daily.setUserId(userId);
             daily.setStatDate(today);
-            daily.setStudySeconds(0); //因为刚创建，今日学习时长设置为 0
+            daily.setStudySeconds(0L); //因为刚创建，今日学习时长设置为 0
             daily.setLastHeartbeatTime(now); //最近一次打卡时间设置为 现在
 
             userLearningStatDailyMapper.insert(daily);
@@ -91,5 +93,41 @@ public class LearningActivityServiceImpl implements LearningActivityService {
         daily.setStudySeconds(Math.min(updatedSeconds, MAX_DAILY_STUDY_SECONDS));
         daily.setLastHeartbeatTime(now);
         userLearningStatDailyMapper.updateById(daily);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<LearningCalendarItemVO> getCalendar(Long userId, Integer year) {
+
+        if (userId == null) {
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+
+        int currentYear = LocalDate.now().getYear();
+
+        // 前端没有传 year 时，默认查询今年。
+        int targetYear = year == null ? currentYear : year;
+
+        if (targetYear < 2000 || targetYear > currentYear) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        LocalDate startDate = LocalDate.of(targetYear, 1, 1);
+        LocalDate endDate = LocalDate.of(targetYear, 12, 31);
+
+        LambdaQueryWrapper<UserLearningStatDaily> wrapper = new LambdaQueryWrapper<>();
+
+        //查指定日期区间的 学习日期 + 学习时长
+        wrapper.select(UserLearningStatDaily::getStatDate, UserLearningStatDaily::getStudySeconds)
+                .eq(UserLearningStatDaily::getUserId, userId)
+                .between(UserLearningStatDaily::getStatDate, startDate, endDate)
+                .orderByAsc(UserLearningStatDaily::getStatDate);
+
+        List<UserLearningStatDaily> dailyStats = userLearningStatDailyMapper.selectList(wrapper);
+
+        return dailyStats.stream().map(daily -> {
+                    long studyMinutes = daily.getStudySeconds() / 60L;
+                    return new LearningCalendarItemVO(daily.getStatDate(), studyMinutes); //当日的学习日期 + 学习时长
+                }).toList();
     }
 }
