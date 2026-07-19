@@ -351,7 +351,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Override
     public CertificateAnswerPageVO getCertificateAnswer(CertificateQuestionSubmitDTO submitDTO) {
         if (submitDTO == null || submitDTO.getQuestionId() == null || submitDTO.getQuestionType() == null ||
-                submitDTO.getChosonOptions() == null || submitDTO.getBankId() == null) {
+                submitDTO.getChosenOptions() == null || submitDTO.getBankId() == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
@@ -383,7 +383,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
-        boolean correct = sameOptions(submitDTO.getChosonOptions(), certificateQuestionInfo.getCorrectAnswer());
+        boolean correct = sameOptions(submitDTO.getChosenOptions(), certificateQuestionInfo.getCorrectAnswer());
 
 
         //依旧是要把用户作答记录保存到UserQuestionAnswer
@@ -394,7 +394,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         userQuestionAnswer.setBankId(bankId);
         userQuestionAnswer.setQuestionId(questionId);
         userQuestionAnswer.setQuestionType(certificateQuestionInfo.getQuestionType());
-        userQuestionAnswer.setChosonOptions(submitDTO.getChosonOptions());
+        userQuestionAnswer.setChosenOptions(submitDTO.getChosenOptions());
         userQuestionAnswer.setIsCorrect(correct);
         userQuestionAnswer.setAnsweredTime(LocalDateTime.now());
         saveOrUpdateLatestAnswer(userQuestionAnswer);
@@ -468,7 +468,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             vo.setImageUrl(certificateQuestionInfo.getImageUrl());
             vo.setIsCorrect(userQuestionAnswer.getIsCorrect());
             vo.setIsFavorite(favoriteQuestionMap.containsKey(userQuestionAnswer.getQuestionId()));
-            vo.setChosonOptions(userQuestionAnswer.getChosonOptions());
+            vo.setChosenOptions(userQuestionAnswer.getChosenOptions());
             questionReviewVos.add(vo);
         });
         return questionReviewVos;
@@ -773,7 +773,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             vo.setIsFavorite(userFavoriteQuestion != null);
             UserQuestionAnswer userQuestionAnswer = questionAnswerMap.get(questionInfo.getId());
             if (userQuestionAnswer != null) {
-                vo.setChosonOptions(userQuestionAnswer.getChosonOptions());
+                vo.setChosenOptions(userQuestionAnswer.getChosenOptions());
                 vo.setIsCorrect(userQuestionAnswer.getIsCorrect());
             }
             questionReviewVos.add(vo);

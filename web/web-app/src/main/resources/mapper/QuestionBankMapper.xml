@@ -3,8 +3,16 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.homework.web.app.mapper.QuestionBankMapper">
-
-
-
-
+    <select id="getGroupType" resultType="com.homework.model.enums.GroupType">
+        SELECT cg.group_type
+        FROM question_bank qb
+                 INNER JOIN category_sub_module csm
+                            ON csm.id = qb.sub_module_id AND csm.is_deleted = 0
+                 INNER JOIN category_module cm
+                            ON cm.id = csm.module_id AND cm.is_deleted = 0
+                 INNER JOIN category_group cg
+                            ON cg.id = cm.group_id AND cg.is_deleted = 0
+        WHERE qb.id = #{bankId}
+          AND qb.is_deleted = 0
+    </select>
 </mapper>

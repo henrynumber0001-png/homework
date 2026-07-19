@@ -32,7 +32,7 @@ public class UserQuestionAnswer extends BaseEntity {
 
     @Schema(description = "用户选择的选项")
     @TableField(typeHandler = JacksonTypeHandler.class)
-    private List<String> chosonOptions;
+    private List<String> chosenOptions;
 
     @Schema(description = "用户选项是否正确")
     private Boolean isCorrect;

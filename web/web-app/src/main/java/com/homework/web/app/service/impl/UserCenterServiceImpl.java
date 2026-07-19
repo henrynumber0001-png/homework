@@ -8,10 +8,12 @@ import com.homework.common.result.PageResult;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.model.entity.*;
 import com.homework.model.enums.*;
+import com.homework.web.app.dto.AiEvaluationResult;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.UserCenterService;
 import com.homework.web.app.vo.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -38,6 +40,8 @@ public class UserCenterServiceImpl implements UserCenterService {
     private final BankTagMapper bankTagMapper;
     private final InterviewQuestionInfoMapper interviewQuestionInfoMapper;
     private final CertificateQuestionInfoMapper certificateQuestionInfoMapper;
+    private final QuestionAiEvaluationMapper questionAiEvaluationMapper;
+    private final QuestionBankMapper questionBankMapper;
 
     @Override
     public UserCenterPageVO getCenterPageInfo(Long userId) {
@@ -87,7 +91,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         List<PremiumUserInfo> premiumUserInfos = premiumUserInfoMapper.selectList(premiumUserInfoQueryWrapper);
         //Set集合，遍历速度快 0(1)
         Set<PremiumOrderScope> premiumScopesSet = premiumUserInfos.stream().map(PremiumUserInfo::getPremiumScope).collect(Collectors.toSet());
-        if(premiumUserInfos.isEmpty()) {
+        if (premiumUserInfos.isEmpty()) {
             userCenterPageVO.setPremium(false);
             userCenterPageVO.setSuperPremium(false);
         } else {
@@ -107,22 +111,22 @@ public class UserCenterServiceImpl implements UserCenterService {
 
         //组装postCount
         LambdaQueryWrapper<HitPost> postQueryWrapper = new LambdaQueryWrapper<>();
-        postQueryWrapper.eq(HitPost::getPostUserId,userId);
+        postQueryWrapper.eq(HitPost::getPostUserId, userId);
         Long postCount = hitPostMapper.selectCount(postQueryWrapper);
 
         //组装answeredQuestionCount
         LambdaQueryWrapper<UserQuestionAnswer> userQuestionAnswerQueryWrapper = new LambdaQueryWrapper<>();
-        userQuestionAnswerQueryWrapper.eq(UserQuestionAnswer::getUserId,userId);
+        userQuestionAnswerQueryWrapper.eq(UserQuestionAnswer::getUserId, userId);
         Long answeredQuestionCount = userQuestionAnswerMapper.selectCount(userQuestionAnswerQueryWrapper);
 
         //learnedBankCount
         LambdaQueryWrapper<UserQuestionAnswer> bankQueryWrapper = new LambdaQueryWrapper<>();
-        bankQueryWrapper.eq(UserQuestionAnswer::getUserId,userId);
+        bankQueryWrapper.eq(UserQuestionAnswer::getUserId, userId);
         long learnedBankCount = userQuestionAnswerMapper.selectList(bankQueryWrapper).stream().map(UserQuestionAnswer::getBankId).distinct().count();
 
         //studySeconds
         LambdaQueryWrapper<UserLearningStatDaily> dailyQueryWrapper = new LambdaQueryWrapper<>();
-        dailyQueryWrapper.eq(UserLearningStatDaily::getUserId,userId)
+        dailyQueryWrapper.eq(UserLearningStatDaily::getUserId, userId)
                 .select(UserLearningStatDaily::getStudySeconds);
         List<UserLearningStatDaily> userLearningStatDailies = userLearningStatDailyMapper.selectList(dailyQueryWrapper);
         long studySeconds = userLearningStatDailies.stream().mapToLong(UserLearningStatDaily::getStudySeconds).sum();
@@ -130,18 +134,18 @@ public class UserCenterServiceImpl implements UserCenterService {
 
         //wrongQuestionCount
         LambdaQueryWrapper<UserQuestionAnswer> wrongQuestionQueryWrapper = new LambdaQueryWrapper<>();
-        wrongQuestionQueryWrapper.eq(UserQuestionAnswer::getUserId,userId);
-        wrongQuestionQueryWrapper.eq(UserQuestionAnswer::getIsCorrect,false);
+        wrongQuestionQueryWrapper.eq(UserQuestionAnswer::getUserId, userId);
+        wrongQuestionQueryWrapper.eq(UserQuestionAnswer::getIsCorrect, false);
         Long wrongQuestionCount = userQuestionAnswerMapper.selectCount(wrongQuestionQueryWrapper);
 
         //favoriteQuestionCount
         LambdaQueryWrapper<UserFavoriteQuestion> favoriteQuestionQueryWrapper = new LambdaQueryWrapper<>();
-        favoriteQuestionQueryWrapper.eq(UserFavoriteQuestion::getUserId,userId);
+        favoriteQuestionQueryWrapper.eq(UserFavoriteQuestion::getUserId, userId);
         Long favoriteQuestionCount = userFavoriteQuestionMapper.selectCount(favoriteQuestionQueryWrapper);
 
         //noteCount
         LambdaQueryWrapper<UserQuestionNote> noteQueryWrapper = new LambdaQueryWrapper<>();
-        noteQueryWrapper.eq(UserQuestionNote::getUserId,userId);
+        noteQueryWrapper.eq(UserQuestionNote::getUserId, userId);
         Long noteCount = userQuestionNoteMapper.selectCount(noteQueryWrapper);
 
         UserCenterCountsVO userCenterCountsVO = new UserCenterCountsVO();
@@ -158,7 +162,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         userCenterPageVO.setCountsVO(userCenterCountsVO);
         return userCenterPageVO;
 
-        
+
     }
 
     @Override
@@ -166,10 +170,10 @@ public class UserCenterServiceImpl implements UserCenterService {
         long current = pageNum == null || pageNum < 1 ? 1L : pageNum;
         long size = pageSize == null ? 20L : Math.min(Math.max(pageSize, 1), 50);
 
-        if(userId == null){
+        if (userId == null) {
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
         }
-        if(groupType == null){
+        if (groupType == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
@@ -185,14 +189,14 @@ public class UserCenterServiceImpl implements UserCenterService {
 
 
         List<WrongQuestionBankVO> records = result.getRecords();
-        if(records.isEmpty()){
+        if (records.isEmpty()) {
             return result;
         }
         List<Long> bankIds = records.stream().map(WrongQuestionBankVO::getBankId).toList();
 
 
         LambdaQueryWrapper<BankTag> tagQueryWrapper = new LambdaQueryWrapper<>();
-        tagQueryWrapper.in(BankTag::getBankId,bankIds);
+        tagQueryWrapper.in(BankTag::getBankId, bankIds);
         List<BankTag> bankTags = bankTagMapper.selectList(tagQueryWrapper);
         Map<Long, List<String>> tagNamesMap = bankTags.stream().collect(Collectors.groupingBy(BankTag::getBankId, Collectors.mapping(BankTag::getTagName, Collectors.toList())));
 
@@ -202,21 +206,21 @@ public class UserCenterServiceImpl implements UserCenterService {
     }
 
     @Override
-    public PageResult<WrongQuestionVO> getWrongQuestions(Long userId,Long bankId,Integer pageNum, Integer pageSize) {
+    public PageResult<WrongQuestionVO> getWrongQuestions(Long userId, Long bankId, Integer pageNum, Integer pageSize) {
         //校验pageNum, pageSize，以防前端传的数字过大
         long current = pageNum == null || pageNum < 1 ? 1L : pageNum;
         long size = pageSize == null ? 20L : Math.min(Math.max(pageSize, 1), 50);
 
-        if(userId == null){
+        if (userId == null) {
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
         }
 
-        if(bankId == null){
+        if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
-        GroupType groupType = userQuestionAnswerMapper.getGroupType(bankId);
-        if(groupType == null){
+        GroupType groupType = questionBankMapper.getGroupType(bankId);
+        if (groupType == null) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
@@ -232,45 +236,45 @@ public class UserCenterServiceImpl implements UserCenterService {
 
 
         List<WrongQuestionVO> records = result.getRecords();
-        if(records.isEmpty()){
+        if (records.isEmpty()) {
             return result;
         }
 
         List<Long> questionIds = records.stream().map(WrongQuestionVO::getQuestionId).toList();
 
-        if(groupType.equals(GroupType.INTERVIEW)){
+        if (groupType.equals(GroupType.INTERVIEW)) {
             LambdaQueryWrapper<InterviewQuestionInfo> interviewInfoQueryWrapper = new LambdaQueryWrapper<>();
-            interviewInfoQueryWrapper.in(InterviewQuestionInfo::getId,questionIds)
-                    .eq(InterviewQuestionInfo::getIsReleased,true)
-                    .eq(InterviewQuestionInfo::getQuestionType,QuestionInfoQuestionType.ESSAY);
+            interviewInfoQueryWrapper.in(InterviewQuestionInfo::getId, questionIds)
+                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
             List<InterviewQuestionInfo> interviewQuestionInfos = interviewQuestionInfoMapper.selectList(interviewInfoQueryWrapper);
             Map<Long, String> questionIdToTitleMap = interviewQuestionInfos.stream().collect(Collectors.toMap(InterviewQuestionInfo::getId, InterviewQuestionInfo::getTitle));
 
-            records.forEach(wrongQuestionVO ->{
+            records.forEach(wrongQuestionVO -> {
                 String title = questionIdToTitleMap.get(wrongQuestionVO.getQuestionId());
-                if(!StringUtils.hasText(title)){
+                if (!StringUtils.hasText(title)) {
                     wrongQuestionVO.setIsAvailable(false); //给前端一个标识，当isAvailable = false，表示这道题已下架或删除
                     wrongQuestionVO.setTitle(null);
-                }else {
+                } else {
                     wrongQuestionVO.setIsAvailable(true);
                     wrongQuestionVO.setTitle(title);
                 }
             });
         }
-        if(groupType.equals(GroupType.CERTIFICATION)){
+        if (groupType.equals(GroupType.CERTIFICATION)) {
             LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
-            questionInfoQueryWrapper.in(CertificateQuestionInfo::getId,questionIds)
-                    .eq(CertificateQuestionInfo::getIsReleased,true)
-                    .in(CertificateQuestionInfo::getQuestionType,QuestionInfoQuestionType.SINGLE_CHOICE,QuestionInfoQuestionType.MULTIPLE);
+            questionInfoQueryWrapper.in(CertificateQuestionInfo::getId, questionIds)
+                    .eq(CertificateQuestionInfo::getIsReleased, true)
+                    .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
             List<CertificateQuestionInfo> questionInfos = certificateQuestionInfoMapper.selectList(questionInfoQueryWrapper);
             Map<Long, String> questionIdToTitleMap = questionInfos.stream().collect(Collectors.toMap(CertificateQuestionInfo::getId, CertificateQuestionInfo::getTitle));
 
-            records.forEach(wrongQuestionVO ->{
+            records.forEach(wrongQuestionVO -> {
                 String title = questionIdToTitleMap.get(wrongQuestionVO.getQuestionId());
-                if(!StringUtils.hasText(title)){
+                if (!StringUtils.hasText(title)) {
                     wrongQuestionVO.setIsAvailable(false); //给前端一个标识，当isAvailable = false，表示这道题已下架或删除
                     wrongQuestionVO.setTitle(null);
-                }else {
+                } else {
                     wrongQuestionVO.setIsAvailable(true);
                     wrongQuestionVO.setTitle(title);
                 }
@@ -281,4 +285,314 @@ public class UserCenterServiceImpl implements UserCenterService {
 
     }
 
+    @Override
+    public WrongQuestionReviewVO getWrongQuestion(Long userId, Long bankId, Long questionId) {
+        if (userId == null) {
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+        if (questionId == null || bankId == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        LambdaQueryWrapper<UserQuestionAnswer> userQuestionAnswerQueryWrapper = new LambdaQueryWrapper<>();
+        userQuestionAnswerQueryWrapper.eq(UserQuestionAnswer::getUserId, userId)
+                .eq(UserQuestionAnswer::getBankId, bankId)
+                .eq(UserQuestionAnswer::getQuestionId, questionId)
+                .eq(UserQuestionAnswer::getIsCorrect, false);
+
+        UserQuestionAnswer userQuestionAnswer = userQuestionAnswerMapper.selectOne(userQuestionAnswerQueryWrapper);
+        if (userQuestionAnswer == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        GroupType groupType = questionBankMapper.getGroupType(bankId);
+        if (groupType == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        WrongQuestionReviewVO vo = new WrongQuestionReviewVO();
+        if (groupType.equals(GroupType.INTERVIEW)) {
+            LambdaQueryWrapper<InterviewQuestionInfo> interviewInfoQueryWrapper = new LambdaQueryWrapper<>();
+            interviewInfoQueryWrapper.eq(InterviewQuestionInfo::getId, questionId)
+                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
+            InterviewQuestionInfo interviewInfo = interviewQuestionInfoMapper.selectOne(interviewInfoQueryWrapper);
+            if (interviewInfo == null) {
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
+
+            LambdaQueryWrapper<QuestionAiEvaluation> aiQueryWrapper = new LambdaQueryWrapper<>();
+            aiQueryWrapper.eq(QuestionAiEvaluation::getAnswerId, userQuestionAnswer.getId())
+                    .eq(QuestionAiEvaluation::getUserId, userId);
+
+            QuestionAiEvaluation aiEvaluation = questionAiEvaluationMapper.selectOne(aiQueryWrapper);
+            if (aiEvaluation != null) {
+                AiEvaluationResult aiResult = new AiEvaluationResult();
+                BeanUtils.copyProperties(aiEvaluation, aiResult);
+                vo.setAiResult(aiResult);
+            }
+
+            vo.setTitle(interviewInfo.getTitle());
+            vo.setAnalysis(interviewInfo.getAnalysis());
+            vo.setQuestionType(interviewInfo.getQuestionType());
+
+        }
+
+        if (groupType.equals(GroupType.CERTIFICATION)) {
+            LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
+            questionInfoQueryWrapper.in(CertificateQuestionInfo::getId, questionId)
+                    .eq(CertificateQuestionInfo::getIsReleased, true)
+                    .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
+            CertificateQuestionInfo certificateInfo = certificateQuestionInfoMapper.selectOne(questionInfoQueryWrapper);
+            if (certificateInfo == null) {
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
+            vo.setOptions(certificateInfo.getOptions());
+            vo.setQuestionType(certificateInfo.getQuestionType());
+            vo.setCorrectAnswer(certificateInfo.getCorrectAnswer());
+            vo.setImageUrl(certificateInfo.getImageUrl());
+            vo.setTitle(certificateInfo.getTitle());
+            vo.setAnalysis(certificateInfo.getAnalysis());
+        }
+
+        vo.setQuestionId(userQuestionAnswer.getQuestionId());
+        vo.setChosenOptions(userQuestionAnswer.getChosenOptions());
+        vo.setContent(userQuestionAnswer.getContent());
+        vo.setAnsweredTime(userQuestionAnswer.getAnsweredTime());
+        vo.setContent(userQuestionAnswer.getContent());
+
+        return vo;
+    }
+
+    @Override
+    public PageResult<FavoriteQuestionBankVO> getFavoriteQuestionBanks(Long userId, GroupType groupType, Integer pageNum, Integer pageSize) {
+        long current = pageNum == null || pageNum < 1 ? 1L : pageNum;
+        long size = pageSize == null ? 20L : Math.min(Math.max(pageSize, 1), 50);
+
+        if (userId == null) {
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+        if (groupType == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        Page<FavoriteQuestionBankVO> page = new Page<>(current, size);
+
+        IPage<FavoriteQuestionBankVO> favoriteQuestionBanks = userFavoriteQuestionMapper.getFavQuestionBanks(page, groupType, userId);
+
+        PageResult<FavoriteQuestionBankVO> result = new PageResult<>();
+        result.setTotal(favoriteQuestionBanks.getTotal());
+        result.setRecords(favoriteQuestionBanks.getRecords());
+        result.setPageNum(favoriteQuestionBanks.getCurrent());
+        result.setPageSize(favoriteQuestionBanks.getSize());
+
+
+        List<FavoriteQuestionBankVO> records = result.getRecords();
+        if (records.isEmpty()) {
+            return result;
+        }
+        List<Long> bankIds = records.stream().map(FavoriteQuestionBankVO::getBankId).toList();
+
+
+        LambdaQueryWrapper<BankTag> tagQueryWrapper = new LambdaQueryWrapper<>();
+        tagQueryWrapper.in(BankTag::getBankId, bankIds);
+        List<BankTag> bankTags = bankTagMapper.selectList(tagQueryWrapper);
+        Map<Long, List<String>> tagNamesMap = bankTags.stream().collect(Collectors.groupingBy(BankTag::getBankId, Collectors.mapping(BankTag::getTagName, Collectors.toList())));
+
+        records.forEach(record ->
+                record.setTagNames(tagNamesMap.getOrDefault(record.getBankId(), Collections.emptyList())));
+        return result;
+    }
+
+    @Override
+    public PageResult<FavoriteQuestionVO> getFavoriteQuestions(Long userId, Long bankId, Integer pageNum, Integer pageSize) {
+        //校验pageNum, pageSize，以防前端传的数字过大
+        long current = pageNum == null || pageNum < 1 ? 1L : pageNum;
+        long size = pageSize == null ? 20L : Math.min(Math.max(pageSize, 1), 50);
+
+        if (userId == null) {
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+
+        if (bankId == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        GroupType groupType = questionBankMapper.getGroupType(bankId);
+        if (groupType == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        Page<FavoriteQuestionVO> page = new Page<>(current, size);
+        IPage<FavoriteQuestionVO> favQuestions = userFavoriteQuestionMapper.getFavQuestions(page, userId, bankId);
+
+
+        PageResult<FavoriteQuestionVO> result = new PageResult<>();
+        result.setTotal(favQuestions.getTotal());
+        result.setRecords(favQuestions.getRecords());
+        result.setPageNum(favQuestions.getCurrent());
+        result.setPageSize(favQuestions.getSize());
+
+
+        List<FavoriteQuestionVO> records = result.getRecords();
+        if (records.isEmpty()) {
+            return result;
+        }
+
+        List<Long> questionIds = records.stream().map(FavoriteQuestionVO::getQuestionId).toList();
+
+        if (groupType.equals(GroupType.INTERVIEW)) {
+            LambdaQueryWrapper<InterviewQuestionInfo> interviewInfoQueryWrapper = new LambdaQueryWrapper<>();
+            interviewInfoQueryWrapper.in(InterviewQuestionInfo::getId, questionIds)
+                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
+            List<InterviewQuestionInfo> interviewQuestionInfos = interviewQuestionInfoMapper.selectList(interviewInfoQueryWrapper);
+            Map<Long, String> questionIdToTitleMap = interviewQuestionInfos.stream().collect(Collectors.toMap(InterviewQuestionInfo::getId, InterviewQuestionInfo::getTitle));
+            Map<Long, QuestionInfoQuestionType> questionTypeMap = interviewQuestionInfos.stream().collect(Collectors.toMap(InterviewQuestionInfo::getId, InterviewQuestionInfo::getQuestionType));
+
+            records.forEach(record -> {
+                String title = questionIdToTitleMap.get(record.getQuestionId());
+                QuestionInfoQuestionType questionType = questionTypeMap.get(record.getQuestionId());
+                if (!StringUtils.hasText(title)) {
+                    record.setIsAvailable(false); //给前端一个标识，当isAvailable = false，表示这道题已下架或删除
+                    record.setTitle(null);
+                    record.setQuestionType(null); //没找到questionId，title和type都设置为null，因为这两个字段都是必填项，当找不到questionId时，说明这道题已下架或删除
+                } else {
+                    record.setIsAvailable(true);
+                    record.setTitle(title);
+                    record.setQuestionType(questionType);
+                }
+
+            });
+        }
+        if (groupType.equals(GroupType.CERTIFICATION)) {
+            LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
+            questionInfoQueryWrapper.in(CertificateQuestionInfo::getId, questionIds)
+                    .eq(CertificateQuestionInfo::getIsReleased, true)
+                    .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
+            List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(questionInfoQueryWrapper);
+            Map<Long, String> questionIdToTitleMap = certificateQuestionInfos.stream().collect(Collectors.toMap(CertificateQuestionInfo::getId, CertificateQuestionInfo::getTitle));
+            Map<Long, QuestionInfoQuestionType> questionTypeMap = certificateQuestionInfos.stream().collect(Collectors.toMap(CertificateQuestionInfo::getId, CertificateQuestionInfo::getQuestionType));
+
+
+            records.forEach(record -> {
+                String title = questionIdToTitleMap.get(record.getQuestionId());
+                QuestionInfoQuestionType questionType = questionTypeMap.get(record.getQuestionId());
+                if (!StringUtils.hasText(title)) {
+                    record.setIsAvailable(false); //给前端一个标识，当isAvailable = false，表示这道题已下架或删除
+                    record.setTitle(null);
+                    record.setQuestionType(null);
+                } else {
+                    record.setIsAvailable(true);
+                    record.setTitle(title);
+                    record.setQuestionType(questionType);
+                }
+            });
+        }
+        return result;
+    }
+
+    @Override
+    public FavoriteQuestionReviewVO getFavoriteQuestion(Long userId, Long bankId, Long questionId) {
+        if (userId == null) {
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+
+        if (bankId == null || questionId == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        GroupType groupType = questionBankMapper.getGroupType(bankId);
+        if (groupType == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        //用于校验用户主动取消的收藏题目
+        LambdaQueryWrapper<UserFavoriteQuestion> userFavoriteQuestionQueryWrapper = new LambdaQueryWrapper<>();
+        userFavoriteQuestionQueryWrapper.eq(UserFavoriteQuestion::getUserId, userId)
+                .eq(UserFavoriteQuestion::getBankId, bankId)
+                .eq(UserFavoriteQuestion::getQuestionId, questionId);
+        UserFavoriteQuestion userFavoriteQuestion = userFavoriteQuestionMapper.selectOne(userFavoriteQuestionQueryWrapper);
+        if (userFavoriteQuestion == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        FavoriteQuestionReviewVO vo = new FavoriteQuestionReviewVO();
+        if (groupType.equals(GroupType.INTERVIEW)) {
+            LambdaQueryWrapper<InterviewQuestionInfo> interviewInfoQueryWrapper = new LambdaQueryWrapper<>();
+            interviewInfoQueryWrapper.eq(InterviewQuestionInfo::getId, questionId)
+                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
+            InterviewQuestionInfo interviewInfo = interviewQuestionInfoMapper.selectOne(interviewInfoQueryWrapper);
+            if (interviewInfo == null) {
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
+
+            vo.setTitle(interviewInfo.getTitle());
+            vo.setAnalysis(interviewInfo.getAnalysis());
+            vo.setQuestionType(interviewInfo.getQuestionType());
+            vo.setQuestionId(interviewInfo.getId());
+        }
+        if (groupType.equals(GroupType.CERTIFICATION)) {
+            LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
+            questionInfoQueryWrapper.eq(CertificateQuestionInfo::getId, questionId)
+                    .eq(CertificateQuestionInfo::getIsReleased, true)
+                    .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
+            CertificateQuestionInfo certificateInfo = certificateQuestionInfoMapper.selectOne(questionInfoQueryWrapper);
+            if (certificateInfo == null) {
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
+            vo.setTitle(certificateInfo.getTitle());
+            vo.setAnalysis(certificateInfo.getAnalysis());
+            vo.setQuestionType(certificateInfo.getQuestionType());
+            vo.setQuestionId(certificateInfo.getId());
+            vo.setCorrectAnswer(certificateInfo.getCorrectAnswer());
+            vo.setOptions(certificateInfo.getOptions());
+            vo.setImageUrl(certificateInfo.getImageUrl());
+        }
+        return vo;
+    }
+
+    @Override
+    public PageResult<NoteBankVO> getNoteBanks(Long userId, GroupType groupType, Integer pageNum, Integer pageSize) {
+
+        long current = pageNum == null || pageNum < 1 ? 1L : pageNum;
+        long size = pageSize == null ? 20L : Math.min(Math.max(pageSize, 1), 50);
+
+        if (userId == null) {
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+
+        if (groupType == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        Page<NoteBankVO> page = new Page<>(current, size);
+
+        IPage<NoteBankVO> noteBanks = userQuestionNoteMapper.getNoteBanks(page, groupType, userId);
+
+        PageResult<NoteBankVO> result = new PageResult<>();
+        result.setTotal(noteBanks.getTotal());
+        result.setRecords(noteBanks.getRecords());
+        result.setPageNum(noteBanks.getCurrent());
+        result.setPageSize(noteBanks.getSize());
+
+
+        List<NoteBankVO> records = result.getRecords();
+        if (records.isEmpty()) {
+            return result;
+        }
+        List<Long> bankIds = records.stream().map(NoteBankVO::getBankId).toList();
+
+
+        LambdaQueryWrapper<BankTag> tagQueryWrapper = new LambdaQueryWrapper<>();
+        tagQueryWrapper.in(BankTag::getBankId, bankIds);
+        List<BankTag> bankTags = bankTagMapper.selectList(tagQueryWrapper);
+        Map<Long, List<String>> tagNamesMap = bankTags.stream().collect(Collectors.groupingBy(BankTag::getBankId, Collectors.mapping(BankTag::getTagName, Collectors.toList())));
+
+        records.forEach(record ->
+                record.setTagNames(tagNamesMap.getOrDefault(record.getBankId(), Collections.emptyList())));
+        return result;
+
+    }
 }

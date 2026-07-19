@@ -20,5 +20,4 @@ public interface UserQuestionAnswerMapper extends BaseMapper<UserQuestionAnswer>
 
     IPage<WrongQuestionVO> getWrongQuestions(Page<WrongQuestionVO> page,@Param("userId") Long userId,@Param("bankId") Long bankId);
 
-    GroupType getGroupType(@Param("bankId") Long bankId);
 }

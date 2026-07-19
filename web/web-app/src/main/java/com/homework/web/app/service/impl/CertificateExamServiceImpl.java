@@ -502,7 +502,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             reviewVO.setAnalysis(questionInfo.getAnalysis());
             reviewVO.setIsFavorite(favoriteQuestionMap.containsKey(questionId));
 
-            reviewVO.setChosonOptions(answer == null ? null : answer.getChosenOptions());
+            reviewVO.setChosenOptions(answer == null ? null : answer.getChosenOptions());
             reviewVO.setIsCorrect(answered ? correct : null); //answered 本身结果就是 true/false
 
             reviewVOs.add(reviewVO);

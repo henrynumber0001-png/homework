@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-//答题卡review
 public class InterviewQuestionReviewVO {
 
     private Long questionId;

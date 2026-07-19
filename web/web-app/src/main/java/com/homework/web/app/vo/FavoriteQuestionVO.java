@@ -1,14 +1,12 @@
-package com.homework.web.app.dto;
+package com.homework.web.app.vo;
 
 import com.homework.model.enums.QuestionInfoQuestionType;
 import lombok.Data;
 
-import java.util.List;
-
 @Data
-public class CertificateQuestionSubmitDTO {
-    private Long bankId;
+public class FavoriteQuestionVO {
     private Long questionId;
+    private String title;
     private QuestionInfoQuestionType questionType;
-    private List<String> chosenOptions;
+    private Boolean isAvailable;
 }

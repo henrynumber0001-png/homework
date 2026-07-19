@@ -1,7 +1,12 @@
 package com.homework.web.app.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.model.entity.UserFavoriteQuestion;
+import com.homework.model.enums.GroupType;
+import com.homework.web.app.vo.FavoriteQuestionBankVO;
+import com.homework.web.app.vo.FavoriteQuestionVO;
 import org.apache.ibatis.annotations.*;
 
 @Mapper
@@ -45,4 +50,8 @@ public interface UserFavoriteQuestionMapper extends BaseMapper<UserFavoriteQuest
             WHERE id = #{id} AND is_deleted = 0
             """)
     int deactivateById(@Param("id") Long id);
+
+    IPage<FavoriteQuestionBankVO> getFavQuestionBanks(Page<FavoriteQuestionBankVO> page, GroupType groupType, Long userId);
+
+    IPage<FavoriteQuestionVO> getFavQuestions(Page<FavoriteQuestionVO> page, Long userId, Long bankId);
 }
