@@ -6,7 +6,6 @@ import java.util.List;
 
 @Data
 public class NoteBankVO {
-
     private Long bankId;
     private String bankName;
     //来自QuestionBank

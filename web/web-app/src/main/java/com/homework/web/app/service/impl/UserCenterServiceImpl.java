@@ -595,4 +595,154 @@ public class UserCenterServiceImpl implements UserCenterService {
         return result;
 
     }
+
+    @Override
+    public PageResult<NoteQuestionVO> getNoteQuestions(Long userId, Long bankId, Integer pageNum, Integer pageSize) {
+        long current = pageNum == null || pageNum < 1 ? 1L : pageNum;
+        long size = pageSize == null ? 20L : Math.min(Math.max(pageSize, 1), 50);
+
+        if (userId == null) {
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+
+        if (bankId == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        GroupType groupType = questionBankMapper.getGroupType(bankId);
+        if (groupType == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        Page<NoteQuestionVO> page = new Page<>(current, size);
+        IPage<NoteQuestionVO> noteQuestions = userQuestionNoteMapper.getNoteQuestions(page, userId, bankId);
+
+        PageResult<NoteQuestionVO> result = new PageResult<>();
+        result.setTotal(noteQuestions.getTotal());
+        result.setRecords(noteQuestions.getRecords());
+        result.setPageNum(noteQuestions.getCurrent());
+        result.setPageSize(noteQuestions.getSize());
+
+        List<NoteQuestionVO> records = result.getRecords();
+        if (records.isEmpty()) {
+            return result;
+        }
+        List<Long> questionIds = records.stream().map(NoteQuestionVO::getQuestionId).toList();
+
+        if (groupType.equals(GroupType.INTERVIEW)) {
+            LambdaQueryWrapper<InterviewQuestionInfo> interviewInfoQueryWrapper = new LambdaQueryWrapper<>();
+            interviewInfoQueryWrapper.in(InterviewQuestionInfo::getId, questionIds)
+                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
+            List<InterviewQuestionInfo> interviewQuestionInfos = interviewQuestionInfoMapper.selectList(interviewInfoQueryWrapper);
+            Map<Long, String> questionIdToTitleMap = interviewQuestionInfos.stream().collect(Collectors.toMap(InterviewQuestionInfo::getId, InterviewQuestionInfo::getTitle));
+            Map<Long, QuestionInfoQuestionType> questionTypeMap = interviewQuestionInfos.stream().collect(Collectors.toMap(InterviewQuestionInfo::getId, InterviewQuestionInfo::getQuestionType));
+
+            records.forEach(record -> {
+                String title = questionIdToTitleMap.get(record.getQuestionId());
+                QuestionInfoQuestionType questionType = questionTypeMap.get(record.getQuestionId());
+                if (!StringUtils.hasText(title)) {
+                    record.setIsAvailable(false); //给前端一个标识，当isAvailable = false，表示这道题已下架或删除
+                    record.setTitle(null);
+                    record.setQuestionType(null); //没找到questionId，title和type都设置为null，因为这两个字段都是必填项，当找不到questionId时，说明这道题已下架或删除
+                } else {
+                    record.setIsAvailable(true);
+                    record.setTitle(title);
+                    record.setQuestionType(questionType);
+                }
+
+            });
+        }
+        if (groupType.equals(GroupType.CERTIFICATION)) {
+            LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
+            questionInfoQueryWrapper.in(CertificateQuestionInfo::getId, questionIds)
+                    .eq(CertificateQuestionInfo::getIsReleased, true)
+                    .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
+            List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(questionInfoQueryWrapper);
+            Map<Long, String> questionIdToTitleMap = certificateQuestionInfos.stream().collect(Collectors.toMap(CertificateQuestionInfo::getId, CertificateQuestionInfo::getTitle));
+            Map<Long, QuestionInfoQuestionType> questionTypeMap = certificateQuestionInfos.stream().collect(Collectors.toMap(CertificateQuestionInfo::getId, CertificateQuestionInfo::getQuestionType));
+
+
+            records.forEach(record -> {
+                String title = questionIdToTitleMap.get(record.getQuestionId());
+                QuestionInfoQuestionType questionType = questionTypeMap.get(record.getQuestionId());
+                if (!StringUtils.hasText(title)) {
+                    record.setIsAvailable(false); //给前端一个标识，当isAvailable = false，表示这道题已下架或删除
+                    record.setTitle(null);
+                    record.setQuestionType(null);
+                } else {
+                    record.setIsAvailable(true);
+                    record.setTitle(title);
+                    record.setQuestionType(questionType);
+                }
+            });
+        }
+        return result;
+
+    }
+
+    @Override
+    public NoteVO getNote(Long userId, Long bankId, Long questionId) {
+        if (userId == null) {
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+
+        if (bankId == null || questionId == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        GroupType groupType = questionBankMapper.getGroupType(bankId);
+        if (groupType == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        LambdaQueryWrapper<UserQuestionNote> userQuestionNoteQueryWrapper = new LambdaQueryWrapper<>();
+        userQuestionNoteQueryWrapper.eq(UserQuestionNote::getUserId, userId)
+                .eq(UserQuestionNote::getBankId, bankId)
+                .eq(UserQuestionNote::getQuestionId, questionId);
+        UserQuestionNote userQuestionNote = userQuestionNoteMapper.selectOne(userQuestionNoteQueryWrapper);
+        if (userQuestionNote == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+        NoteVO vo = new NoteVO();
+        if (groupType.equals(GroupType.INTERVIEW)) {
+            LambdaQueryWrapper<InterviewQuestionInfo> interviewInfoQueryWrapper = new LambdaQueryWrapper<>();
+            interviewInfoQueryWrapper.eq(InterviewQuestionInfo::getId, questionId)
+                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
+            InterviewQuestionInfo interviewInfo = interviewQuestionInfoMapper.selectOne(interviewInfoQueryWrapper);
+            if (interviewInfo == null) {
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
+
+            vo.setTitle(interviewInfo.getTitle());
+            vo.setAnalysis(interviewInfo.getAnalysis());
+            vo.setQuestionType(interviewInfo.getQuestionType());
+            vo.setQuestionId(interviewInfo.getId());
+        }
+        if (groupType.equals(GroupType.CERTIFICATION)) {
+            LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
+            questionInfoQueryWrapper.eq(CertificateQuestionInfo::getId, questionId)
+                    .eq(CertificateQuestionInfo::getIsReleased, true)
+                    .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
+            CertificateQuestionInfo certificateInfo = certificateQuestionInfoMapper.selectOne(questionInfoQueryWrapper);
+            if (certificateInfo == null) {
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
+            vo.setTitle(certificateInfo.getTitle());
+            vo.setAnalysis(certificateInfo.getAnalysis());
+            vo.setQuestionType(certificateInfo.getQuestionType());
+            vo.setQuestionId(certificateInfo.getId());
+            vo.setCorrectAnswer(certificateInfo.getCorrectAnswer());
+            vo.setOptions(certificateInfo.getOptions());
+            vo.setImageUrl(certificateInfo.getImageUrl());
+        }
+        vo.setNoteId(userQuestionNote.getId());
+        vo.setUpdatedTime(userQuestionNote.getUpdatedTime());
+        vo.setNoteContent(userQuestionNote.getNoteContent());
+
+        return vo;
+
+    }
 }

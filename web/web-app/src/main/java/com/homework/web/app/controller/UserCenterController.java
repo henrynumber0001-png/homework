@@ -74,5 +74,17 @@ public class UserCenterController {
                                                                             @RequestParam(defaultValue = "20") Integer pageSize) {
         return Result.success(userCenterService.getNoteBanks(LoginUserHolder.getUserId(), groupType, pageNum, pageSize));
     }
+
+    @GetMapping("/note-list")
+    public Result<PageResult<NoteQuestionVO>> noteQuestionList(@RequestParam Long bankId,
+                                                                       @RequestParam(defaultValue = "1") Integer pageNum,
+                                                                       @RequestParam(defaultValue = "20") Integer pageSize){
+        return Result.success(userCenterService.getNoteQuestions(LoginUserHolder.getUserId(),bankId,pageNum, pageSize));
+    }
+
+    @GetMapping("/note-question")
+    public Result<NoteVO> note(@RequestParam Long bankId ,@RequestParam Long questionId){
+        return Result.success(userCenterService.getNote(LoginUserHolder.getUserId(),bankId,questionId));
+    }
 }
 

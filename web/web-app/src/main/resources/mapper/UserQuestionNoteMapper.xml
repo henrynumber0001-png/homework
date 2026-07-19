@@ -23,4 +23,13 @@
         GROUP BY qb.id, qb.bank_name
         ORDER BY qb.id DESC
     </select>
+    <select id="getNoteQuestions" resultType="com.homework.web.app.vo.NoteQuestionVO">
+        SELECT
+            uqn.question_id
+        FROM user_question_note uqn
+        WHERE uqn.bank_id = #{bankId}
+          AND uqn.user_id = #{userId}
+          AND uqn.is_deleted = 0
+        ORDER BY uqn.updated_time DESC, uqn.id DESC
+    </select>
 </mapper>

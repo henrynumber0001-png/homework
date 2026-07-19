@@ -20,4 +20,8 @@ public interface UserCenterService {
     FavoriteQuestionReviewVO getFavoriteQuestion(Long userId, Long bankId, Long questionId);
 
     PageResult<NoteBankVO> getNoteBanks(Long userId, GroupType groupType, Integer pageNum, Integer pageSize);
+
+    PageResult<NoteQuestionVO> getNoteQuestions(Long userId, Long bankId, Integer pageNum, Integer pageSize);
+
+    NoteVO getNote(Long userId, Long bankId, Long questionId);
 }
