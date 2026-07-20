@@ -7,6 +7,7 @@ import com.homework.model.enums.PrivateMessageAllowReason;
 import com.homework.web.app.dto.PrivateMessageCreateDTO;
 import com.homework.web.app.mapper.PrivateMessageMapper;
 import com.homework.web.app.mapper.UserInfoMapper;
+import com.homework.web.app.mapper.UserFollowMapper;
 import com.homework.web.app.mapper.UserNotificationMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

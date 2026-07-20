@@ -15,6 +15,7 @@ import com.homework.web.app.context.LoginUserHolder;
 import com.homework.web.app.dto.CertificateExamAnswerDTO;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.CertificateExamService;
+import com.homework.web.app.service.MembershipAccessService;
 import com.homework.web.app.vo.BankFinishVO;
 import com.homework.web.app.vo.CertificateExamQuestionVO;
 import com.homework.web.app.vo.CertificateExamVO;
@@ -56,12 +57,15 @@ public class CertificateExamServiceImpl implements CertificateExamService {
 
     private final UserFavoriteQuestionMapper userFavoriteQuestionMapper;
 
+    private final MembershipAccessService membershipAccessService;
+
 
     @Transactional(noRollbackFor = ExamExpiredException.class)
     @Override
     //前端只有 bankId，还不知道 sessionId 时调用，例如用户从题库列表点击“开始考试”。
     //它更像“进入考试的总入口”。
     public CertificateExamVO startOrResume(Long bankId) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
 
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -166,6 +170,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
     @Override
     //前端已经知道 sessionId，希望精确恢复这一场考试时调用（浏览器刷新页面/从考试页面重新加载）
     public CertificateExamVO getSession(Long sessionId) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (sessionId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -187,6 +192,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
     @Transactional(noRollbackFor = ExamExpiredException.class) //确保自动交卷不会回滚
     @Override
     public void saveAnswer(CertificateExamAnswerDTO dto) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         // buildExamVO() 是“后端向前端返回数据”，而 saveAnswer() 是“后端接收前端传回的数据”。
         // 后端不能因为之前返回过正确数据，就默认之后收到的数据一定没被修改。
 
@@ -260,6 +266,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
     @Transactional
     @Override
     public BankFinishVO submit(Long sessionId) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (sessionId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }

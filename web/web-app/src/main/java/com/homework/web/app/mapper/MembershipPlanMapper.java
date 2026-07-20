@@ -1,9 +1,9 @@
 package com.homework.web.app.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.homework.model.entity.PremiumOrder;
+import com.homework.model.entity.MembershipPlan;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface PremiumOrderMapper extends BaseMapper<PremiumOrder> {
+public interface MembershipPlanMapper extends BaseMapper<MembershipPlan> {
 }

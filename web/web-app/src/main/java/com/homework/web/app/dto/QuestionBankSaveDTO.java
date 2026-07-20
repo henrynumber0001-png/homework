@@ -31,9 +31,6 @@ public class QuestionBankSaveDTO {
     /** 人工排序权重。 */
     private Integer priority;
 
-    /** 是否是会员题库。 */
-    private Boolean isPremium;
-
     /** 题库内题目数量。 */
     private Integer questionCount;
 

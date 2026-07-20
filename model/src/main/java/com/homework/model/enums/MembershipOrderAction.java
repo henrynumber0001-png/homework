@@ -5,10 +5,11 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
-public enum PremiumOrderType implements BaseEnum {
+public enum MembershipOrderAction implements BaseEnum {
 
-    MONTHLY(1, "monthly"),
-    YEARLY(2, "yearly");
+    PURCHASE(1, "purchase"),
+    UPGRADE(2, "upgrade"),
+    RENEWAL(3, "renewal");
 
     @EnumValue
     @JsonValue
@@ -16,7 +17,7 @@ public enum PremiumOrderType implements BaseEnum {
 
     private final String label;
 
-    PremiumOrderType(Integer value, String label) {
+    MembershipOrderAction(Integer value, String label) {
         this.value = value;
         this.label = label;
     }

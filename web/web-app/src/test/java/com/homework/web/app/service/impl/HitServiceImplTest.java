@@ -83,7 +83,10 @@ class HitServiceImplTest {
     void activateLikeInsertsActionAndIncreasesCounter() {
         HitPost post = publishedPost(100L, 9L, 1);
         when(hitPostMapper.selectOne(any())).thenReturn(post);
+        when(hitPostMapper.lockPublishedPost(100L)).thenReturn(100L);
         when(hitActionMapper.selectIncludingDeletedForUpdate(100L, 7L, 1)).thenReturn(null);
+        when(hitActionMapper.insert(any(HitAction.class))).thenReturn(1);
+        when(hitPostMapper.changeActionCounters(100L, 1, 0, 0)).thenReturn(1);
         when(hitPostMapper.selectById(100L)).thenReturn(post);
 
         HitActionDTO dto = new HitActionDTO();
@@ -110,8 +113,10 @@ class HitServiceImplTest {
         existing.setDeleted(false);
 
         when(hitPostMapper.selectOne(any())).thenReturn(post);
+        when(hitPostMapper.lockPublishedPost(100L)).thenReturn(100L);
         when(hitActionMapper.selectIncludingDeletedForUpdate(100L, 7L, 1)).thenReturn(existing);
         when(hitActionMapper.deactivateById(50L)).thenReturn(1);
+        when(hitPostMapper.changeActionCounters(100L, -1, 0, 0)).thenReturn(1);
         when(hitPostMapper.selectById(100L)).thenReturn(post);
 
         HitActionDTO dto = new HitActionDTO();

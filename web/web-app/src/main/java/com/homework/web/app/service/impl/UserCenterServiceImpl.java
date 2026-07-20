@@ -10,6 +10,7 @@ import com.homework.model.entity.*;
 import com.homework.model.enums.*;
 import com.homework.web.app.dto.AiEvaluationResult;
 import com.homework.web.app.mapper.*;
+import com.homework.web.app.service.MembershipService;
 import com.homework.web.app.service.UserCenterService;
 import com.homework.web.app.vo.*;
 import lombok.RequiredArgsConstructor;
@@ -17,10 +18,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,7 +29,7 @@ public class UserCenterServiceImpl implements UserCenterService {
 
     private final UserInfoMapper userInfoMapper;
     private final GraphInfoMapper graphInfoMapper;
-    private final PremiumUserInfoMapper premiumUserInfoMapper;
+    private final MembershipService membershipService;
     private final UserFollowMapper userFollowMapper;
     private final HitPostMapper hitPostMapper;
     private final UserQuestionAnswerMapper userQuestionAnswerMapper;
@@ -82,22 +81,10 @@ public class UserCenterServiceImpl implements UserCenterService {
         }
 
 
-        //装配List<PremiumUserInfoVO> premiumUserInfoVOList;
-
-        LambdaQueryWrapper<PremiumUserInfo> premiumUserInfoQueryWrapper = new LambdaQueryWrapper<>();
-        premiumUserInfoQueryWrapper.eq(PremiumUserInfo::getUserId, userId)
-                .eq(PremiumUserInfo::getStatus, PremiumStatus.ACTIVE);
-
-        List<PremiumUserInfo> premiumUserInfos = premiumUserInfoMapper.selectList(premiumUserInfoQueryWrapper);
-        //Set集合，遍历速度快 0(1)
-        Set<PremiumOrderScope> premiumScopesSet = premiumUserInfos.stream().map(PremiumUserInfo::getPremiumScope).collect(Collectors.toSet());
-        if (premiumUserInfos.isEmpty()) {
-            userCenterPageVO.setPremium(false);
-            userCenterPageVO.setSuperPremium(false);
-        } else {
-            userCenterPageVO.setPremium(true);
-            userCenterPageVO.setSuperPremium(premiumScopesSet.contains(PremiumOrderScope.FULLACCESS)); //返回true/false
-        }
+        MembershipSubscriptionVO subscription = membershipService.getCurrentSubscription(userId);
+        userCenterPageVO.setMembershipActive(Boolean.TRUE.equals(subscription.getActive()));
+        userCenterPageVO.setMembershipType(subscription.getMembershipType());
+        userCenterPageVO.setAiFeaturesEnabled(Boolean.TRUE.equals(subscription.getAiEvaluationEnabled()));
 
         //组装followerCount
         LambdaQueryWrapper<UserFollow> userFollowQueryWrapper = new LambdaQueryWrapper<>();
@@ -744,5 +731,31 @@ public class UserCenterServiceImpl implements UserCenterService {
 
         return vo;
 
+    }
+
+    @Override
+    public MembershipInfoVO getMembershipInfo(Long userId) {
+        if(userId == null){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+
+        //先查询用户名和头像
+        LambdaQueryWrapper<UserInfo> userInfoQueryWrapper = new LambdaQueryWrapper<>();
+        userInfoQueryWrapper.eq(UserInfo::getId,userId)
+                .eq(UserInfo::getStatus,UserInfoStatus.ACTIVE);
+        UserInfo userInfo = userInfoMapper.selectOne(userInfoQueryWrapper);
+        if(userInfo == null){
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+
+        MembershipInfoVO vo = new MembershipInfoVO();
+
+        MembershipCardVO cardVO = new MembershipCardVO();
+        BeanUtils.copyProperties(membershipService.getCurrentSubscription(userId),cardVO);
+        vo.setMembershipCard(cardVO);
+        vo.setDisplayName(userInfo.getDisplayName());
+        vo.setAvatarUrl(userInfo.getAvatar());
+        return vo;
     }
 }

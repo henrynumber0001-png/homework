@@ -9,6 +9,8 @@ import com.homework.web.app.context.LoginUserHolder;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.AiEvaluationService;
 import com.homework.web.app.service.LlmClient;
+import com.homework.web.app.service.MembershipAccessService;
+import com.homework.web.app.service.MembershipAccessSnapshot;
 import com.homework.web.app.vo.InterviewQuestionPageVO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,6 +53,8 @@ class QuestionInfoServiceImplTest {
     private AiPromptBuilder aiPromptBuilder;
     @Mock
     private UserFavoriteQuestionMapper userFavoriteQuestionMapper;
+    @Mock
+    private MembershipAccessService membershipAccessService;
 
     @InjectMocks
     private QuestionInfoServiceImpl service;
@@ -58,6 +62,8 @@ class QuestionInfoServiceImplTest {
     @BeforeEach
     void setUp() {
         LoginUserHolder.setUserId(7L);
+        when(membershipAccessService.requireActiveMembership(7L))
+                .thenReturn(new MembershipAccessSnapshot(true, null, null, null));
     }
 
     @AfterEach

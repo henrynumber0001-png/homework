@@ -86,5 +86,10 @@ public class UserCenterController {
     public Result<NoteVO> note(@RequestParam Long bankId ,@RequestParam Long questionId){
         return Result.success(userCenterService.getNote(LoginUserHolder.getUserId(),bankId,questionId));
     }
-}
 
+    @GetMapping("/membership-info")
+    public Result<MembershipInfoVO> membershipInfo(){
+        Long userId = LoginUserHolder.getUserId();
+        return Result.success(userCenterService.getMembershipInfo(userId));
+    }
+}

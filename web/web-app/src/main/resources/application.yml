@@ -22,6 +22,22 @@ mybatis-plus:
 server:
   port: ${SERVER_PORT:8080}
 
+payment:
+  wechat:
+    # 本地开发和测试默认关闭；生产环境配置完整密钥后显式设置为 true。
+    enabled: ${WECHAT_PAY_ENABLED:false}
+    app-id: ${WECHAT_PAY_APP_ID:}
+    merchant-id: ${WECHAT_PAY_MERCHANT_ID:}
+    merchant-serial-number: ${WECHAT_PAY_MERCHANT_SERIAL_NUMBER:}
+    merchant-private-key-path: ${WECHAT_PAY_MERCHANT_PRIVATE_KEY_PATH:}
+    wechat-pay-public-key-id: ${WECHAT_PAY_PUBLIC_KEY_ID:}
+    wechat-pay-public-key-path: ${WECHAT_PAY_PUBLIC_KEY_PATH:}
+    api-v3-key: ${WECHAT_PAY_API_V3_KEY:}
+    notify-url: ${WECHAT_PAY_NOTIFY_URL:}
+    zone-id: ${WECHAT_PAY_ZONE_ID:Asia/Shanghai}
+    product-description: ${WECHAT_PAY_PRODUCT_DESCRIPTION:Homework会员订阅}
+    reconciliation-delay-ms: ${WECHAT_PAY_RECONCILIATION_DELAY_MS:30000}
+
 
 cloudflare:
   turnstile:

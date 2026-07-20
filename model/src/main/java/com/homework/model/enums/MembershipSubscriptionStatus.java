@@ -5,11 +5,11 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
-public enum QuestionBankAccessType implements BaseEnum {
+public enum MembershipSubscriptionStatus implements BaseEnum {
 
-    FREE(1, "free"),
-    PREMIUM(2, "premium"),
-    MIXED_PREVIEW(3, "mixed_preview");
+    ACTIVE(1, "active"),
+    EXPIRED(2, "expired"),
+    CANCELLED(3, "cancelled");
 
     @EnumValue
     @JsonValue
@@ -17,7 +17,7 @@ public enum QuestionBankAccessType implements BaseEnum {
 
     private final String label;
 
-    QuestionBankAccessType(Integer value, String label) {
+    MembershipSubscriptionStatus(Integer value, String label) {
         this.value = value;
         this.label = label;
     }

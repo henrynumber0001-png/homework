@@ -1,6 +1,5 @@
 package com.homework.model.entity;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
 import java.math.BigDecimal;
@@ -32,9 +31,6 @@ public class QuestionBank extends BaseEntity {
     private Integer hotScore;
 
     private Integer priority;
-
-    @TableField("is_premium")
-    private Boolean isPremium;
 
     @Schema(description = "题库中题目的数量")
     private Integer questionCount;

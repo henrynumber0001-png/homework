@@ -10,6 +10,8 @@ import com.homework.web.app.dto.*;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.AiEvaluationService;
 import com.homework.web.app.service.LlmClient;
+import com.homework.web.app.service.MembershipAccessService;
+import com.homework.web.app.service.MembershipAccessSnapshot;
 import com.homework.web.app.service.QuestionInfoService;
 import com.homework.web.app.vo.*;
 import lombok.RequiredArgsConstructor;
@@ -39,9 +41,11 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     private final LlmClient llmClient;
     private final AiPromptBuilder aiPromptBuilder;
     private final UserFavoriteQuestionMapper userFavoriteQuestionMapper;
+    private final MembershipAccessService membershipAccessService;
 
     @Override
     public List<InterviewQuestionPageVO> getQuestionsByBankId(Long bankId) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
 
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -91,6 +95,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public InterViewAnswerPageVO getInterviewAnswer(InterviewQuestionSubmitDTO submitDTO) {
+        MembershipAccessSnapshot access = membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         //允许用户输入的回答为空
         if (submitDTO == null || submitDTO.getQuestionId() == null || submitDTO.getBankId() == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -132,14 +137,15 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         String analysis = questionInfo.getAnalysis();
         String content = submitDTO.getContent();
 
-        //提供 题目名称、用户回答内容、题目解析给 AI模型，然后获取 AI模型的评价结果
-        AiEvaluationResult aiResult = aiEvaluationService.evaluateInterviewAnswer(title, content, analysis);
+        // 拦截一手，看看会员是否有premium权限，有，才能返回AI评价
+        AiEvaluationResult aiResult = access.premium() ? aiEvaluationService.evaluateInterviewAnswer(title, content, analysis) : null;
 
         //返回给前端
         InterViewAnswerPageVO answer = new InterViewAnswerPageVO();
         answer.setQuestionId(questionId);
         answer.setAnalysis(questionInfo.getAnalysis());
         answer.setAiResult(aiResult);
+        answer.setAiEvaluationEnabled(access.premium());
         answer.setIsFavorite(favoriteQuestionMap.containsKey(questionId));
 
         //把用户输入的回答放到 用户ID下的专门的一张表 user_question_answer, 用于用户其他信息查询功能（如答题历史、收藏、错题）
@@ -151,8 +157,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         userAnswer.setQuestionId(questionId);
         userAnswer.setContent(submitDTO.getContent());
         userAnswer.setQuestionType(QuestionInfoQuestionType.ESSAY);
-        userAnswer.setAiScoreRate(aiResult.getScoreRate());
-        userAnswer.setIsCorrect(aiResult.getScoreRate().compareTo(BigDecimal.valueOf(60)) >= 0);
+        if (aiResult != null) {
+            userAnswer.setAiScoreRate(aiResult.getScoreRate());
+            userAnswer.setIsCorrect(aiResult.getScoreRate().compareTo(BigDecimal.valueOf(60)) >= 0);
+        }
         userAnswer.setAnsweredTime(LocalDateTime.now());
 
         Long answerId = saveOrUpdateLatestAnswer(userAnswer);
@@ -160,18 +168,21 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         //QuestionAiEvaluation 负责记录：AI 对这个用户这次答案的评价
 
         //记录一次 AI 对这次用户提交答案的评价
-        QuestionAiEvaluation questionAiEvaluation = new QuestionAiEvaluation();
-        questionAiEvaluation.setUserId(userId);
-        questionAiEvaluation.setQuestionId(questionId);
-        questionAiEvaluation.setAnswerId(answerId);
-        BeanUtils.copyProperties(aiResult, questionAiEvaluation);
-        saveOrUpdateLatestEvaluation(questionAiEvaluation);
+        if (aiResult != null) {
+            QuestionAiEvaluation questionAiEvaluation = new QuestionAiEvaluation();
+            questionAiEvaluation.setUserId(userId);
+            questionAiEvaluation.setQuestionId(questionId);
+            questionAiEvaluation.setAnswerId(answerId);
+            BeanUtils.copyProperties(aiResult, questionAiEvaluation);
+            saveOrUpdateLatestEvaluation(questionAiEvaluation);
+        }
         return answer;
     }
 
     @Transactional
     @Override
     public List<InterviewQuestionReviewVO> getInterviewQuestionReview(Long bankId) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -275,6 +286,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
     @Override
     public void saveUserQuestionNote(UserQuestionNoteDTO noteDTO) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (noteDTO == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -304,6 +316,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
     @Override
     public List<CertificateQuestionPageVO> getCertificateByBankId(Long bankId) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -350,6 +363,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public CertificateAnswerPageVO getCertificateAnswer(CertificateQuestionSubmitDTO submitDTO) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (submitDTO == null || submitDTO.getQuestionId() == null || submitDTO.getQuestionType() == null ||
                 submitDTO.getChosenOptions() == null || submitDTO.getBankId() == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -413,6 +427,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     //用户每次“进入或重新进入题库页面”时，前端都应该执行一次初始化查询：
     //有答题记录，reload；没有答题记录，正常返回 CertificateQuestionPageVO
     public List<CertificateQuestionReviewVO> getCertificateRecord(Long bankId) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -501,6 +516,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public List<InterviewQuestionReviewVO> getInterviewRecord(Long bankId) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -598,6 +614,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
     @Override
     public void clearRecord(Long bankId, GroupType groupType) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (bankId == null || groupType == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -660,6 +677,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public void collect(Long bankId, Long questionId, ActionStatus actionStatus) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (bankId == null || questionId == null || actionStatus == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -716,6 +734,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public List<CertificateQuestionReviewVO> getCertificateQuestionReview(Long bankId) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -785,6 +804,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     //返回 题库正确率 + 题库中题目全套信息的列表（做过的+没做过的）
     @Override
     public BankFinishVO finishBank(Long bankId, GroupType groupType) {
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
 
         BankFinishVO finishVO = new BankFinishVO();
         if (groupType.equals(GroupType.INTERVIEW)) {
@@ -899,18 +919,18 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             Long answeredCount = userQuestionAnswerMapper.selectCount(userAnswerQueryWrapper);
             countVO.setAnsweredCount(answeredCount);
 
-            List<UserQuestionAnswer> userQuestionAnswers = userQuestionAnswerMapper.selectList(userAnswerQueryWrapper);
+            List<BigDecimal> aiScores = userQuestionAnswerMapper.selectList(userAnswerQueryWrapper)
+                    .stream()
+                    .map(UserQuestionAnswer::getAiScoreRate)
+                    .filter(Objects::nonNull)
+                    .toList();
             if (answeredCount == 0) {
-                BigDecimal correctRate = BigDecimal.ZERO;
-                countVO.setCorrectRate(correctRate);
-            } else {
-                BigDecimal sum = BigDecimal.ZERO;
-                for (int i = 0; i < userQuestionAnswers.size(); i++) {
-                    sum = sum.add(userQuestionAnswers.get(i).getAiScoreRate());
-                }
-
-                BigDecimal correctRate = sum.divide(BigDecimal.valueOf(answeredCount), 2, RoundingMode.HALF_UP);
-                countVO.setCorrectRate(correctRate);
+                countVO.setCorrectRate(BigDecimal.ZERO);
+            } else if (!aiScores.isEmpty()) {
+                BigDecimal sum = aiScores.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+                countVO.setCorrectRate(
+                        sum.divide(BigDecimal.valueOf(aiScores.size()), 2, RoundingMode.HALF_UP)
+                );
             }
         }
         return countVO;
@@ -919,6 +939,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
     @Override
     public AiChatVO startAiChat(Long bankId, GroupType groupType) {
+        membershipAccessService.requirePremium(LoginUserHolder.getUserId());
         // 这个接口用于用户点击“追问AI”按钮时，先查询当前题库下已有的历史会话。
         if (bankId == null || groupType == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -1005,6 +1026,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public AiChatVO followUpAi(AiFollowUpDTO dto) { //真正发送问题时创建 session
+        membershipAccessService.requirePremium(LoginUserHolder.getUserId());
         // 1. 校验追问请求。bankId 决定复用哪个 AI 会话，questionId + bankType 决定本轮追问取哪道题的解析。
         if (dto == null
                 || dto.getBankId() == null

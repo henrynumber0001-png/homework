@@ -24,4 +24,6 @@ public interface UserCenterService {
     PageResult<NoteQuestionVO> getNoteQuestions(Long userId, Long bankId, Integer pageNum, Integer pageSize);
 
     NoteVO getNote(Long userId, Long bankId, Long questionId);
+
+    MembershipInfoVO getMembershipInfo(Long userId);
 }

@@ -291,7 +291,6 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         vo.setSubModuleId(entity.getSubModuleId());//暂时先别删，等继续开发后面的功能，如果不需要再删除；
         vo.setCompleteUserCount(entity.getCompleteUserCount());
         vo.setAvgCorrectRate(entity.getAvgCorrectRate());
-        vo.setIsPremium(entity.getIsPremium());
         vo.setTagNames(tagNames);
         return vo;
     }

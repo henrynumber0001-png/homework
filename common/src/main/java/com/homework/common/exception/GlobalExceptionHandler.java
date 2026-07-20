@@ -5,6 +5,7 @@ import com.homework.common.result.ResultCodeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @Slf4j
@@ -19,7 +20,11 @@ public class GlobalExceptionHandler {
         return Result.fail(e.getResultCodeEnum());
     }
 
-    @ExceptionHandler({IllegalArgumentException.class, MethodArgumentTypeMismatchException.class})
+    @ExceptionHandler({
+            IllegalArgumentException.class,
+            MethodArgumentTypeMismatchException.class,
+            MethodArgumentNotValidException.class
+    })
     public Result<Void> handleException(Exception e){
         // 参数校验失败属于客户端可修正的问题，不应伪装成系统故障。
         log.warn("参数异常：{}", e.getMessage());

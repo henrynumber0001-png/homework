@@ -1,7 +1,5 @@
 package com.homework.web.app.vo;
 
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.homework.model.entity.BankTag;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -26,9 +24,6 @@ public class QuestionBankVO {
     private Integer viewCount;
 
     private Integer priority;
-
-    @TableField("is_premium")
-    private Boolean isPremium;
 
     private Integer questionCount;
 
