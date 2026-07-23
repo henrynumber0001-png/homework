@@ -63,9 +63,8 @@ public class MembershipController {
             // @RequestBody 将 JSON 转为 DTO；@Valid 执行 DTO 上的 @NotNull 等校验。
             @Valid @RequestBody MembershipOrderCreateDTO dto
     ) {
-        return Result.success(
-                membershipCheckoutService.createOrder(idempotencyKey, dto)
-        );
+        MembershipOrderCreateVO orderResponse = membershipCheckoutService.createOrder(idempotencyKey, dto);
+        return Result.success(orderResponse);
     }
 
     /**

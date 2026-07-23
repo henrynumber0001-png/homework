@@ -13,10 +13,10 @@ import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-/** 双台账会员身份的统一读取入口。 */
+
 @Service
 @RequiredArgsConstructor
-public class MembershipAccessService {
+public class MembershipAccessService { //查询 BaseVipRecord 和 SvipRecord，并计算当前实际会员身份（只做这一件事，因此不需要用 接口+实现类 这个思路）
 
     private final BaseVipRecordMapper baseVipRecordMapper;
     private final SvipRecordMapper svipRecordMapper;

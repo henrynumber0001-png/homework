@@ -21,12 +21,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 /** 微信支付 API v3 Native（电脑网页扫码）实现。 */
+//你的系统与微信支付之间的“适配器”
+//作用一：向微信申请支付二维码
+//作用二：验证并解析微信支付回调
+
+/*
+创建本地订单
+→ Gateway向微信申请二维码
+→ 用户扫码付款
+→ 微信调用NotificationController
+→ Gateway验证通知
+→ MembershipService发放会员
+ */
 @Service
-@ConditionalOnProperty(
-        prefix = "payment.wechat",
-        name = "enabled",
-        havingValue = "true"
-)
+@ConditionalOnProperty(prefix = "payment.wechat", name = "enabled", havingValue = "true")
 public class WechatNativePaymentGateway {
 
     private static final DateTimeFormatter WECHAT_TIME_FORMAT =
