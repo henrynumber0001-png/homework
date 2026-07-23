@@ -19,17 +19,13 @@ public class MembershipOrderHistoryVO {
 
     private BillingType billingType;
 
-    private BigDecimal originalAmount;
-
-    private BigDecimal creditAmount;
+    private Integer durationMonths;
 
     private BigDecimal payAmount;
 
     private String currency;
 
     private MembershipOrderStatus orderStatus;
-
-    private LocalDateTime periodStart;
 
     private LocalDateTime periodEnd;
 

@@ -1,16 +1,14 @@
 package com.homework.web.app.service;
 
-import com.homework.model.enums.BillingType;
+import com.homework.model.enums.MembershipStatus;
 import com.homework.model.enums.MembershipType;
 import java.time.LocalDateTime;
 
+/** 应用层最终判定的唯一生效会员身份。 */
 public record MembershipAccessSnapshot(
-        boolean active,
+        MembershipStatus status,
         MembershipType membershipType,
-        BillingType billingType,
-        LocalDateTime currentPeriodEnd
+        LocalDateTime currentExpireTime,
+        LocalDateTime baseFreezeExpireTime
 ) {
-    public boolean premium() {
-        return active && membershipType == MembershipType.PREMIUM;
-    }
 }

@@ -36,7 +36,6 @@ payment:
     notify-url: ${WECHAT_PAY_NOTIFY_URL:}
     zone-id: ${WECHAT_PAY_ZONE_ID:Asia/Shanghai}
     product-description: ${WECHAT_PAY_PRODUCT_DESCRIPTION:Homework会员订阅}
-    reconciliation-delay-ms: ${WECHAT_PAY_RECONCILIATION_DELAY_MS:30000}
 
 
 cloudflare:

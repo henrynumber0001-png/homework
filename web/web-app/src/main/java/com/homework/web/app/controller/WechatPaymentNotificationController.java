@@ -3,7 +3,6 @@ package com.homework.web.app.controller;
 import com.homework.web.app.dto.MembershipPaymentConfirmationDTO;
 import com.homework.web.app.service.MembershipService;
 import com.homework.web.app.service.payment.WechatNativePaymentGateway;
-import com.homework.web.app.service.payment.WechatNotificationRequest;
 import com.wechat.pay.java.core.exception.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,11 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@ConditionalOnProperty(
-        prefix = "payment.wechat",
-        name = "enabled",
-        havingValue = "true"
-)
+@ConditionalOnProperty(prefix = "payment.wechat", name = "enabled", havingValue = "true")
+//微信回调入口
 public class WechatPaymentNotificationController {
 
     private final WechatNativePaymentGateway wechatGateway;
@@ -47,16 +43,15 @@ public class WechatPaymentNotificationController {
             @RequestBody String rawBody
     ) {
         try {
+            // 验证这个通知确实来自微信(参数都是微信传过来的)
             MembershipPaymentConfirmationDTO confirmation =
                     wechatGateway.parsePaymentNotification(
-                            new WechatNotificationRequest(
-                                    serialNumber,
-                                    nonce,
-                                    signature,
-                                    timestamp,
-                                    signatureType,
-                                    rawBody
-                            )
+                            serialNumber,
+                            nonce,
+                            signature,
+                            timestamp,
+                            signatureType,
+                            rawBody
                     );
             membershipService.confirmPayment(confirmation);
             return ResponseEntity.ok().build();

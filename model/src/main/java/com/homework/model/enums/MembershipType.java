@@ -7,8 +7,8 @@ import lombok.Getter;
 @Getter
 public enum MembershipType implements BaseEnum {
 
-    STANDARD(1, "standard"),
-    PREMIUM(2, "premium");
+    PREMIUM(1, "premium"),
+    PREMIUM_PLUS(2, "premium_plus");
 
     @EnumValue
     @JsonValue

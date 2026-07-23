@@ -10,7 +10,8 @@ import com.homework.model.entity.*;
 import com.homework.model.enums.*;
 import com.homework.web.app.dto.AiEvaluationResult;
 import com.homework.web.app.mapper.*;
-import com.homework.web.app.service.MembershipService;
+import com.homework.web.app.service.MembershipAccessService;
+import com.homework.web.app.service.MembershipAccessSnapshot;
 import com.homework.web.app.service.UserCenterService;
 import com.homework.web.app.vo.*;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +30,7 @@ public class UserCenterServiceImpl implements UserCenterService {
 
     private final UserInfoMapper userInfoMapper;
     private final GraphInfoMapper graphInfoMapper;
-    private final MembershipService membershipService;
+    private final MembershipAccessService membershipAccessService;
     private final UserFollowMapper userFollowMapper;
     private final HitPostMapper hitPostMapper;
     private final UserQuestionAnswerMapper userQuestionAnswerMapper;
@@ -81,10 +82,12 @@ public class UserCenterServiceImpl implements UserCenterService {
         }
 
 
-        MembershipSubscriptionVO subscription = membershipService.getCurrentSubscription(userId);
-        userCenterPageVO.setMembershipActive(Boolean.TRUE.equals(subscription.getActive()));
-        userCenterPageVO.setMembershipType(subscription.getMembershipType());
-        userCenterPageVO.setAiFeaturesEnabled(Boolean.TRUE.equals(subscription.getAiEvaluationEnabled()));
+        MembershipAccessSnapshot membership = membershipAccessService.getAccess(userId);
+        userCenterPageVO.setMembershipActive(membership.status() != MembershipStatus.FREE);
+        userCenterPageVO.setMembershipType(membership.membershipType());
+        userCenterPageVO.setAiFeaturesEnabled(
+                membership.status() == MembershipStatus.PREMIUM_PLUS
+        );
 
         //组装followerCount
         LambdaQueryWrapper<UserFollow> userFollowQueryWrapper = new LambdaQueryWrapper<>();
@@ -750,12 +753,14 @@ public class UserCenterServiceImpl implements UserCenterService {
 
 
         MembershipInfoVO vo = new MembershipInfoVO();
-
-        MembershipCardVO cardVO = new MembershipCardVO();
-        BeanUtils.copyProperties(membershipService.getCurrentSubscription(userId),cardVO);
-        vo.setMembershipCard(cardVO);
         vo.setDisplayName(userInfo.getDisplayName());
         vo.setAvatarUrl(userInfo.getAvatar());
+
+        MembershipAccessSnapshot membership = membershipAccessService.getAccess(userId);
+        vo.setMemberStatus(membership.status());
+        vo.setMembershipType(membership.membershipType());
+        vo.setExpiredTime(membership.currentExpireTime());
+        vo.setBaseFreezeExpireTime(membership.baseFreezeExpireTime());
         return vo;
     }
 }

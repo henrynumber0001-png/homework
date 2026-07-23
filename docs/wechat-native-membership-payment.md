@@ -1,8 +1,7 @@
 # 微信 Native 会员支付接入
 
 本项目使用微信支付 API v3 官方 Java SDK，通过 Native 模式为电脑网页返回扫码支付
-`code_url`。后端不生成支付成功结果；会员权益只会在微信回调验签通过，或服务端主动
-查单确认 `SUCCESS` 后发放。
+`code_url`。后端不接受前端提交“支付成功”；会员权益只会在微信回调验签通过后发放。
 
 ## 1. 数据库迁移
 
@@ -15,7 +14,7 @@ source sql/membership_v2.sql;
 已有 `membership_order` 表的环境只执行：
 
 ```sql
-source sql/membership_wechat_native_payment.sql;
+source sql/membership_dual_ledger_migration.sql;
 ```
 
 ## 2. 微信商户平台准备
@@ -62,8 +61,7 @@ Idempotency-Key: 前端为本次购买生成的UUID
 Content-Type: application/json
 
 {
-  "planId": 3,
-  "payType": 1
+  "planId": 会员页面接口返回的套餐ID
 }
 ```
 
@@ -73,18 +71,14 @@ Content-Type: application/json
 {
   "orderNo": "订单号",
   "orderStatus": 1,
-  "amountDue": 79.00,
+  "amountDue": 129.00,
   "currency": "CNY",
   "paymentExpiredTime": "2026-07-21T12:15:00",
-  "paymentPayload": {
-    "payType": 1,
-    "mode": "NATIVE",
-    "codeUrl": "weixin://wxpay/bizpayurl?..."
-  }
+  "codeUrl": "weixin://wxpay/bizpayurl?..."
 }
 ```
 
-前端使用二维码库把 `paymentPayload.codeUrl` 原样生成二维码，不要修改或 URL encode
+前端使用二维码库把 `codeUrl` 原样生成二维码，不要修改或 URL encode
 该字符串。随后每隔 2—3 秒查询：
 
 ```http
@@ -99,5 +93,5 @@ GET /api/app/membership/orders/{orderNo}
 - 微信回调使用原始请求体及 `Wechatpay-*` 请求头验签；
 - 回调解密后再次核对 AppID、商户号、订单号、金额、币种和支付渠道；
 - 重复回调由 `confirmPayment()` 幂等处理；
-- 超时订单先向微信查单，确认未支付并关单后才改为 `EXPIRED`；
-- 微信网络状态不明确时保留 `PENDING`，下一轮对账继续确认，避免误关已付款订单。
+- 只有完成验签的微信支付通知能够调用 `confirmPayment()` 发放会员时长；
+- 重复支付通知不会重复增加 Premium 或 Premium Plus 台账。

@@ -1,6 +1,8 @@
 package com.homework.web.app.service.impl;
 
 import com.homework.model.entity.InterviewQuestionInfo;
+import com.homework.model.enums.MembershipStatus;
+import com.homework.model.enums.MembershipType;
 import com.homework.model.entity.QuestionBankQuestion;
 import com.homework.model.entity.UserFavoriteQuestion;
 import com.homework.model.enums.ActionStatus;
@@ -63,7 +65,12 @@ class QuestionInfoServiceImplTest {
     void setUp() {
         LoginUserHolder.setUserId(7L);
         when(membershipAccessService.requireActiveMembership(7L))
-                .thenReturn(new MembershipAccessSnapshot(true, null, null, null));
+                .thenReturn(new MembershipAccessSnapshot(
+                        MembershipStatus.PREMIUM,
+                        MembershipType.PREMIUM,
+                        null,
+                        null
+                ));
     }
 
     @AfterEach

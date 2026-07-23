@@ -12,7 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,7 +28,10 @@ class WechatPaymentNotificationControllerTest {
     void verifiedNotificationConfirmsMembershipAndReturnsHttp200() {
         MembershipPaymentConfirmationDTO confirmation =
                 new MembershipPaymentConfirmationDTO();
-        when(wechatGateway.parsePaymentNotification(any()))
+        when(wechatGateway.parsePaymentNotification(
+                anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyString()
+        ))
                 .thenReturn(confirmation);
         WechatPaymentNotificationController controller =
                 new WechatPaymentNotificationController(
@@ -51,7 +54,10 @@ class WechatPaymentNotificationControllerTest {
 
     @Test
     void invalidWechatSignatureReturnsHttp401() {
-        when(wechatGateway.parsePaymentNotification(any()))
+        when(wechatGateway.parsePaymentNotification(
+                anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyString()
+        ))
                 .thenThrow(new ValidationException("bad signature"));
         WechatPaymentNotificationController controller =
                 new WechatPaymentNotificationController(

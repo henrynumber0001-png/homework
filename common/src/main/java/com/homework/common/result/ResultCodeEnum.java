@@ -54,15 +54,15 @@ public enum ResultCodeEnum {
     HIT_COMMENT_TOO_LONG_ERROR(708,"Hit 评论最多 300 字"),
     COMMENT_NOT_EXIST(709,"评论不存在"),
 
-    MEMBERSHIP_REQUIRED(801, "需要有效的 Standard 或 Premium 会员"),
-    PREMIUM_MEMBERSHIP_REQUIRED(802, "AI 评分和 AI 追问仅对 Premium 会员开放"),
+    MEMBERSHIP_REQUIRED(801, "需要有效的 Premium 或 Premium Plus 会员"),
+    PREMIUM_PLUS_MEMBERSHIP_REQUIRED(802, "该功能仅对 Premium Plus 会员开放"),
     MEMBERSHIP_PLAN_NOT_FOUND(803, "会员套餐不存在或已下架"),
     MEMBERSHIP_INVALID_CHANGE(804, "不支持该会员变更"),
     MEMBERSHIP_CHANGE_IN_PROGRESS(805, "已有会员变更或待支付订单正在处理"),
     MEMBERSHIP_ORDER_NOT_FOUND(806, "会员订单不存在"),
     MEMBERSHIP_ORDER_STATE_ERROR(807, "会员订单状态不允许当前操作"),
     MEMBERSHIP_PAYMENT_MISMATCH(808, "支付金额或订单信息不匹配"),
-    MEMBERSHIP_BILLING_TYPE_MISMATCH(809, "升级会员时必须保持相同的计费周期"),
+    MEMBERSHIP_DIFF_UPGRADE_UNAVAILABLE(809, "当前 Premium 剩余时长不支持该补差档位"),
     MEMBERSHIP_PAYMENT_CHANNEL_UNAVAILABLE(810, "所选支付渠道暂不可用"),
     MEMBERSHIP_PAYMENT_GATEWAY_ERROR(811, "支付平台暂时不可用，请稍后重试");
 

@@ -95,7 +95,9 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public InterViewAnswerPageVO getInterviewAnswer(InterviewQuestionSubmitDTO submitDTO) {
-        MembershipAccessSnapshot access = membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
+        MembershipAccessSnapshot membership = membershipAccessService.requireActiveMembership(
+                LoginUserHolder.getUserId()
+        );
         //允许用户输入的回答为空
         if (submitDTO == null || submitDTO.getQuestionId() == null || submitDTO.getBankId() == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -137,15 +139,18 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         String analysis = questionInfo.getAnalysis();
         String content = submitDTO.getContent();
 
-        // 拦截一手，看看会员是否有premium权限，有，才能返回AI评价
-        AiEvaluationResult aiResult = access.premium() ? aiEvaluationService.evaluateInterviewAnswer(title, content, analysis) : null;
+        // Premium Plus 才返回 AI 评价；Premium 仍可查看题目解析。
+        boolean premiumPlus = membership.status() == MembershipStatus.PREMIUM_PLUS;
+        AiEvaluationResult aiResult = premiumPlus
+                ? aiEvaluationService.evaluateInterviewAnswer(title, content, analysis)
+                : null;
 
         //返回给前端
         InterViewAnswerPageVO answer = new InterViewAnswerPageVO();
         answer.setQuestionId(questionId);
         answer.setAnalysis(questionInfo.getAnalysis());
         answer.setAiResult(aiResult);
-        answer.setAiEvaluationEnabled(access.premium());
+        answer.setAiEvaluationEnabled(premiumPlus);
         answer.setIsFavorite(favoriteQuestionMap.containsKey(questionId));
 
         //把用户输入的回答放到 用户ID下的专门的一张表 user_question_answer, 用于用户其他信息查询功能（如答题历史、收藏、错题）
@@ -939,7 +944,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
     @Override
     public AiChatVO startAiChat(Long bankId, GroupType groupType) {
-        membershipAccessService.requirePremium(LoginUserHolder.getUserId());
+        membershipAccessService.requirePremiumPlus(LoginUserHolder.getUserId());
         // 这个接口用于用户点击“追问AI”按钮时，先查询当前题库下已有的历史会话。
         if (bankId == null || groupType == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -1026,7 +1031,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public AiChatVO followUpAi(AiFollowUpDTO dto) { //真正发送问题时创建 session
-        membershipAccessService.requirePremium(LoginUserHolder.getUserId());
+        membershipAccessService.requirePremiumPlus(LoginUserHolder.getUserId());
         // 1. 校验追问请求。bankId 决定复用哪个 AI 会话，questionId + bankType 决定本轮追问取哪道题的解析。
         if (dto == null
                 || dto.getBankId() == null

@@ -8,7 +8,8 @@ import lombok.Getter;
 public enum BillingType implements BaseEnum {
 
     MONTHLY(1, "monthly"),
-    YEARLY(2, "yearly");
+    QUARTERLY(2, "quarterly"),
+    YEARLY(3, "yearly");
 
     @EnumValue
     @JsonValue

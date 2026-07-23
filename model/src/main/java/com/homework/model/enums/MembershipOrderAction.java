@@ -7,9 +7,8 @@ import lombok.Getter;
 @Getter
 public enum MembershipOrderAction implements BaseEnum {
 
-    PURCHASE(1, "purchase"),
-    UPGRADE(2, "upgrade"),
-    RENEWAL(3, "renewal");
+    FULL_PURCHASE(1, "full_purchase"),
+    DIFF_UPGRADE(2, "diff_upgrade");
 
     @EnumValue
     @JsonValue

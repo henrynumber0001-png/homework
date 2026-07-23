@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
 import com.homework.model.enums.BillingType;
 import com.homework.model.enums.MembershipOrderAction;
-import com.homework.model.enums.MembershipOrderPayType;
 import com.homework.model.enums.MembershipOrderStatus;
 import com.homework.model.enums.MembershipType;
 import java.math.BigDecimal;
@@ -23,28 +22,20 @@ public class MembershipOrder extends BaseEntity {
 
     private MembershipOrderAction action;
 
-    private Long fromPlanId;
-
     private Long toPlanId;
 
-    /** Snapshot fields: historical orders must not change when plan data changes. */
+    /** 以下字段是下单时的商品快照，套餐改价不会改变历史订单。 */
     private MembershipType membershipType;
 
     private BillingType billingType;
 
-    private BigDecimal originalAmount;
-
-    private BigDecimal creditAmount;
+    private Integer durationMonths;
 
     private BigDecimal payAmount;
 
     private String currency;
 
-    private LocalDateTime periodStart;
-
     private LocalDateTime periodEnd;
-
-    private MembershipOrderPayType payType;
 
     private LocalDateTime payTime;
 
@@ -52,15 +43,11 @@ public class MembershipOrder extends BaseEntity {
 
     private String providerTradeNo;
 
-    /**
-     * 微信 Native 预下单返回的 code_url。
-     * 保存后，同一个幂等键重试可以继续展示原二维码，而不重复创建微信订单。
-     */
+    /** 微信 Native 预下单返回的 code_url。 */
     private String paymentCodeUrl;
 
     private String idempotencyKey;
 
     private LocalDateTime paymentExpiredTime;
 
-    private Long sourceSubscriptionVersion;
 }
