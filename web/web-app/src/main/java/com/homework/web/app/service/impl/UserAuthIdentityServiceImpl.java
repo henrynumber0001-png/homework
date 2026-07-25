@@ -287,6 +287,9 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
             userAuthIdentity.setVerifiedTime(LocalDateTime.now());
             userAuthIdentity.setLastUsedTime(LocalDateTime.now());
             this.save(userAuthIdentity);
+
+            //设计思路是“第一次使用 Google/微信登录时自动创建账号”，那么保存以后要把新身份赋给原变量
+            fetchedAuthIdentity = userAuthIdentity;
         }
 
         if(fetchedAuthIdentity.getStatus()!= UserAuthIdentityStatus.VERIFIED){

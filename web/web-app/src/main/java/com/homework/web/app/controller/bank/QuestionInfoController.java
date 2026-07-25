@@ -85,7 +85,7 @@ public class QuestionInfoController {
         return Result.success();
     }
 
-    @GetMapping("/finish")
+    @PostMapping("/finish")
     public Result<BankFinishVO> finishBank(@RequestParam Long bankId, @RequestParam GroupType groupType){
         BankFinishVO finishVO = questionInfoService.finishBank(bankId,groupType);
         return Result.success(finishVO);

@@ -162,6 +162,8 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         newSession.setStatus(ExamSessionStatus.IN_PROGRESS);
         certificateExamSessionMapper.insert(newSession);
 
+
+        certificateQuestionInfoMapper.certificateViewCount(bankId);
         return buildExamVO(newSession);//这个时候还没返回题目列表给前端呢，必须要调用buildExamVO之后
     }
 

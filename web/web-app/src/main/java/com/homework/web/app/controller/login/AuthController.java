@@ -45,7 +45,7 @@ public class AuthController {
     @PostMapping("/login/email")
     public Result<String> loginByEmail(@RequestBody EmailLoginDTO emailLoginDTO, HttpServletRequest request) {
         String token = userAuthIdentityService.loginByEmail(emailLoginDTO,request);
-        return Result.success();
+        return Result.success(token);
     }
 
 //    @Operation(summary = "Phone Login")

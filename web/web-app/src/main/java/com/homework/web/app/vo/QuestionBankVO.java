@@ -19,10 +19,6 @@ public class QuestionBankVO {
 
     private BigDecimal avgCorrectRate;
 
-    private Integer favoriteCount;
-
-    private Integer viewCount;
-
     private Integer priority;
 
     private Integer questionCount;

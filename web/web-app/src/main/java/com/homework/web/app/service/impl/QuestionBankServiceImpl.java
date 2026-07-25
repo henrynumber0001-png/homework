@@ -5,16 +5,19 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.model.entity.*;
-import com.homework.model.enums.GroupType;
 import com.homework.model.enums.ItemType;
 import com.homework.model.enums.SortType;
 import com.homework.web.app.mapper.*;
+import com.homework.web.app.mapper.UserBankCorrectRateMapper;
 import com.homework.web.app.service.QuestionBankService;
 import com.homework.web.app.vo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +29,7 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
     private final QuestionBankMapper questionBankMapper;
     private final GraphInfoMapper graphInfoMapper;
     private final BankTagMapper bankTagMapper;
+    private final UserBankCorrectRateMapper userBankCorrectRate;
 
     @Override
     public GroupPageVO getGroupPage(Long groupId) {
@@ -67,15 +71,6 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         if (currentGroupId == null || moduleId == null || currentModuleId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
-
-//        //首先，根据前端传入的groupId，查询到所有Modules
-//        List<CategoryModuleVO> moduleVos = listModuleVos(currentGroupId);
-//        //stream.noneMatch(判断条件) 表示：没有任何一个元素满足这个条件
-//        //当用户点击的moduleId，与groupId下的任何一个module的Id都不相等时，说明前端放错module了，抛异常
-//        //这一步主要是防止前端乱传，比如把“认证题库”的 moduleId 传到“面试题库”的 groupId 下面
-//        if (moduleVos.stream().noneMatch(moduleVo -> moduleId.equals(moduleVo.getId()))) {
-//            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
-//        }
 
         validateModuleInGroup(currentGroupId, moduleId);
 
@@ -207,15 +202,23 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         queryWrapper.eq(QuestionBank::getSubModuleId, subModuleId)
                 .orderByDesc(QuestionBank::getHotScore) //首次进入题库页面，默认按照“热度”排序
                 .orderByDesc(QuestionBank::getId);
-
         List<QuestionBank> questionBanks = questionBankMapper.selectList(queryWrapper);
-
-        if (questionBanks.isEmpty()) {
+        if(questionBanks.isEmpty()){
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
-        List<QuestionBankVO> questionBankVos = questionBanks.stream().map(this::toQuestionBankVO).collect(Collectors.toList());
-        return questionBankVos;
+        //QuestionBank表中是没有 题库平均正确率 这个值的，因此要通过 SQL聚合函数 把 BankCorrectRate表中的用户题库平均正确率（用bankId）聚合，算平均数，再set到对应bankId的 avgCorrectRate 字段；
+        List<Long> questionIds = questionBanks.stream().map(QuestionBank::getId).toList();
+        List<BankCorrectRateVO> bankCorrectRateVOList = userBankCorrectRate.selectAverageByBankIds(questionIds);//这里有个细节，这种查询集合的SQL，返回的也是集合
+        Map<Long, BigDecimal> avgCorrectRateMap = bankCorrectRateVOList.stream().collect(Collectors.toMap(BankCorrectRateVO::getBankId, BankCorrectRateVO::getAvgCorrectRate));
+
+        questionBanks.forEach(questionBank -> {
+            BigDecimal averageCorrectRate = avgCorrectRateMap.get(questionBank.getId());
+            questionBank.setAvgCorrectRate(averageCorrectRate);
+        });
+
+        List<QuestionBankVO> questionBankVOList = questionBanks.stream().map(this::toQuestionBankVO).collect(Collectors.toList());
+        return questionBankVOList;
     }
 
     private List<QuestionBankVO> listQuestionBanksByLatest(Long subModuleId) {
@@ -282,8 +285,8 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         QuestionBankVO vo = new QuestionBankVO();
         vo.setId(entity.getId()); //用于标记题库，这样后续用户再点击每一个题库，就可以知道是哪个题库了
         vo.setBankName(entity.getBankName());
-        vo.setSubModuleId(entity.getSubModuleId());//暂时先别删，等继续开发后面的功能，如果不需要再删除；
-        vo.setCompleteUserCount(entity.getCompleteUserCount());
+        vo.setSubModuleId(entity.getSubModuleId());
+        vo.setCompleteUserCount(entity.getCompleteCount());
         vo.setAvgCorrectRate(entity.getAvgCorrectRate());
         vo.setTagNames(tagNames);
         return vo;

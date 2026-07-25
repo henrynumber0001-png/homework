@@ -20,11 +20,9 @@ public class QuestionBank extends BaseEntity {
     private Long subModuleId;
 
     @Schema(description = "完成题库的人数")
-    private Integer completeUserCount;
+    private Integer completeCount;
 
     private BigDecimal avgCorrectRate;
-
-    private Integer favoriteCount;
 
     private Integer viewCount;
 

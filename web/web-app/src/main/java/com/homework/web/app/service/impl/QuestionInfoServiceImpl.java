@@ -42,6 +42,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     private final AiPromptBuilder aiPromptBuilder;
     private final UserFavoriteQuestionMapper userFavoriteQuestionMapper;
     private final MembershipAccessService membershipAccessService;
+    private final UserBankCorrectRateMapper userBankCorrectRateMapper;
 
     @Override
     public List<InterviewQuestionPageVO> getQuestionsByBankId(Long bankId) {
@@ -60,7 +61,6 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         }
 
         List<Long> bankQuestionIds = questionBankQuestions.stream().map(QuestionBankQuestion::getQuestionId).toList();
-
 
         LambdaQueryWrapper<InterviewQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
         questionInfoQueryWrapper.in(InterviewQuestionInfo::getId, bankQuestionIds)
@@ -89,6 +89,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             list.add(vo);
         });
 
+        interviewQuestionInfoMapper.incrementViewCount(bankId);
         return list;
     }
 
@@ -364,6 +365,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             vo.setIsFavorite(favoriteQuestionMap.containsKey(certificateQuestionInfo.getId()));
             certificateQuestionPageVos.add(vo);
         });
+        certificateQuestionInfoMapper.certificateViewCount(bankId);
         return certificateQuestionPageVos;
 
     }
@@ -821,11 +823,20 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (groupType.equals(GroupType.INTERVIEW)) {
             List<InterviewQuestionReviewVO> interviewQuestionReviewVos = getInterviewQuestionReview(bankId);
             finishVO.setInterviewQuestionReviewVos(interviewQuestionReviewVos);
+            int count = interviewQuestionInfoMapper.bankCompletionCount(bankId);
+            if(count != 1){
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
         }
 
         if (groupType.equals(GroupType.CERTIFICATION)) {
             List<CertificateQuestionReviewVO> certificateQuestionReviewVos = getCertificateQuestionReview(bankId);
             finishVO.setCertificateQuestionReviewVos(certificateQuestionReviewVos);
+            int count = certificateQuestionInfoMapper.bankCompletionCount(bankId);
+            if(count != 1){
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
+
         }
 
         QuestionCountVO questionCountVO = buildQuestionCountVO(bankId, groupType);
@@ -908,6 +919,13 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                             RoundingMode.HALF_UP
                     );
             countVO.setCorrectRate(correctRate);
+
+            UserBankCorrectRate bankCorrectRate = new UserBankCorrectRate();
+            bankCorrectRate.setUserId(userId);
+            bankCorrectRate.setBankId(bankId);
+            bankCorrectRate.setGroupType(groupType);
+            bankCorrectRate.setCorrectRate(countVO.getCorrectRate());
+            userBankCorrectRateMapper.insert(bankCorrectRate);
         }
 
         //返回的是用户作答的interview题库的题目的平均正确率
@@ -939,10 +957,14 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                 countVO.setCorrectRate(BigDecimal.ZERO);
             } else if (!aiScores.isEmpty()) {
                 BigDecimal sum = aiScores.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
-                countVO.setCorrectRate(
-                        sum.divide(BigDecimal.valueOf(aiScores.size()), 2, RoundingMode.HALF_UP)
-                );
+                countVO.setCorrectRate(sum.divide(BigDecimal.valueOf(aiScores.size()), 2, RoundingMode.HALF_UP));
             }
+            UserBankCorrectRate bankCorrectRate = new UserBankCorrectRate();
+            bankCorrectRate.setUserId(userId);
+            bankCorrectRate.setBankId(bankId);
+            bankCorrectRate.setGroupType(groupType);
+            bankCorrectRate.setCorrectRate(countVO.getCorrectRate());
+            userBankCorrectRateMapper.insert(bankCorrectRate);
         }
         return countVO;
     }
