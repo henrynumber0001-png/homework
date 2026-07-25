@@ -33,7 +33,6 @@
         <lombok.version>1.18.36</lombok.version>
         <hutool.version>5.8.46</hutool.version>
         <mybatis-plus.version>3.5.10.1</mybatis-plus.version>
-        <aliyun.dysmsapi.version>2.0.24</aliyun.dysmsapi.version>
     </properties>
 
     <dependencyManagement>
@@ -82,11 +81,6 @@
                 <groupId>io.jsonwebtoken</groupId>
                 <artifactId>jjwt-jackson</artifactId>
                 <version>${jwt.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.aliyun</groupId>
-                <artifactId>dysmsapi20170525</artifactId>
-                <version>${aliyun.dysmsapi.version}</version>
             </dependency>
             <dependency>
                 <groupId>cn.hutool</groupId>

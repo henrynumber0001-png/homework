@@ -10,14 +10,17 @@ import com.homework.model.enums.GroupType;
 import com.homework.web.app.mapper.CategoryModuleMapper;
 import com.homework.web.app.mapper.CategorySubModuleMapper;
 import com.homework.web.app.mapper.QuestionBankMapper;
+import com.homework.web.app.mapper.UserBankCorrectRateMapper;
 import com.homework.web.app.service.HitService;
 import com.homework.web.app.service.HomePageService;
+import com.homework.web.app.vo.BankCorrectRateVO;
 import com.homework.web.app.vo.HitPostVO;
 import com.homework.web.app.vo.HomePageVO;
 import com.homework.web.app.vo.HotQuestionBankVO;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +34,7 @@ public class HomePageServiceImpl implements HomePageService {
     private final CategorySubModuleMapper categorySubModuleMapper;
     private final CategoryModuleMapper categoryModuleMapper;
     private final HitService hitService;
+    private final UserBankCorrectRateMapper userBankCorrectRateMapper;
 
     @Override
     public HomePageVO getHomePage() {
@@ -65,6 +69,14 @@ public class HomePageServiceImpl implements HomePageService {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
+        List<Long> bankIds = questionBanks.stream().map(QuestionBank::getId).collect(Collectors.toList());
+        List<BankCorrectRateVO> bankCorrectRateVOList = userBankCorrectRateMapper.selectAverageByBankIds(bankIds);
+        Map<Long, BigDecimal> bankCorrectRateMap = bankCorrectRateVOList.stream().collect(Collectors.toMap(BankCorrectRateVO::getBankId, BankCorrectRateVO::getAvgCorrectRate));
+        questionBanks.forEach(questionBank -> {
+            BigDecimal avgCorrectRate = bankCorrectRateMap.get(questionBank.getId());
+            questionBank.setAvgCorrectRate(avgCorrectRate);
+        });
+
         //Map<submoduleId,moduleName>
         List<CategorySubModule> categorySubModules = categorySubModuleMapper.selectByIds(submoduleIds);
         List<Long> moduleIds = categorySubModules.stream().map(CategorySubModule::getModuleId).toList();
@@ -84,7 +96,7 @@ public class HomePageServiceImpl implements HomePageService {
             vo.setBankName(questionBank.getBankName());
             vo.setModuleName(moduleName);
             vo.setAvgCorrectRate(questionBank.getAvgCorrectRate());
-            vo.setCompleteUserCount(questionBank.getCompleteUserCount());
+            vo.setCompleteCount(questionBank.getCompleteCount());
             hotInterviewBanksVOList.add(vo);
         });
 

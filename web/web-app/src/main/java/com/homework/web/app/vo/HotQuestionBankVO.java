@@ -14,7 +14,7 @@ public class HotQuestionBankVO {
     private String moduleName;
 
     //完成人数
-    private Integer completeUserCount;
+    private Integer completeCount;
 
     //平均正确率
     private BigDecimal avgCorrectRate;

@@ -28,12 +28,6 @@ public class AuthController {
         return Result.success(token);
     }
 
-//    @Operation(summary = "Phone Register")
-//    @PostMapping("/register/phone")
-//    public Result<String> registerByPhone(@RequestBody PhoneRegisterDTO phoneRegisterDTO) {
-//        return Result.success();
-//    }
-
     @Operation(summary = "Third Party Register")
     @PostMapping("/register/oauth")
     public Result<String> registerByOAuth(@RequestBody ThirdPartyRegisterDTO thirdPartyRegisterDTO,HttpServletRequest request) {
@@ -47,12 +41,6 @@ public class AuthController {
         String token = userAuthIdentityService.loginByEmail(emailLoginDTO,request);
         return Result.success(token);
     }
-
-//    @Operation(summary = "Phone Login")
-//    @PostMapping("/login/phone")
-//    public Result<String> loginByPhone(@RequestBody PhoneRegisterDTO phoneRegisterDTO) {
-//        return Result.fail();
-//    }
 
     @Operation(summary = "Third Party Login")
     @PostMapping("/login/oauth")

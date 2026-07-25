@@ -15,7 +15,7 @@ public class QuestionBankVO {
     private Long subModuleId;
 
     @Schema(description = "完成题库的人数")
-    private Integer completeUserCount;
+    private Integer completeCount;
 
     private BigDecimal avgCorrectRate;
 

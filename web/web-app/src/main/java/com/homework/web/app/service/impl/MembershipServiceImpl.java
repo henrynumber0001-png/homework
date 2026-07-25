@@ -518,6 +518,14 @@ public class MembershipServiceImpl implements MembershipService {
                 newSvipExtensionEndTime = newSvipExtensionStartTime.plusMonths(order.getDurationMonths());
                 svip.setExpireTime(newSvipExtensionEndTime);
                 svipRecordMapper.insert(svip);
+                if(baseVip != null && baseVip.getExpireTime().isAfter(paidTime)) {
+                    //先算一下增加了多少天的svip
+                    int svipExtensionDays = order.getDurationMonths() * DIFF_UPGRADE_DAYS_PER_MONTH;
+                    newBaseVipExtensionStartTime = svip.getExpireTime();
+                    newBaseVipExtensionEndTime = newBaseVipExtensionStartTime.plusDays(svipExtensionDays);
+                    baseVip.setExpireTime(newBaseVipExtensionEndTime);
+                    baseVipRecordMapper.updateById(baseVip);
+                }
 
                 //存在有效premium plus，时长更新在原plus结尾
             } else if(svip.getExpireTime() != null && svip.getExpireTime().isAfter(paidTime)) {

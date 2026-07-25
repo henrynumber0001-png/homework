@@ -99,7 +99,6 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
         userInfo.setUserRole(UserInfoUserRole.USER);
         userInfo.setStatus(UserInfoStatus.ACTIVE);
         insertUserInfoWithAccountNo(userInfo);
-        userInfoMapper.insert(userInfo); //你现在在UserAuthIdentityServiceImpl.java中，如果想保存userInfo，需要调用userInfoMapper的insert方法
 
         userAuthIdentity.setUserId(userInfo.getId());
         userAuthIdentity.setProvider(UserAuthIdentityProvider.EMAIL_PASSWORD);
@@ -158,7 +157,6 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
         userInfo.setUserRole(UserInfoUserRole.USER);
         userInfo.setStatus(UserInfoStatus.ACTIVE);
         insertUserInfoWithAccountNo(userInfo);
-        userInfoMapper.insert(userInfo); //你现在在UserAuthIdentityServiceImpl.java中，如果想保存userInfo，需要调用userInfoMapper的insert方法
 
         userAuthIdentity.setUserId(userInfo.getId());
         userAuthIdentity.setProvider(thirdPartyUser.getProvider()); // ThirdPartyUser 是服务端验证成功后生成的结果，更可信。
@@ -277,7 +275,6 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
             userInfo.setCreatedTime(LocalDateTime.now());
             userInfo.setUpdatedTime(LocalDateTime.now());
             insertUserInfoWithAccountNo(userInfo);
-            userInfoMapper.insert(userInfo);
 
             userAuthIdentity.setUserId(userInfo.getId());
             userAuthIdentity.setProvider(thirdPartyUser.getProvider());

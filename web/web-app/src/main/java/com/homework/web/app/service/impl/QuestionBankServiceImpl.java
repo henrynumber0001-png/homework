@@ -286,7 +286,7 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         vo.setId(entity.getId()); //用于标记题库，这样后续用户再点击每一个题库，就可以知道是哪个题库了
         vo.setBankName(entity.getBankName());
         vo.setSubModuleId(entity.getSubModuleId());
-        vo.setCompleteUserCount(entity.getCompleteCount());
+        vo.setCompleteCount(entity.getCompleteCount());
         vo.setAvgCorrectRate(entity.getAvgCorrectRate());
         vo.setTagNames(tagNames);
         return vo;
