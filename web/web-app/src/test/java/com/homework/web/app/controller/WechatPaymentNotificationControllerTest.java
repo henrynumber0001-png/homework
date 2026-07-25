@@ -1,5 +1,6 @@
 package com.homework.web.app.controller;
 
+import com.homework.web.app.controller.membership.WechatPaymentNotificationController;
 import com.homework.web.app.dto.MembershipPaymentConfirmationDTO;
 import com.homework.web.app.service.MembershipService;
 import com.homework.web.app.service.payment.WechatNativePaymentGateway;

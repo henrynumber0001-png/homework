@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 @Getter
-public enum UserNotificationTargetType implements BaseEnum {
+public enum UserNotificationSendTo implements BaseEnum {
 
     HIT_POST(1, "hit_post"),
     HIT_COMMENT(2, "hit_comment"),
@@ -20,7 +20,7 @@ public enum UserNotificationTargetType implements BaseEnum {
 
     private final String label;
 
-    UserNotificationTargetType(Integer value, String label) {
+    UserNotificationSendTo(Integer value, String label) {
         this.value = value;
         this.label = label;
     }

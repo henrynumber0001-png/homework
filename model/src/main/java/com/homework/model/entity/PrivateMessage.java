@@ -2,7 +2,6 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
-import com.homework.model.enums.PrivateMessageAllowReason;
 import com.homework.model.enums.PrivateMessageStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -11,6 +10,8 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 @TableName("private_message")
 public class PrivateMessage extends BaseEntity {
+
+    private Long chatboxId;
 
     private Long senderUserId;
 
@@ -21,6 +22,4 @@ public class PrivateMessage extends BaseEntity {
     /** 1.sent;2.read;3.blocked */
     private PrivateMessageStatus messageStatus;
 
-    /** 1.mutual_follow;2.first_non_mutual_message */
-    private PrivateMessageAllowReason allowReason;
 }

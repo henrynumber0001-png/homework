@@ -1,4 +1,4 @@
-package com.homework.web.app.controller;
+package com.homework.web.app.controller.membership;
 
 import com.homework.common.result.Result;
 import com.homework.model.enums.MembershipOrderStatus;

@@ -127,12 +127,6 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
-//        //先校验传入的subModule是否属于指定module下的subModule
-//        List<CategorySubModuleVO> subModuleVos = listSubModuleVos(currentModuleId);
-//        if (subModuleVos.stream().noneMatch(subModuleVo -> subModuleId.equals(subModuleVo.getId()))) {
-//            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
-//        }
-
         validateModuleInGroup(currentGroupId, currentModuleId);
         validateSubModuleInModule(currentModuleId, subModuleId);
 

@@ -95,9 +95,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public InterViewAnswerPageVO getInterviewAnswer(InterviewQuestionSubmitDTO submitDTO) {
-        MembershipAccessSnapshot membership = membershipAccessService.requireActiveMembership(
-                LoginUserHolder.getUserId()
-        );
+
+        //调用 membershipAccessService 获取当前登录用户的会员信息
+        MembershipAccessSnapshot membershipAccessSnapshot = membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
+
         //允许用户输入的回答为空
         if (submitDTO == null || submitDTO.getQuestionId() == null || submitDTO.getBankId() == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -140,7 +141,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         String content = submitDTO.getContent();
 
         // Premium Plus 才返回 AI 评价；Premium 仍可查看题目解析。
-        boolean premiumPlus = membership.status() == MembershipStatus.PREMIUM_PLUS;
+        boolean premiumPlus = membershipAccessSnapshot.status() == MembershipStatus.PREMIUM_PLUS;
         AiEvaluationResult aiResult = premiumPlus
                 ? aiEvaluationService.evaluateInterviewAnswer(title, content, analysis)
                 : null;
@@ -187,7 +188,9 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public List<InterviewQuestionReviewVO> getInterviewQuestionReview(Long bankId) {
-        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
+
+        //调用 membershipAccessService 获取当前登录用户的会员信息
+        MembershipAccessSnapshot membershipAccessSnapshot = membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -432,6 +435,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     //用户每次“进入或重新进入题库页面”时，前端都应该执行一次初始化查询：
     //有答题记录，reload；没有答题记录，正常返回 CertificateQuestionPageVO
     public List<CertificateQuestionReviewVO> getCertificateRecord(Long bankId) {
+        //校验是否是会员，不是则抛异常
         membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -521,6 +525,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public List<InterviewQuestionReviewVO> getInterviewRecord(Long bankId) {
+        //校验是否是会员，不是则抛异常
         membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -739,6 +744,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     @Transactional
     @Override
     public List<CertificateQuestionReviewVO> getCertificateQuestionReview(Long bankId) {
+        //校验是否是会员，不是则抛异常
         membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -944,6 +950,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
     @Override
     public AiChatVO startAiChat(Long bankId, GroupType groupType) {
+        //校验是否是会员，不是则抛异常
         membershipAccessService.requirePremiumPlus(LoginUserHolder.getUserId());
         // 这个接口用于用户点击“追问AI”按钮时，先查询当前题库下已有的历史会话。
         if (bankId == null || groupType == null) {

@@ -4,19 +4,18 @@ import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
+/** 私信聊天盒的发送权限状态。 */
 @Getter
-public enum PrivateMessageAllowReason implements BaseEnum {
-
-    MUTUAL_FOLLOW(1, "mutual_follow"),
-    FIRST_NON_MUTUAL_MESSAGE(2, "first_non_mutual_message");
+public enum PrivateChatAccess implements BaseEnum {
+    PENDING_REPLY(1, "pending_reply"),
+    OPEN(2, "open");
 
     @EnumValue
     @JsonValue
     private final Integer value;
-
     private final String label;
 
-    PrivateMessageAllowReason(Integer value, String label) {
+    PrivateChatAccess(Integer value, String label) {
         this.value = value;
         this.label = label;
     }

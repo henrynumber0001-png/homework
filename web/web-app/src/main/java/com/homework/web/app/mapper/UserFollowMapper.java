@@ -5,6 +5,7 @@ import com.homework.model.entity.UserFollow;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface UserFollowMapper extends BaseMapper<UserFollow> {
@@ -42,4 +43,10 @@ public interface UserFollowMapper extends BaseMapper<UserFollow> {
             """
     )
     UserFollow selectIncludingDeletedForUpdate(@Param("followerUserId") Long followerUserId, @Param("followeeUserId") Long followeeUserId);
+
+    @Update("UPDATE user_follow SET is_deleted = 0, updated_time = CURRENT_TIMESTAMP WHERE id = #{id}")
+    int restoreById(@Param("id") Long id);
+
+    @Update("UPDATE user_follow SET is_deleted = 1, updated_time = CURRENT_TIMESTAMP WHERE id = #{id} AND is_deleted = 0")
+    int deactivateById(@Param("id") Long id);
 }

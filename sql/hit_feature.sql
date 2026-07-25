@@ -24,7 +24,8 @@ CREATE TABLE IF NOT EXISTS hit_comment (
     post_id BIGINT NOT NULL COMMENT '所属 Hit ID',
     comment_user_id BIGINT NOT NULL COMMENT '评论者用户 ID',
     parent_comment_id BIGINT NULL COMMENT '被回复评论 ID，顶级评论为空',
-    comment VARCHAR(2000) NOT NULL COMMENT '评论正文，应用层限制 500 个 Unicode 字符',
+    comment VARCHAR(2000) NOT NULL COMMENT '评论正文，应用层限制 300 个 Unicode 字符',
+    like_count INT UNSIGNED NOT NULL DEFAULT 0,
     created_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     is_deleted TINYINT(1) NOT NULL DEFAULT 0,
@@ -46,13 +47,26 @@ CREATE TABLE IF NOT EXISTS hit_action (
     KEY idx_hit_action_user (action_user_id, is_deleted, post_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Hit 点赞、收藏、转发';
 
+CREATE TABLE IF NOT EXISTS hit_comment_like (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    comment_id BIGINT NOT NULL COMMENT '被点赞的 Comment ID',
+    action_user_id BIGINT NOT NULL COMMENT '点赞动作发出者',
+    created_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_hit_comment_like (comment_id, action_user_id),
+    KEY idx_hit_comment_like_user (action_user_id, is_deleted, comment_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='Comment 点赞';
+
 CREATE TABLE IF NOT EXISTS user_notification (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
     receiver_user_id BIGINT NOT NULL COMMENT '通知接收者',
     sender_user_id BIGINT NULL COMMENT '触发通知的用户，系统公告可为空',
-    notification_type TINYINT NOT NULL COMMENT '1 reply, 2 like, 3 system, 4 private message, 5 favorite, 6 repost, 7 follow',
-    target_type TINYINT NOT NULL COMMENT '1 hit_post, 2 hit_comment, 3 question, 4 bank, 5 user, 6 private_message',
-    target_id BIGINT NULL COMMENT '跳转目标 ID',
+    notification_type TINYINT NOT NULL COMMENT '1 comment, 2 like, 3 system, 4 legacy private message, 5 favorite, 6 repost, 7 follow, 8 mention',
+    send_to TINYINT NOT NULL COMMENT '1 hit_post, 2 hit_comment, 3 question, 4 bank, 5 user, 6 private_message',
+    item_id BIGINT NULL COMMENT '关联对象 ID',
+    post_id BIGINT NULL COMMENT '关联 Post，Comment 删除后仍用于跳转',
     title VARCHAR(100) NOT NULL,
     content VARCHAR(2000) NULL,
     read_status TINYINT NOT NULL DEFAULT 1 COMMENT '1 unread, 2 read',
@@ -61,40 +75,50 @@ CREATE TABLE IF NOT EXISTS user_notification (
     is_deleted TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     KEY idx_notification_inbox (receiver_user_id, is_deleted, read_status, notification_type, created_time DESC),
-    KEY idx_notification_action (receiver_user_id, sender_user_id, notification_type, target_type, target_id, is_deleted)
+    KEY idx_notification_action (receiver_user_id, sender_user_id, notification_type, send_to, item_id, is_deleted),
+    KEY idx_notification_post (post_id, is_deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户通知';
 
-CREATE TABLE IF NOT EXISTS private_message (
+CREATE TABLE IF NOT EXISTS private_chatbox (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
-    sender_user_id BIGINT NOT NULL,
-    receiver_user_id BIGINT NOT NULL,
-    content VARCHAR(4000) NOT NULL COMMENT '纯文本，应用层限制 1000 个 Unicode 字符',
-    message_status TINYINT NOT NULL DEFAULT 1 COMMENT '1 sent, 2 read, 3 blocked',
-    allow_reason TINYINT NOT NULL COMMENT '1 mutual follow, 2 first non-mutual message',
-    -- 仅为非互关首条消息生成唯一值；互关消息为 NULL，因此不限制正常聊天数量。
-    first_non_mutual_key VARCHAR(64)
-        GENERATED ALWAYS AS (
-            CASE WHEN allow_reason = 2
-                 THEN CONCAT(sender_user_id, ':', receiver_user_id)
-                 ELSE NULL END
-        ) STORED,
+    user_a_id BIGINT NOT NULL COMMENT '较小的用户 ID',
+    user_b_id BIGINT NOT NULL COMMENT '较大的用户 ID',
+    initiator_user_id BIGINT NOT NULL COMMENT '首次发送者',
+    chat_access TINYINT NOT NULL COMMENT '1 pending_reply, 2 open',
+    last_message_id BIGINT NULL,
+    last_message_time DATETIME(3) NULL,
     created_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     is_deleted TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_private_first_non_mutual (first_non_mutual_key),
-    KEY idx_private_message_sender (sender_user_id, is_deleted, created_time DESC),
-    KEY idx_private_message_receiver (receiver_user_id, is_deleted, created_time DESC)
+    UNIQUE KEY uk_private_chatbox_users (user_a_id, user_b_id),
+    KEY idx_private_chatbox_a (user_a_id, is_deleted, last_message_time DESC),
+    KEY idx_private_chatbox_b (user_b_id, is_deleted, last_message_time DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='一对一私信聊天盒';
+
+CREATE TABLE IF NOT EXISTS private_message (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    chatbox_id BIGINT NOT NULL COMMENT '所属 Chatbox ID',
+    sender_user_id BIGINT NOT NULL,
+    receiver_user_id BIGINT NOT NULL,
+    content VARCHAR(4000) NOT NULL COMMENT '纯文本，应用层限制 1000 个 Unicode 字符',
+    message_status TINYINT NOT NULL DEFAULT 1 COMMENT '1 sent, 2 read, 3 blocked',
+    created_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    KEY idx_private_message_chatbox (chatbox_id, is_deleted, id DESC),
+    KEY idx_private_message_receiver (receiver_user_id, message_status, is_deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户私信';
 
 CREATE TABLE IF NOT EXISTS user_follow (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
     follower_user_id BIGINT NOT NULL COMMENT '关注者',
-    following_user_id BIGINT NOT NULL COMMENT '被关注者',
+    followee_user_id BIGINT NOT NULL COMMENT '被关注者',
     created_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     is_deleted TINYINT(1) NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_user_follow (follower_user_id, following_user_id),
-    KEY idx_user_follow_following (following_user_id, is_deleted)
+    UNIQUE KEY uk_user_follow (follower_user_id, followee_user_id),
+    KEY idx_user_follow_followee (followee_user_id, is_deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户关注关系';

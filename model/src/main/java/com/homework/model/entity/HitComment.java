@@ -24,4 +24,6 @@ public class HitComment extends BaseEntity {
 
     /** 评论正文，当前限制为 1～500 个 Unicode 字符。 */
     private String comment;
+
+    private Integer likeCount;
 }

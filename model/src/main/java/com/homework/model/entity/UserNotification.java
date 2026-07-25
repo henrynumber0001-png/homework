@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.homework.common.entity.BaseEntity;
 import com.homework.model.enums.UserNotificationType;
 import com.homework.model.enums.UserNotificationReadStatus;
-import com.homework.model.enums.UserNotificationTargetType;
+import com.homework.model.enums.UserNotificationSendTo;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -13,17 +13,20 @@ import lombok.EqualsAndHashCode;
 @TableName("user_notification")
 public class UserNotification extends BaseEntity {
 
-    private Long receiverUserId;
+    private Long receiverUserId; //接收者Id
 
-    private Long senderUserId;
+    private Long senderUserId; //发出通知者Id
 
-    /** 1.reply;2.like;3.system;4.private_message;5.favorite;6.repost;7.follow */
     private UserNotificationType notificationType;
 
-    /** 1.hit_post;2.hit_comment;3.question;4.bank;5.user;6.private_message */
-    private UserNotificationTargetType targetType;
+    /** 通知关联的对象类型，例如动态、评论或用户。 */
+    private UserNotificationSendTo sendTo;
 
-    private Long targetId;
+    /** 关联对象在对应数据表中的 ID。 */
+    private Long itemId;
+
+    /** 通知关联的 Post；评论删除后仍用于进入原 Post。 */
+    private Long postId;
 
     private String title;
 

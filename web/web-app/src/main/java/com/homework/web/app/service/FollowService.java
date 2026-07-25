@@ -1,5 +1,7 @@
 package com.homework.web.app.service;
 
+import com.homework.web.app.vo.FollowStateVO;
+
 public interface FollowService {
-    boolean follow(Long currentUserId, Long targetUserId, Boolean active);
+    FollowStateVO follow(Long currentUserId, Long targetUserId, Boolean active);
 }

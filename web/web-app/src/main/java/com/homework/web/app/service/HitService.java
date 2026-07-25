@@ -2,12 +2,14 @@ package com.homework.web.app.service;
 
 import com.homework.web.app.dto.HitActionDTO;
 import com.homework.web.app.dto.HitCommentCreateDTO;
+import com.homework.web.app.dto.HitCommentLikeDTO;
 import com.homework.web.app.dto.HitPostCreateDTO;
 import com.homework.web.app.vo.HitCommentVO;
+import com.homework.web.app.vo.HitCommentLikeResultVO;
+import com.homework.web.app.vo.HitActionResultVO;
 import com.homework.web.app.vo.HitPostVO;
 
 import java.util.List;
-import java.util.Map;
 
 public interface HitService {
 
@@ -15,9 +17,11 @@ public interface HitService {
 
     List<HitCommentVO> listComments(Long postId, Integer pageNum, Integer pageSize);
 
-    Long publish(String content);
+    Long publish(HitPostCreateDTO dto);
 
     Long comment(Long postId, HitCommentCreateDTO dto);
 
-    Map<String, Object> action(Long postId, HitActionDTO dto);
+    HitActionResultVO action(Long postId, HitActionDTO dto);
+
+    HitCommentLikeResultVO commentLike(Long postId, Long commentId, HitCommentLikeDTO dto);
 }

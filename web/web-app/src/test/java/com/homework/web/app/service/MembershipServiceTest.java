@@ -15,10 +15,7 @@ import com.homework.model.enums.MembershipType;
 import com.homework.web.app.context.LoginUserHolder;
 import com.homework.web.app.dto.MembershipOrderCreateDTO;
 import com.homework.web.app.dto.MembershipPaymentConfirmationDTO;
-import com.homework.web.app.mapper.BaseVipRecordMapper;
-import com.homework.web.app.mapper.MembershipOrderMapper;
-import com.homework.web.app.mapper.MembershipPlanMapper;
-import com.homework.web.app.mapper.SvipRecordMapper;
+import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.impl.MembershipServiceImpl;
 import com.homework.web.app.vo.MembershipOrderCreateVO;
 import com.homework.web.app.vo.MembershipDetailPageVO;
@@ -58,14 +55,15 @@ class MembershipServiceTest {
 
     private MembershipService service;
 
+    @Mock
+    private MembershipAccessService membershipAccessService;
+
+    @Mock
+    private UserInfoMapper userInfoMapper;
+
     @BeforeEach
     void setUp() {
-        service = new MembershipServiceImpl(
-                planMapper,
-                baseVipMapper,
-                svipMapper,
-                orderMapper
-        );
+        service = new MembershipServiceImpl(planMapper, baseVipMapper, svipMapper, orderMapper,userInfoMapper,membershipAccessService);
         LoginUserHolder.setUserId(7L);
     }
 
@@ -89,7 +87,7 @@ class MembershipServiceTest {
                 diffPlan(12L, 3)
         ));
 
-        MembershipDetailPageVO page = service.getMembershipPage();
+        MembershipDetailPageVO page = service.getMembershipDetailPage();
 
         assertEquals(MembershipStatus.PREMIUM_PLUS, page.getMemberStatus());
         assertEquals(svip.getExpireTime(), page.getCurrentExpireTime());
@@ -114,7 +112,7 @@ class MembershipServiceTest {
         );
         when(planMapper.selectList(any())).thenReturn(List.of(diffPlan(10L, 1)));
 
-        MembershipDetailPageVO page = service.getMembershipPage();
+        MembershipDetailPageVO page = service.getMembershipDetailPage();
 
         assertEquals(MembershipStatus.PREMIUM, page.getMemberStatus());
         assertFalse(page.isDiffUpgradeAvailable());

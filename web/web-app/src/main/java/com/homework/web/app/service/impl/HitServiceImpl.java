@@ -13,9 +13,14 @@ import com.homework.model.enums.*;
 import com.homework.web.app.context.LoginUserHolder;
 import com.homework.web.app.dto.HitActionDTO;
 import com.homework.web.app.dto.HitCommentCreateDTO;
+import com.homework.web.app.dto.HitPostCreateDTO;
+import com.homework.web.app.dto.HitCommentLikeDTO;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.HitService;
+import com.homework.web.app.service.NotificationService;
 import com.homework.web.app.vo.HitCommentVO;
+import com.homework.web.app.vo.HitCommentLikeResultVO;
+import com.homework.web.app.vo.HitActionResultVO;
 import com.homework.web.app.vo.HitPostVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -40,7 +45,8 @@ public class HitServiceImpl implements HitService {
     private final HitCommentMapper hitCommentMapper;
     private final HitActionMapper hitActionMapper;
     private final UserInfoMapper userInfoMapper;
-    private final UserNotificationMapper userNotificationMapper;
+    private final HitCommentLikeMapper hitCommentLikeMapper;
+    private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -121,6 +127,7 @@ public class HitServiceImpl implements HitService {
             vo.setUserId(post.getPostUserId());
             vo.setTags(parseTags(post.getTagsJson()));
             vo.setCommentCount(post.getCommentCount());
+            vo.setLikeCount(post.getLikeCount());
             vo.setFavoriteCount(post.getFavoriteCount());
             vo.setRepostCount(post.getRepostCount());
             vo.setContent(post.getContent());
@@ -143,6 +150,7 @@ public class HitServiceImpl implements HitService {
     @Override
     public List<HitCommentVO> listComments(Long postId, Integer pageNum, Integer pageSize) {
 
+        Long viewerUserId = LoginUserHolder.getUserId();
         // 先确认动态存在且处于已发布状态，避免查询隐藏或已删除动态的评论。
         if (postId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -179,6 +187,10 @@ public class HitServiceImpl implements HitService {
         List<UserInfo> userInfos = userInfoMapper.selectByIds(commentUserIds);
         Map<Long, UserInfo> commentUserMap = userInfos.stream().collect(Collectors.toMap(UserInfo::getId, Function.identity()));
 
+        Set<Long> likedCommentIds = hitCommentLikeMapper.selectList(new LambdaQueryWrapper<HitCommentLike>()
+                        .in(HitCommentLike::getCommentId, comments.stream().map(HitComment::getId).toList())
+                        .eq(HitCommentLike::getActionUserId, viewerUserId))
+                .stream().map(HitCommentLike::getCommentId).collect(Collectors.toSet());
         List<HitCommentVO> hitCommentVOs = new ArrayList<>();
         comments.forEach(comment -> {
             HitCommentVO vo = new HitCommentVO();
@@ -190,6 +202,8 @@ public class HitServiceImpl implements HitService {
             vo.setCreatedTime(comment.getCreatedTime());
             vo.setParentCommentId(comment.getParentCommentId());
             vo.setComment(comment.getComment());
+            vo.setLikeCount(comment.getLikeCount() == null ? 0 : comment.getLikeCount());
+            vo.setLiked(likedCommentIds.contains(comment.getId()));
             //因为userInfo == null，主要影响的是avatar和displayName的设置，所以在这个地方做if判断即可
             if (userInfo == null) {
                 vo.setAvatar(null);
@@ -206,11 +220,13 @@ public class HitServiceImpl implements HitService {
 
     //发布HIT
     @Override
-    public Long publish(String content) {
+    @Transactional
+    public Long publish(HitPostCreateDTO dto) {
 
         Long postUserId = LoginUserHolder.getUserId();
 
-        String normalizeContent = normalizeContent(content, MAX_POST_LENGTH);
+        if (dto == null) throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        String normalizeContent = normalizeContent(dto.getContent(), MAX_POST_LENGTH);
 
         //从正文中提取tag 然后序列化成 JSON，例如：["React","Hooks"]
         String tagJson = extractAndSerializeTags(normalizeContent);
@@ -225,6 +241,8 @@ public class HitServiceImpl implements HitService {
         post.setFavoriteCount(0);
         post.setRepostCount(0);
         hitPostMapper.insert(post);
+        createMentionNotifications(dto.getMentionedUserIds(), postUserId,
+                UserNotificationSendTo.HIT_POST, post.getId(), post.getId(), normalizeContent, Set.of());
         return post.getId();
     }
 
@@ -277,18 +295,67 @@ public class HitServiceImpl implements HitService {
         Long noticedUserId = parentComment == null ? hitPost.getPostUserId() : parentComment.getCommentUserId();
 
         // 创建一条“回复我的”通知。
-        createNotification(noticedUserId, commentUserId, UserNotificationType.REPLY,
-                UserNotificationTargetType.HIT_COMMENT, // 点击通知后应跳转到 Hit 评论。
+        createNotification(noticedUserId, commentUserId, UserNotificationType.COMMENT,
+                UserNotificationSendTo.HIT_COMMENT, // 点击通知后应跳转到 Hit 评论。
                 comment.getId(),
                 "回复我的", // 通知标题。
                 normalizeContent); // 通知摘要使用评论正文。
+        createMentionNotifications(dto.getMentionedUserIds(), commentUserId,
+                UserNotificationSendTo.HIT_COMMENT, comment.getId(), postId,
+                normalizeContent, Set.of(noticedUserId));
         return comment.getId();
+    }
+
+    @Override
+    @Transactional
+    public HitCommentLikeResultVO commentLike(Long postId, Long commentId, HitCommentLikeDTO dto) {
+        if (dto == null || dto.getActionStatus() == null) throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        HitPost post = hitPostMapper.selectById(postId);
+        if (post == null || post.getPostStatus() != HitPostStatus.PUBLISHED) {
+            throw new HomeworkException(ResultCodeEnum.HIT_NOT_EXIST);
+        }
+        HitComment comment = hitCommentMapper.selectById(commentId);
+        if (comment == null || !Objects.equals(comment.getPostId(), postId) || hitCommentMapper.lockActive(commentId) == null) {
+            throw new HomeworkException(ResultCodeEnum.COMMENT_NOT_EXIST);
+        }
+        Long actionUserId = LoginUserHolder.getUserId();
+        HitCommentLike existing = hitCommentLikeMapper.selectIncludingDeletedForUpdate(commentId, actionUserId);
+        boolean activate = dto.getActionStatus() == ActionStatus.ACTIVATE;
+        boolean changed = false;
+        if (activate && existing == null) {
+            HitCommentLike like = new HitCommentLike();
+            like.setCommentId(commentId);
+            like.setActionUserId(actionUserId);
+            hitCommentLikeMapper.insert(like);
+            changed = true;
+        } else if (activate && Boolean.TRUE.equals(existing.getDeleted())) {
+            changed = hitCommentLikeMapper.restoreById(existing.getId()) == 1;
+        } else if (!activate && existing != null && !Boolean.TRUE.equals(existing.getDeleted())) {
+            changed = hitCommentLikeMapper.deactivateById(existing.getId()) == 1;
+        }
+        if (changed) {
+            if (hitCommentMapper.changeLikeCount(commentId, activate ? 1 : -1) != 1) {
+                throw new HomeworkException(ResultCodeEnum.COMMENT_NOT_EXIST);
+            }
+            if (activate) {
+                notificationService.create(comment.getCommentUserId(), actionUserId, UserNotificationType.LIKE,
+                        UserNotificationSendTo.HIT_COMMENT, commentId, postId, "评论被点赞", comment.getComment());
+            } else {
+                notificationService.remove(comment.getCommentUserId(), actionUserId, UserNotificationType.LIKE,
+                        UserNotificationSendTo.HIT_COMMENT, commentId);
+            }
+        }
+        HitComment updated = hitCommentMapper.selectById(commentId);
+        HitCommentLikeResultVO result = new HitCommentLikeResultVO();
+        result.setLiked(activate);
+        result.setLikeCount(updated == null || updated.getLikeCount() == null ? 0 : updated.getLikeCount());
+        return result;
     }
 
     //这是一个 点赞/收藏/转发 操作的接口，是当前操作用户角度出发的，不是查询这条post下有多少个actionType
     @Override
     @Transactional
-    public Map<String, Object> action(Long postId, HitActionDTO dto) {
+    public HitActionResultVO action(Long postId, HitActionDTO dto) {
         if (postId == null || dto == null || dto.getActionType() == null || dto.getActionStatus() == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -365,12 +432,12 @@ public class HitServiceImpl implements HitService {
             throw new HomeworkException(ResultCodeEnum.HIT_NOT_EXIST);
         }
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("actionType", actionType);
-        result.put("actionStatus", actionStatus);
-        result.put("likeCount", updatedPost.getLikeCount() == null ? 0 : updatedPost.getLikeCount());
-        result.put("favoriteCount", updatedPost.getFavoriteCount() == null ? 0 : updatedPost.getFavoriteCount());
-        result.put("repostCount", updatedPost.getRepostCount() == null ? 0 : updatedPost.getRepostCount());
+        HitActionResultVO result = new HitActionResultVO();
+        result.setActionType(actionType);
+        result.setActionStatus(actionStatus);
+        result.setLikeCount(updatedPost.getLikeCount() == null ? 0 : updatedPost.getLikeCount());
+        result.setFavoriteCount(updatedPost.getFavoriteCount() == null ? 0 : updatedPost.getFavoriteCount());
+        result.setRepostCount(updatedPost.getRepostCount() == null ? 0 : updatedPost.getRepostCount());
         return result;
         //如果数据库当前状态已经符合请求目标，返回相同信息的主要作用是：明确告诉前端：请求成功，并且最终状态已经是你要求的状态。
     }
@@ -410,7 +477,7 @@ public class HitServiceImpl implements HitService {
                 post.getPostUserId(),
                 senderUserId,
                 notificationType,
-                UserNotificationTargetType.HIT_POST,
+                UserNotificationSendTo.HIT_POST,
                 post.getId(),
                 title,
                 post.getContent());
@@ -426,13 +493,8 @@ public class HitServiceImpl implements HitService {
             case REPOST -> UserNotificationType.REPOST;
         };
 
-        LambdaQueryWrapper<UserNotification> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(UserNotification::getReceiverUserId, post.getPostUserId())
-                .eq(UserNotification::getSenderUserId, senderUserId)
-                .eq(UserNotification::getNotificationType, notificationType.getValue())
-                .eq(UserNotification::getTargetType, UserNotificationTargetType.HIT_POST.getValue())
-                .eq(UserNotification::getTargetId, post.getId());
-        userNotificationMapper.delete(queryWrapper);
+        notificationService.remove(post.getPostUserId(), senderUserId, notificationType,
+                UserNotificationSendTo.HIT_POST, post.getId());
     }
 
     /**
@@ -442,24 +504,41 @@ public class HitServiceImpl implements HitService {
             Long noticedUserId,
             Long senderUserId,
             UserNotificationType notificationType,
-            UserNotificationTargetType targetType,
-            Long targetId,
+            UserNotificationSendTo sendTo,
+            Long itemId,
             String title,
             String content) {
-        if (noticedUserId == null || Objects.equals(noticedUserId, senderUserId)) {
-            return;
-        }
+        Long postId = sendTo == UserNotificationSendTo.HIT_POST ? itemId
+                : Optional.ofNullable(hitCommentMapper.selectIncludingDeleted(itemId))
+                .map(HitComment::getPostId).orElse(null);
+        notificationService.create(noticedUserId, senderUserId, notificationType,
+                sendTo, itemId, postId, title, content);
+    }
 
-        UserNotification notification = new UserNotification();
-        notification.setReceiverUserId(noticedUserId);
-        notification.setSenderUserId(senderUserId);
-        notification.setNotificationType(notificationType);
-        notification.setTargetType(targetType); // 设置跳转资源类型。
-        notification.setTargetId(targetId); // 设置跳转资源 ID。
-        notification.setTitle(title); // 设置前端展示的通知标题。
-        notification.setContent(content);
-        notification.setReadStatus(UserNotificationReadStatus.UNREAD);
-        userNotificationMapper.insert(notification);
+    private void createMentionNotifications(List<Long> mentionedUserIds, Long actionUserId,
+                                            UserNotificationSendTo sendTo, Long itemId,
+                                            Long postId, String content, Set<Long> excluded) {
+        if (mentionedUserIds == null) return;
+        Set<Long> receiverIds = mentionedUserIds.stream()
+                .filter(Objects::nonNull)
+                .filter(id -> !Objects.equals(id, actionUserId))
+                .filter(id -> !excluded.contains(id))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (receiverIds.size() > 10) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+        if (receiverIds.isEmpty()) return;
+        Set<Long> activeUserIds = userInfoMapper.selectByIds(receiverIds).stream()
+                .filter(user -> user.getStatus() == UserInfoStatus.ACTIVE)
+                .filter(user -> user.getUserRole() == UserInfoUserRole.USER)
+                .map(UserInfo::getId)
+                .collect(Collectors.toSet());
+        if (activeUserIds.size() != receiverIds.size()) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+        receiverIds.stream()
+                .forEach(id -> notificationService.create(id, actionUserId, UserNotificationType.MENTION,
+                        sendTo, itemId, postId, "@了你", content));
     }
 
     /**

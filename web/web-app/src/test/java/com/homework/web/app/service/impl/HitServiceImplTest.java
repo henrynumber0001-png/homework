@@ -4,13 +4,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.model.entity.HitAction;
+import com.homework.model.entity.HitComment;
+import com.homework.model.entity.HitCommentLike;
 import com.homework.model.entity.HitPost;
 import com.homework.model.enums.ActionStatus;
 import com.homework.model.enums.HitActionType;
 import com.homework.model.enums.HitPostStatus;
 import com.homework.web.app.context.LoginUserHolder;
 import com.homework.web.app.dto.HitActionDTO;
+import com.homework.web.app.dto.HitCommentLikeDTO;
+import com.homework.web.app.dto.HitPostCreateDTO;
 import com.homework.web.app.mapper.*;
+import com.homework.web.app.service.NotificationService;
+import com.homework.web.app.vo.HitCommentLikeResultVO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,14 +40,16 @@ class HitServiceImplTest {
     @Mock
     private UserInfoMapper userInfoMapper;
     @Mock
-    private UserNotificationMapper userNotificationMapper;
+    private HitCommentLikeMapper hitCommentLikeMapper;
+    @Mock
+    private NotificationService notificationService;
 
     private HitServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new HitServiceImpl(hitPostMapper, hitCommentMapper, hitActionMapper,
-                userInfoMapper, userNotificationMapper, new ObjectMapper());
+                userInfoMapper, hitCommentLikeMapper, notificationService, new ObjectMapper());
         LoginUserHolder.setUserId(7L);
     }
 
@@ -60,7 +68,7 @@ class HitServiceImplTest {
             return 1;
         });
 
-        Long id = service.publish(content);
+        Long id = service.publish(post(content));
 
         assertEquals(100L, id);
         verify(hitPostMapper).insert(org.mockito.ArgumentMatchers.<HitPost>argThat(
@@ -73,7 +81,7 @@ class HitServiceImplTest {
         String content = "打".repeat(141);
 
         HomeworkException error = assertThrows(HomeworkException.class,
-                () -> service.publish(content));
+                () -> service.publish(post(content)));
 
         assertEquals(ResultCodeEnum.HIT_CONTENT_TOO_LONG_ERROR, error.getResultCodeEnum());
         verifyNoInteractions(hitPostMapper);
@@ -129,6 +137,36 @@ class HitServiceImplTest {
         verify(hitPostMapper).changeActionCounters(100L, -1, 0, 0);
     }
 
+    @Test
+    void commentLikeCreatesReceivedNotificationWithContainingPost() {
+        HitPost post = publishedPost(100L, 3L, 0);
+        HitComment comment = new HitComment();
+        comment.setId(44L);
+        comment.setPostId(100L);
+        comment.setCommentUserId(9L);
+        comment.setComment("有帮助");
+        comment.setLikeCount(0);
+        when(hitPostMapper.selectById(100L)).thenReturn(post);
+        when(hitCommentMapper.selectById(44L)).thenReturn(comment);
+        when(hitCommentMapper.lockActive(44L)).thenReturn(44L);
+        when(hitCommentLikeMapper.selectIncludingDeletedForUpdate(44L, 7L)).thenReturn(null);
+        when(hitCommentLikeMapper.insert(any(HitCommentLike.class))).thenReturn(1);
+        when(hitCommentMapper.changeLikeCount(44L, 1)).thenAnswer(invocation -> {
+            comment.setLikeCount(1);
+            return 1;
+        });
+
+        HitCommentLikeDTO dto = new HitCommentLikeDTO();
+        dto.setActionStatus(ActionStatus.ACTIVATE);
+        HitCommentLikeResultVO result = service.commentLike(100L, 44L, dto);
+
+        assertTrue(result.isLiked());
+        assertEquals(1, result.getLikeCount());
+        verify(notificationService).create(9L, 7L, com.homework.model.enums.UserNotificationType.LIKE,
+                com.homework.model.enums.UserNotificationSendTo.HIT_COMMENT,
+                44L, 100L, "评论被点赞", "有帮助");
+    }
+
     private HitPost publishedPost(Long postId, Long postUserId, int likeCount) {
         HitPost post = new HitPost();
         post.setId(postId);
@@ -139,5 +177,11 @@ class HitServiceImplTest {
         post.setFavoriteCount(0);
         post.setRepostCount(0);
         return post;
+    }
+
+    private HitPostCreateDTO post(String content) {
+        HitPostCreateDTO dto = new HitPostCreateDTO();
+        dto.setContent(content);
+        return dto;
     }
 }

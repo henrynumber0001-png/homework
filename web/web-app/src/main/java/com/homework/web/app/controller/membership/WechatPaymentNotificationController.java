@@ -1,4 +1,4 @@
-package com.homework.web.app.controller;
+package com.homework.web.app.controller.membership;
 
 import com.homework.web.app.dto.MembershipPaymentConfirmationDTO;
 import com.homework.web.app.service.MembershipService;
