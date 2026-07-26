@@ -1,5 +1,6 @@
 package com.homework.web.app.service.impl;
 
+import com.homework.common.storage.CosReadUrlSigner;
 import com.homework.model.entity.InterviewQuestionInfo;
 import com.homework.model.enums.MembershipStatus;
 import com.homework.model.enums.MembershipType;
@@ -27,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -62,6 +64,8 @@ class QuestionInfoServiceImplTest {
     private MembershipAccessService membershipAccessService;
     @Mock
     private PublishedQuestionBankAccessService publishedQuestionBankAccessService;
+    @Mock
+    private CosReadUrlSigner readUrlSigner;
     @Spy
     private QuestionBankOrderService questionBankOrderService = new QuestionBankOrderService();
 
@@ -157,6 +161,7 @@ class QuestionInfoServiceImplTest {
         InterviewQuestionInfo question = new InterviewQuestionInfo();
         question.setId(22L);
         question.setTitle("Java 并发");
+        question.setImageObjectKey("questions/java-concurrency.png");
         question.setQuestionType(QuestionInfoQuestionType.ESSAY);
         question.setIsReleased(true);
         UserFavoriteQuestion favorite = favorite(99L, false);
@@ -164,10 +169,16 @@ class QuestionInfoServiceImplTest {
         when(questionBankQuestionMapper.selectList(any())).thenReturn(List.of(bankQuestion));
         when(interviewQuestionInfoMapper.selectList(any())).thenReturn(List.of(question));
         when(userFavoriteQuestionMapper.selectList(any())).thenReturn(List.of(favorite));
+        when(readUrlSigner.sign("questions/java-concurrency.png"))
+                .thenReturn("https://cos.example.com/questions/java-concurrency.png?signed=true");
 
         List<InterviewQuestionPageVO> result = service.getQuestionsByBankId(11L);
 
         assertTrue(result.get(0).getIsFavorite());
+        assertEquals(
+                "https://cos.example.com/questions/java-concurrency.png?signed=true",
+                result.get(0).getImageUrl()
+        );
     }
 
     private UserFavoriteQuestion favorite(Long id, boolean deleted) {

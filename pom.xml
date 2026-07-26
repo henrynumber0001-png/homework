@@ -28,7 +28,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jwt.version>0.11.5</jwt.version>
         <easycaptcha.version>1.6.2</easycaptcha.version>
-        <minio.version>8.6.0</minio.version>
+        <tencent-cos.version>5.6.247</tencent-cos.version>
         <knife4j.version>4.5.0</knife4j.version>
         <lombok.version>1.18.36</lombok.version>
         <hutool.version>5.8.46</hutool.version>
@@ -58,9 +58,9 @@
                 <version>${mybatis-plus.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.minio</groupId>
-                <artifactId>minio</artifactId>
-                <version>${minio.version}</version>
+                <groupId>com.qcloud</groupId>
+                <artifactId>cos_api</artifactId>
+                <version>${tencent-cos.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.github.xiaoymin</groupId>

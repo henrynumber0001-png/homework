@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.PageResult;
 import com.homework.common.result.ResultCodeEnum;
+import com.homework.common.storage.CosReadUrlSigner;
 import com.homework.model.entity.*;
 import com.homework.model.enums.*;
 import com.homework.web.app.dto.AiEvaluationResult;
@@ -42,6 +43,7 @@ public class UserCenterServiceImpl implements UserCenterService {
     private final CertificateQuestionInfoMapper certificateQuestionInfoMapper;
     private final QuestionAiEvaluationMapper questionAiEvaluationMapper;
     private final QuestionBankMapper questionBankMapper;
+    private final CosReadUrlSigner readUrlSigner;
 
     @Override
     public UserCenterPageVO getCenterPageInfo(Long userId) {
@@ -325,6 +327,7 @@ public class UserCenterServiceImpl implements UserCenterService {
             vo.setTitle(interviewInfo.getTitle());
             vo.setAnalysis(interviewInfo.getAnalysis());
             vo.setQuestionType(interviewInfo.getQuestionType());
+            vo.setImageUrl(readUrlSigner.sign(interviewInfo.getImageObjectKey()));
 
         }
 
@@ -340,7 +343,7 @@ public class UserCenterServiceImpl implements UserCenterService {
             vo.setOptions(certificateInfo.getOptions());
             vo.setQuestionType(certificateInfo.getQuestionType());
             vo.setCorrectAnswer(certificateInfo.getCorrectAnswer());
-            vo.setImageUrl(certificateInfo.getImageUrl());
+            vo.setImageUrl(readUrlSigner.sign(certificateInfo.getImageObjectKey()));
             vo.setTitle(certificateInfo.getTitle());
             vo.setAnalysis(certificateInfo.getAnalysis());
         }
@@ -522,6 +525,7 @@ public class UserCenterServiceImpl implements UserCenterService {
             vo.setAnalysis(interviewInfo.getAnalysis());
             vo.setQuestionType(interviewInfo.getQuestionType());
             vo.setQuestionId(interviewInfo.getId());
+            vo.setImageUrl(readUrlSigner.sign(interviewInfo.getImageObjectKey()));
         }
         if (groupType.equals(GroupType.CERTIFICATION)) {
             LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
@@ -538,7 +542,7 @@ public class UserCenterServiceImpl implements UserCenterService {
             vo.setQuestionId(certificateInfo.getId());
             vo.setCorrectAnswer(certificateInfo.getCorrectAnswer());
             vo.setOptions(certificateInfo.getOptions());
-            vo.setImageUrl(certificateInfo.getImageUrl());
+            vo.setImageUrl(readUrlSigner.sign(certificateInfo.getImageObjectKey()));
         }
         return vo;
     }
@@ -710,6 +714,7 @@ public class UserCenterServiceImpl implements UserCenterService {
             vo.setAnalysis(interviewInfo.getAnalysis());
             vo.setQuestionType(interviewInfo.getQuestionType());
             vo.setQuestionId(interviewInfo.getId());
+            vo.setImageUrl(readUrlSigner.sign(interviewInfo.getImageObjectKey()));
         }
         if (groupType.equals(GroupType.CERTIFICATION)) {
             LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
@@ -726,7 +731,7 @@ public class UserCenterServiceImpl implements UserCenterService {
             vo.setQuestionId(certificateInfo.getId());
             vo.setCorrectAnswer(certificateInfo.getCorrectAnswer());
             vo.setOptions(certificateInfo.getOptions());
-            vo.setImageUrl(certificateInfo.getImageUrl());
+            vo.setImageUrl(readUrlSigner.sign(certificateInfo.getImageObjectKey()));
         }
         vo.setNoteId(userQuestionNote.getId());
         vo.setUpdatedTime(userQuestionNote.getUpdatedTime());

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.homework.common.exception.ExamExpiredException;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
+import com.homework.common.storage.CosReadUrlSigner;
 import com.homework.model.entity.CertificateExamAnswer;
 import com.homework.model.entity.CertificateExamSession;
 import com.homework.model.entity.CertificateQuestionInfo;
@@ -60,6 +61,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
 
     private final MembershipAccessService membershipAccessService;
     private final PublishedQuestionBankAccessService publishedQuestionBankAccessService;
+    private final CosReadUrlSigner readUrlSigner;
 
 
     @Transactional(noRollbackFor = ExamExpiredException.class)
@@ -390,7 +392,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             vo.setTitle(questionInfo.getTitle());
             vo.setOptions(questionInfo.getOptions());
             vo.setQuestionType(questionInfo.getQuestionType());
-            vo.setImageUrl(questionInfo.getImageUrl());
+            vo.setImageUrl(readUrlSigner.sign(questionInfo.getImageObjectKey()));
             vo.setIsFavorite(favoriteQuestionMap.containsKey(questionId));
 
             CertificateExamAnswer answer = answerMap.get(questionId); //这一步就是看用户答没答
@@ -509,7 +511,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             reviewVO.setTitle(questionInfo.getTitle());
             reviewVO.setOptions(questionInfo.getOptions());
             reviewVO.setQuestionType(questionInfo.getQuestionType());
-            reviewVO.setImageUrl(questionInfo.getImageUrl());
+            reviewVO.setImageUrl(readUrlSigner.sign(questionInfo.getImageObjectKey()));
             reviewVO.setCorrectAnswer(questionInfo.getCorrectAnswer());
             reviewVO.setAnalysis(questionInfo.getAnalysis());
             reviewVO.setIsFavorite(favoriteQuestionMap.containsKey(questionId));

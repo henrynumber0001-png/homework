@@ -16,6 +16,7 @@ public class FavoriteQuestionReviewVO {
 
     private List<String> options;
 
+    /** 题目图片的一小时只读签名地址。 */
     private String imageUrl;
 
     @Schema(description = "正确选项")

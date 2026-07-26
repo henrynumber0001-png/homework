@@ -116,7 +116,7 @@ public class AdminQuestionController {
         return Result.success(questionService.updateOrder(bankId, dto));
     }
 
-    /** 上传 JPG、PNG 或 WebP 题目图片到 MinIO。 */
+    /** 上传 JPG、PNG 或 WebP 题目图片到腾讯云 COS。 */
     @Operation(summary = "上传题目图片")
     @PostMapping("/uploads/question-images")
     public Result<QuestionImageUploadVO> uploadImage(@RequestPart("file") MultipartFile file) {

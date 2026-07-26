@@ -762,13 +762,14 @@ file=<binary>
 
 ```json
 {
-  "uploadId": "IMG-20260726-000001",
-  "url": "https://cdn.example.com/admin-temp/a.webp",
-  "expiresTime": "2026-07-27T16:00:00"
+  "uploadId": "admin-temp/questions/2026-07-26/1785062400000-a.webp",
+  "previewUrl": "https://example-1250000000.cos.ap-guangzhou.myqcloud.com/admin-temp/questions/2026-07-26/a.webp?q-sign-algorithm=sha1&...",
+  "previewUrlExpiresTime": "2026-07-26T17:00:00",
+  "uploadExpiresTime": "2026-07-27T16:00:00"
 }
 ```
 
-支持 JPG、PNG、WebP，单文件最大 5 MB。上传标识 24 小时内有效；题目保存时对象从临时目录复制到永久目录并删除临时对象。极端情况下遗留的临时对象由 MinIO Bucket Lifecycle 清理。
+支持 JPG、PNG、WebP，单文件最大 5 MB。`previewUrl` 是私有存储桶的 1 小时只读签名地址，只用于即时预览；`uploadId` 是 COS 对象 Key，24 小时内可用于创建或编辑题目。题目保存时对象从临时目录复制到永久目录并删除临时对象，数据库只保存永久对象 Key，不保存签名 URL。未绑定的临时对象需要通过腾讯云生命周期规则、控制台或后续后台清理任务删除。
 
 ## 9. Excel 批量导入
 
@@ -1245,7 +1246,7 @@ GET /api/admin/audit-logs?operatorAdminId=2&module=QUESTION&action=UPDATE&target
 | 操作日志 | 所有写操作审计 |
 | 题库业务状态和版本 | 发布、下架和并发控制 |
 | 题库与题目的 `create_admin_id` | 后台创建人，不复用带 App 用户外键的 `create_user_id` |
-| 面试题 `image_url` | 图文题目 |
+| 面试题 `image_object_key` | 保存私有 COS 对象 Key，用于图文题目 |
 | 关系表排序版本 | 原子拖拽排序 |
 | 题目导入任务和错误明细 | 两阶段 Excel 导入 |
 | Comment 业务状态 | 隐藏、删除和恢复 |

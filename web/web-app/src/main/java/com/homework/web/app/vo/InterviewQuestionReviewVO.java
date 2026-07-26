@@ -13,6 +13,9 @@ public class InterviewQuestionReviewVO {
     @Schema(description = "题目标题")
     private String title;
 
+    /** 题目图片的一小时只读签名地址。 */
+    private String imageUrl;
+
     private QuestionInfoQuestionType questionType;
 
     @Schema(description = "参考答案")

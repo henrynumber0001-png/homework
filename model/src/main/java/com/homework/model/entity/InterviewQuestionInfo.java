@@ -29,8 +29,8 @@ public class InterviewQuestionInfo extends BaseEntity {
 
     private Integer sortOrder;
 
-    /** 题干图片地址。 */
-    private String imageUrl;
+    /** 题干图片在私有对象存储中的对象 Key。 */
+    private String imageObjectKey;
 
     /** 乐观锁版本。 */
     @Version

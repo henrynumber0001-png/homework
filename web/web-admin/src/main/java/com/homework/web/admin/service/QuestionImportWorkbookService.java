@@ -139,7 +139,7 @@ public class QuestionImportWorkbookService {
                             dto.getCorrectAnswers()
                     );
                     if (dto.getImageUploadId() != null) {
-                        imageService.resolveUrl(dto.getImageUploadId());
+                        imageService.validateUploadId(dto.getImageUploadId());
                     }
                     questions.add(dto);
                 } catch (RuntimeException exception) {

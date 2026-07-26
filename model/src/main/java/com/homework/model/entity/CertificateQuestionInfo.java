@@ -41,8 +41,8 @@ public class CertificateQuestionInfo extends BaseEntity {
 
     private Integer sortOrder;
 
-    @Schema(description = "题目中的图片的地址")
-    private String imageUrl;
+    @Schema(description = "题目图片在私有对象存储中的对象 Key")
+    private String imageObjectKey;
 
     /** 乐观锁版本。 */
     @Version

@@ -1,6 +1,7 @@
 package com.homework.web.admin.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.homework.common.storage.CosReadUrlSigner;
 import com.homework.model.entity.CertificateQuestionInfo;
 import com.homework.model.entity.InterviewQuestionInfo;
 import com.homework.model.entity.QuestionBank;
@@ -30,6 +31,7 @@ public class QuestionAssembler {
     private final QuestionBankQuestionMapper relationMapper;
     private final QuestionBankMapper bankMapper;
     private final AdminAccessService accessService;
+    private final CosReadUrlSigner readUrlSigner;
 
     public QuestionRowVO toRow(Long bankId, QuestionBankQuestion relation, InterviewQuestionInfo question) {
         QuestionRowVO vo = new QuestionRowVO();
@@ -37,7 +39,7 @@ public class QuestionAssembler {
         vo.setBankId(bankId);
         vo.setQuestionType(question.getQuestionType().name());
         vo.setTitle(question.getTitle());
-        vo.setImageUrl(question.getImageUrl());
+        vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setReleased(question.getIsReleased());
         vo.setDeleted(question.getDeleted());
         vo.setBankSortOrder(relation.getSortOrder());
@@ -55,7 +57,7 @@ public class QuestionAssembler {
         vo.setBankId(bankId);
         vo.setQuestionType(question.getQuestionType().name());
         vo.setTitle(question.getTitle());
-        vo.setImageUrl(question.getImageUrl());
+        vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setReleased(question.getIsReleased());
         vo.setDeleted(question.getDeleted());
         vo.setBankSortOrder(relation.getSortOrder());
@@ -79,7 +81,7 @@ public class QuestionAssembler {
         vo.setGroupType(groupType.name());
         vo.setQuestionType(question.getQuestionType().name());
         vo.setTitle(question.getTitle());
-        vo.setImageUrl(question.getImageUrl());
+        vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setAnalysis(question.getAnalysis());
         vo.setOptions(List.of());
         vo.setCorrectAnswers(List.of());
@@ -103,7 +105,7 @@ public class QuestionAssembler {
         vo.setGroupType(groupType.name());
         vo.setQuestionType(question.getQuestionType().name());
         vo.setTitle(question.getTitle());
-        vo.setImageUrl(question.getImageUrl());
+        vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setAnalysis(question.getAnalysis());
         List<QuestionOptionVO> optionVos = new ArrayList<>();
         List<String> correctKeys = new ArrayList<>();

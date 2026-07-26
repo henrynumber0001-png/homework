@@ -3,6 +3,7 @@ package com.homework.web.app.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
+import com.homework.common.storage.CosReadUrlSigner;
 import com.homework.model.entity.*;
 import com.homework.model.enums.*;
 import com.homework.web.app.context.LoginUserHolder;
@@ -47,6 +48,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     private final UserBankCorrectRateMapper userBankCorrectRateMapper;
     private final QuestionBankOrderService questionBankOrderService;
     private final PublishedQuestionBankAccessService publishedQuestionBankAccessService;
+    private final CosReadUrlSigner readUrlSigner;
 
     @Override
     public List<InterviewQuestionPageVO> getQuestionsByBankId(Long bankId) {
@@ -90,6 +92,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
             vo.setQuestionId(questionInfo.getId());
             vo.setTitle(questionInfo.getTitle());
+            vo.setImageUrl(readUrlSigner.sign(questionInfo.getImageObjectKey()));
             vo.setQuestionType(questionInfo.getQuestionType());
             vo.setIsFavorite(favoriteQuestionMap.containsKey(questionInfo.getId())); //containsKey 比 favoriteQuestionMap.get(questionInfo.getId()) != null 更优雅
             list.add(vo);
@@ -271,6 +274,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             InterviewQuestionReviewVO vo = new InterviewQuestionReviewVO();
             vo.setQuestionId(questionInfo.getId());
             vo.setTitle(questionInfo.getTitle());
+            vo.setImageUrl(readUrlSigner.sign(questionInfo.getImageObjectKey()));
             vo.setAnalysis(questionInfo.getAnalysis());
             vo.setQuestionType(questionInfo.getQuestionType());
             vo.setIsFavorite(favoriteQuestionMap.containsKey(questionInfo.getId()));
@@ -373,7 +377,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             vo.setTitle(certificateQuestionInfo.getTitle());
             vo.setOptions(certificateQuestionInfo.getOptions());
             vo.setQuestionType(certificateQuestionInfo.getQuestionType());
-            vo.setImageUrl(certificateQuestionInfo.getImageUrl());
+            vo.setImageUrl(readUrlSigner.sign(certificateQuestionInfo.getImageObjectKey()));
             vo.setIsFavorite(favoriteQuestionMap.containsKey(certificateQuestionInfo.getId()));
             certificateQuestionPageVos.add(vo);
         });
@@ -506,7 +510,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             vo.setQuestionType(certificateQuestionInfo.getQuestionType());
             vo.setCorrectAnswer(certificateQuestionInfo.getCorrectAnswer());
             vo.setAnalysis(certificateQuestionInfo.getAnalysis());
-            vo.setImageUrl(certificateQuestionInfo.getImageUrl());
+            vo.setImageUrl(readUrlSigner.sign(certificateQuestionInfo.getImageObjectKey()));
             vo.setIsCorrect(userQuestionAnswer.getIsCorrect());
             vo.setIsFavorite(favoriteQuestionMap.containsKey(userQuestionAnswer.getQuestionId()));
             vo.setChosenOptions(userQuestionAnswer.getChosenOptions());
@@ -614,6 +618,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
             questionReviewVo.setQuestionId(interviewQuestionInfo.getId());
             questionReviewVo.setTitle(interviewQuestionInfo.getTitle());
+            questionReviewVo.setImageUrl(readUrlSigner.sign(interviewQuestionInfo.getImageObjectKey()));
             questionReviewVo.setQuestionType(userQuestionAnswer.getQuestionType());
             questionReviewVo.setAnalysis(interviewQuestionInfo.getAnalysis());
             questionReviewVo.setContent(userQuestionAnswer.getContent());
@@ -824,7 +829,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             vo.setCorrectAnswer(questionInfo.getCorrectAnswer());
             vo.setAnalysis(questionInfo.getAnalysis());
             vo.setQuestionType(questionInfo.getQuestionType());
-            vo.setImageUrl(questionInfo.getImageUrl());
+            vo.setImageUrl(readUrlSigner.sign(questionInfo.getImageObjectKey()));
             vo.setIsFavorite(userFavoriteQuestion != null);
             UserQuestionAnswer userQuestionAnswer = questionAnswerMap.get(questionInfo.getId());
             if (userQuestionAnswer != null) {

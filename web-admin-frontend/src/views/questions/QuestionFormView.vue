@@ -136,7 +136,7 @@ async function handleImage(file: UploadFile): Promise<void> {
   try {
     const result = await uploadQuestionImage(raw)
     uploadedImageId.value = result.uploadId
-    imagePreview.value = result.url
+    imagePreview.value = result.previewUrl
     removeImage.value = false
     ElMessage.success('图片已上传')
   } catch (error) {

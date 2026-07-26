@@ -188,7 +188,7 @@ public class AdminQuestionService {
             question.setIsReleased(false);
             question.setCreateAdminId(AdminContext.getAdminId());
             question.setSortOrder(0);
-            question.setImageUrl(imageService.bind(dto.getImageUploadId()));
+            question.setImageObjectKey(imageService.bind(dto.getImageUploadId()));
             question.setVersion(0);
             interviewQuestionMapper.insert(question);
             questionId = question.getId();
@@ -205,7 +205,7 @@ public class AdminQuestionService {
             question.setIsReleased(false);
             question.setCreateAdminId(AdminContext.getAdminId());
             question.setSortOrder(0);
-            question.setImageUrl(imageService.bind(dto.getImageUploadId()));
+            question.setImageObjectKey(imageService.bind(dto.getImageUploadId()));
             question.setVersion(0);
             certificateQuestionMapper.insert(question);
             questionId = question.getId();
@@ -263,9 +263,9 @@ public class AdminQuestionService {
             question.setTitle(dto.getTitle().trim());
             question.setAnalysis(dto.getAnalysis());
             if (Boolean.TRUE.equals(dto.getRemoveImage())) {
-                question.setImageUrl(null);
+                question.setImageObjectKey(null);
             } else if (dto.getImageUploadId() != null && !dto.getImageUploadId().isBlank()) {
-                question.setImageUrl(imageService.bind(dto.getImageUploadId()));
+                question.setImageObjectKey(imageService.bind(dto.getImageUploadId()));
             }
             if (interviewQuestionMapper.updateById(question) == 0) {
                 throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
@@ -300,9 +300,9 @@ public class AdminQuestionService {
             question.setOptions(optionContents);
             question.setCorrectAnswer(correctAnswerContents);
             if (Boolean.TRUE.equals(dto.getRemoveImage())) {
-                question.setImageUrl(null);
+                question.setImageObjectKey(null);
             } else if (dto.getImageUploadId() != null && !dto.getImageUploadId().isBlank()) {
-                question.setImageUrl(imageService.bind(dto.getImageUploadId()));
+                question.setImageObjectKey(imageService.bind(dto.getImageUploadId()));
             }
             if (certificateQuestionMapper.updateById(question) == 0) {
                 throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);

@@ -18,6 +18,7 @@ public class WrongQuestionReviewVO {
 
     private QuestionInfoQuestionType questionType;
 
+    /** 题目图片的一小时只读签名地址。 */
     private String imageUrl;
 
     private List<String> chosenOptions;

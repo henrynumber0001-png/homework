@@ -132,8 +132,9 @@ export interface QuestionDetail extends Question {
 
 export interface QuestionImageUpload {
   uploadId: string
-  url: string
-  expiresTime: string
+  previewUrl: string
+  previewUrlExpiresTime: string
+  uploadExpiresTime: string
 }
 
 export interface QuestionImportTask {

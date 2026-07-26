@@ -10,13 +10,14 @@ ALTER TABLE question_bank
 
 ALTER TABLE question_info
     MODIFY COLUMN title VARCHAR(5000) NOT NULL,
-    ADD COLUMN image_url VARCHAR(512) NULL AFTER sort_order,
-    ADD COLUMN version INT NOT NULL DEFAULT 0 AFTER image_url,
+    ADD COLUMN image_object_key VARCHAR(512) NULL AFTER sort_order,
+    ADD COLUMN version INT NOT NULL DEFAULT 0 AFTER image_object_key,
     ADD COLUMN create_admin_id BIGINT NULL AFTER create_user_id;
 
 ALTER TABLE certificate_question_info
     MODIFY COLUMN title VARCHAR(5000) NOT NULL,
-    ADD COLUMN version INT NOT NULL DEFAULT 0 AFTER image_url,
+    CHANGE COLUMN image_url image_object_key VARCHAR(512) NULL,
+    ADD COLUMN version INT NOT NULL DEFAULT 0 AFTER image_object_key,
     ADD COLUMN create_admin_id BIGINT NULL AFTER create_user_id;
 
 ALTER TABLE user_info
