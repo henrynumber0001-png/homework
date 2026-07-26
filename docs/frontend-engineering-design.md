@@ -170,7 +170,7 @@ React Router 的 Loader 只用于路由级鉴权判断、重定向和懒加载�
 ## 6. 推荐目录结构
 
 ```text
-homework-frontend/
+frontend/web-app/
 ├── public/
 ├── src/
 │   ├── app/

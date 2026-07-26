@@ -1,0 +1,20 @@
+{
+  "name": "homework",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.34.5",
+  "scripts": {
+    "dev": "pnpm run dev:frontend",
+    "dev:frontend": "pnpm --parallel --filter './frontend/*' run dev",
+    "dev:web": "pnpm --filter homework-web-app dev",
+    "dev:admin": "pnpm --filter homework-web-admin dev",
+    "build": "pnpm run build:frontend && pnpm run build:backend",
+    "build:frontend": "pnpm --recursive --filter './frontend/*' run build",
+    "build:backend": "mvn -f backend/pom.xml verify",
+    "test": "pnpm run test:frontend && pnpm run test:backend",
+    "test:frontend": "pnpm --recursive --filter './frontend/*' run test",
+    "test:backend": "mvn -f backend/pom.xml test",
+    "typecheck": "pnpm --recursive --filter './frontend/*' run typecheck",
+    "lint": "pnpm --recursive --if-present --filter './frontend/*' run lint"
+  }
+}

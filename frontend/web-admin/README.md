@@ -1,6 +1,9 @@
-# Homework 管理后台前端
+# HomeWork 管理后台前端
 
 面向桌面端的后台管理工程，核心流程是“先进入题库，再管理题目”。题库只能手动创建，题目支持表单创建与 Excel 批量导入。
+
+本工程位于 HomeWork monorepo 的 `frontend/web-admin`，对应的后端模块是
+`backend/web/web-admin`。
 
 ## 已实现
 
@@ -14,8 +17,9 @@
 ## 本地启动
 
 ```bash
-npm install
-npm run dev
+cd ../..
+pnpm install
+pnpm dev:admin
 ```
 
 默认前端地址为 `http://localhost:5174`，开发服务器会将 `/api/admin` 代理到 `http://localhost:8081`。
@@ -28,7 +32,7 @@ npm run dev
 ## 质量检查
 
 ```bash
-npm run typecheck
-npm run test
-npm run build
+pnpm --filter homework-web-admin typecheck
+pnpm --filter homework-web-admin test
+pnpm --filter homework-web-admin build
 ```

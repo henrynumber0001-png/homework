@@ -117,10 +117,10 @@ V1 不额外引入大型状态管理或低代码框架。分页数据和详情�
 
 ### 4.2 建议工程名称
 
-建议在当前仓库根目录新增：
+工程现位于 monorepo 的：
 
 ```text
-web-admin-frontend/
+frontend/web-admin/
 ```
 
 前后端工程相互独立，开发环境通过 Vite Proxy 将 `/api/admin` 转发到 `http://localhost:8081`。
@@ -917,7 +917,7 @@ Spring Boot 高频面试题            [未发布]          [发布题库] [更�
 建议目录：
 
 ```text
-web-admin-frontend/
+frontend/web-admin/
 ├── src/
 │   ├── api/
 │   │   ├── auth.ts
