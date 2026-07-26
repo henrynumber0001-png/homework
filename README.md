@@ -1,86 +1,92 @@
 # HomeWork
 
-HomeWork 采用单仓库管理用户端、管理端和共享后端模块。仓库原有 Git 历史来自
-`homework-backend`；原来的独立 `homework-frontend` 已并入本仓库。
+HomeWork is a monorepo containing the user-facing application, the administration
+console, and their shared backend modules.
 
-## 目录结构
+## Project Structure
 
 ```text
 homework/
 ├── backend/
-│   ├── common/                 # 后端公共能力
-│   ├── model/                  # 实体与枚举
+│   ├── common/                 # Shared backend utilities
+│   ├── model/                  # Entities and enums
 │   └── web/
-│       ├── web-app/            # 用户端 API（默认 8080）
-│       └── web-admin/          # 管理端 API（默认 8081）
+│       ├── web-app/            # User API (default port: 8080)
+│       └── web-admin/          # Admin API (default port: 8081)
 ├── frontend/
-│   ├── web-app/                # React 用户端（默认 5173）
-│   └── web-admin/              # Vue 管理端（默认 5174）
-├── docs/                       # 设计与接口文档
-├── sql/                        # 数据库初始化与迁移脚本
-├── package.json                # 跨项目常用命令
-├── pnpm-workspace.yaml         # 前端 workspace
-└── backend/pom.xml             # 后端 Maven reactor
+│   ├── web-app/                # React user application (default port: 5173)
+│   └── web-admin/              # Vue admin console (default port: 5174)
+├── docs/                       # Design and API documentation
+├── sql/                        # Database initialization and migration scripts
+├── package.json                # Cross-project commands
+├── pnpm-workspace.yaml         # Frontend workspace configuration
+└── backend/pom.xml             # Backend Maven reactor
 ```
 
-后端继续保持原有 Maven 多模块关系，前端统一使用一个 pnpm workspace 和一个
-`pnpm-lock.yaml`。构建产物、依赖目录、IDE 配置和本地环境变量均不进入 Git。
+The backend retains its Maven multi-module structure. Both frontend applications
+are managed through a single pnpm workspace and one `pnpm-lock.yaml`. Build
+outputs, dependency directories, IDE settings, and local environment variables
+are excluded from Git.
 
-## 核心文档
+## Core Documentation
 
-- [系统设计概览](docs/system-design.md)
-- [主要 API 接口文档](docs/api-reference.md)
+- [System Design Overview (English)](system-design-en.md)
+- [System Design Overview](docs/system-design.md)
+- [Main API Reference](docs/api-reference.md)
 
-原有专题文档继续保留在 `docs/`，用于查询后台管理、消息、会员支付和文件存储等
-详细规则。
+Additional topic-specific documentation remains available in `docs/`, including
+detailed rules for administration, messaging, membership payments, and file
+storage.
 
-## 环境要求
+## Requirements
 
 - JDK 21
 - Maven 3.9+
 - Node.js 20
 - pnpm 10
 
-## 安装前端依赖
+## Install Frontend Dependencies
 
 ```bash
 pnpm install
 ```
 
-本地配置从对应示例复制，真实密钥只写入被忽略的本地文件：
+Create local configuration files from the provided examples. Store real secrets
+only in the ignored local files:
 
 ```bash
 cp frontend/web-app/.env.example frontend/web-app/.env.local
 cp frontend/web-admin/.env.example frontend/web-admin/.env.local
 ```
 
-## 常用命令
+## Common Commands
 
 ```bash
-# 同时启动两个前端
+# Start both frontend applications
 pnpm dev
 
-# 单独启动用户端或管理端前端
+# Start the user application or admin console separately
 pnpm dev:web
 pnpm dev:admin
 
-# 前端检查
+# Frontend checks
 pnpm lint
 pnpm typecheck
 pnpm test:frontend
 pnpm build:frontend
 
-# 后端检查
+# Backend checks
 pnpm test:backend
 pnpm build:backend
 
-# 全部测试或全部构建
+# Run all tests or build the entire project
 pnpm test
 pnpm build
 ```
 
-后端本地启动前需准备相应的 `application-local.yml` 和外部服务。首次构建后可分别
-运行：
+Before starting the backend locally, prepare the appropriate
+`application-local.yml` files and required external services. After the initial
+build, run the applications separately:
 
 ```bash
 mvn -f backend/pom.xml install -DskipTests
@@ -88,6 +94,6 @@ mvn -f backend/web/web-app/pom.xml spring-boot:run
 mvn -f backend/web/web-admin/pom.xml spring-boot:run
 ```
 
-更具体的前端配置和测试方式见
-[`frontend/web-app/README.md`](frontend/web-app/README.md) 与
-[`frontend/web-admin/README.md`](frontend/web-admin/README.md)。
+For detailed frontend configuration and testing instructions, see
+[`frontend/web-app/README.md`](frontend/web-app/README.md) and
+[`frontend/web-admin/README.md`](frontend/web-admin/README.md).
