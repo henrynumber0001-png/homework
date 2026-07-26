@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.homework.web.app.mapper.PublicUserProfileMapper">
+    <select id="listActivities" resultType="com.homework.web.app.vo.PublicUserProfileActivityRowVO">
+        <choose>
+            <when test="tab == 'posts'">
+                SELECT activity_type, activity_time, activity_id, post_id, comment_id
+                FROM (
+                    SELECT 'POST' activity_type, created_time activity_time, id activity_id, id post_id, NULL comment_id
+                    FROM hit_post WHERE post_user_id=#{userId} AND post_status=1 AND is_deleted=0
+                    UNION ALL
+                    SELECT 'REPOST', a.created_time, a.id, a.post_id, NULL
+                    FROM hit_action a JOIN hit_post p ON p.id=a.post_id AND p.post_status=1 AND p.is_deleted=0
+                    WHERE a.action_user_id=#{userId} AND a.action_type=3 AND a.is_deleted=0
+                ) x ORDER BY activity_time DESC, activity_id DESC LIMIT #{limit} OFFSET #{offset}
+            </when>
+            <when test="tab == 'commented'">
+                SELECT 'COMMENT' activity_type, c.created_time activity_time, c.id activity_id, c.post_id, c.id comment_id
+                FROM hit_comment c JOIN hit_post p ON p.id=c.post_id AND p.post_status=1 AND p.is_deleted=0
+                WHERE c.comment_user_id=#{userId} AND c.is_deleted=0
+                ORDER BY c.created_time DESC, c.id DESC LIMIT #{limit} OFFSET #{offset}
+            </when>
+            <when test="tab == 'liked'">
+                SELECT activity_type, activity_time, activity_id, post_id, comment_id
+                FROM (
+                    SELECT 'LIKED_POST' activity_type, a.created_time activity_time, a.id activity_id, a.post_id, NULL comment_id
+                    FROM hit_action a JOIN hit_post p ON p.id=a.post_id AND p.post_status=1 AND p.is_deleted=0
+                    WHERE a.action_user_id=#{userId} AND a.action_type=1 AND a.is_deleted=0
+                    UNION ALL
+                    SELECT 'LIKED_COMMENT', l.created_time, l.id, c.post_id, c.id
+                    FROM hit_comment_like l JOIN hit_comment c ON c.id=l.comment_id AND c.is_deleted=0
+                    JOIN hit_post p ON p.id=c.post_id AND p.post_status=1 AND p.is_deleted=0
+                    WHERE l.action_user_id=#{userId} AND l.is_deleted=0
+                ) x ORDER BY activity_time DESC, activity_id DESC LIMIT #{limit} OFFSET #{offset}
+            </when>
+            <otherwise>
+                SELECT 'FAVORITE' activity_type, a.created_time activity_time, a.id activity_id, a.post_id, NULL comment_id
+                FROM hit_action a JOIN hit_post p ON p.id=a.post_id AND p.post_status=1 AND p.is_deleted=0
+                WHERE a.action_user_id=#{userId} AND a.action_type=2 AND a.is_deleted=0
+                ORDER BY a.created_time DESC, a.id DESC LIMIT #{limit} OFFSET #{offset}
+            </otherwise>
+        </choose>
+    </select>
+</mapper>

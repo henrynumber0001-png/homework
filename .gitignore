@@ -1,20 +1,34 @@
-# IntelliJ IDEA
+# Editors
 .idea/
+.vscode/
 *.iml
+*.suo
+*.sw?
 
-# Maven
+# Java / Maven
 target/
-
-# Java
 *.class
 
-# macOS
-.DS_Store
+# Node.js / frontend builds
+node_modules/
+dist/
+dist-ssr/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
 
 # Logs
 *.log
+*-debug.log*
 
-# Environment files
+# Local environment files
 .env
+.env.*
+!.env.example
+*.local
 application-local.yml
 application-dev.yml
+
+# Operating systems
+.DS_Store

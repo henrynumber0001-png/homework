@@ -1,0 +1,77 @@
+import { apiRequest } from '@/shared/api/client'
+import type { PageResult } from '@/shared/api/result'
+import type { GroupTypeValue } from '@/shared/constants/domain'
+import type {
+  LearningCalendarItem,
+  LibraryKind,
+  UserCenterData,
+  UserQuestionBank,
+  UserQuestionDetail,
+  UserQuestionListItem,
+} from '@/features/user-center/types'
+
+export function getUserCenter() {
+  return apiRequest<UserCenterData>({
+    url: '/app/user-center',
+  })
+}
+
+export function getLearningCalendar(year: number) {
+  return apiRequest<LearningCalendarItem[]>({
+    url: '/app/learning-activity/calendar',
+    params: { year },
+  })
+}
+
+const bankEndpoints: Record<LibraryKind, string> = {
+  wrong: 'wrong-question-banks',
+  favorite: 'favorite-question-banks',
+  note: 'note-banks',
+}
+
+const listEndpoints: Record<LibraryKind, string> = {
+  wrong: 'wrong-question-list',
+  favorite: 'favorite-question-list',
+  note: 'note-list',
+}
+
+const detailEndpoints: Record<LibraryKind, string> = {
+  wrong: 'wrong-question',
+  favorite: 'favorite-question',
+  note: 'note-question',
+}
+
+export function getUserQuestionBanks(
+  kind: LibraryKind,
+  groupType: GroupTypeValue,
+  pageNum = 1,
+  pageSize = 20,
+) {
+  return apiRequest<PageResult<UserQuestionBank>>({
+    url: `/app/user-center/${bankEndpoints[kind]}`,
+    params: { groupType, pageNum, pageSize },
+  })
+}
+
+export function getUserQuestionList(
+  kind: LibraryKind,
+  bankId: number,
+  pageNum = 1,
+  pageSize = 20,
+) {
+  return apiRequest<PageResult<UserQuestionListItem>>({
+    url: `/app/user-center/${listEndpoints[kind]}`,
+    params: { bankId, pageNum, pageSize },
+  })
+}
+
+export function getUserQuestionDetail(
+  kind: LibraryKind,
+  bankId: number,
+  questionId: number,
+) {
+  return apiRequest<UserQuestionDetail>({
+    url: `/app/user-center/${detailEndpoints[kind]}`,
+    params: { bankId, questionId },
+  })
+}

@@ -1,0 +1,42 @@
+package com.homework.web.app.service.impl;
+
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.homework.model.enums.UserInfoStatus;
+import com.homework.common.exception.HomeworkException;
+import com.homework.common.result.ResultCodeEnum;
+import com.homework.web.app.context.LoginUserHolder;
+import com.homework.model.entity.UserInfo;
+import com.homework.web.app.mapper.UserInfoMapper;
+import com.homework.web.app.service.UserInfoService;
+import com.homework.web.app.vo.UserInfoVO;
+import org.springframework.stereotype.Service;
+
+@Service
+public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> implements UserInfoService {
+
+    @Override
+    public UserInfoVO getUserInfo() {
+
+        Long userId = LoginUserHolder.getUserId();
+
+        if(userId == null){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+    }
+
+        UserInfo userInfo = this.getById(userId);
+        if(userInfo == null){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_USER_NOT_EXIST);
+        }
+
+        if(userInfo.getStatus() != UserInfoStatus.ACTIVE){
+            throw new HomeworkException(ResultCodeEnum.APP_ACCOUNT_DISABLED_ERROR);
+        }
+
+        UserInfoVO userInfoVo = new UserInfoVO();
+        userInfoVo.setAccountNo(userInfo.getAccountNo());
+        userInfoVo.setAvatar(userInfo.getAvatar());
+        userInfoVo.setDisplayName(userInfo.getDisplayName());
+
+        return userInfoVo;
+    }
+}

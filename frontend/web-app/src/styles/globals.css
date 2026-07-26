@@ -1,0 +1,139 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-canvas: #f5f1ec;
+  --color-surface: #fffdfb;
+  --color-ink: #2f2925;
+  --color-muted: #6f655e;
+  --color-brand: #80685f;
+  --color-brand-dark: #665149;
+  --color-accent: #627d79;
+  --color-premium: #a87924;
+  --color-success: #4f7f72;
+  --color-warning: #a66f21;
+  --color-danger: #b55353;
+  --color-line: #ded5ce;
+  --font-sans: Inter, 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+:root {
+  color: #2f2925;
+  background: #f5f1ec;
+  font-family: Inter, 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+  background: #f5f1ec;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(
+      circle at 5% 0%,
+      rgb(255 253 251 / 0.85),
+      transparent 28rem
+    ),
+    #f5f1ec;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #627d79;
+  outline-offset: 3px;
+}
+
+::selection {
+  color: #2f2925;
+  background: #ded5ce;
+}
+
+.app-container {
+  width: min(100% - 2rem, 1200px);
+  margin-inline: auto;
+}
+
+.reading-container {
+  width: min(100% - 2rem, 760px);
+  margin-inline: auto;
+}
+
+.surface-card {
+  border: 1px solid rgb(222 213 206 / 0.9);
+  border-radius: 1rem;
+  background: rgb(255 253 251 / 0.94);
+}
+
+.subtle-shadow {
+  box-shadow: 0 14px 40px rgb(58 47 41 / 0.08);
+}
+
+.bank-card:hover,
+.bank-card:focus-within {
+  box-shadow: 0 16px 34px rgb(68 59 55 / 0.11);
+  transform: translateY(-2px);
+}
+
+@media (hover: hover) and (pointer: fine) and (min-width: 640px) {
+  .bank-action {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  .bank-card:hover .bank-action,
+  .bank-card:focus-within .bank-action {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .bank-card:hover .bank-card-content,
+  .bank-card:focus-within .bank-card-content {
+    padding-right: 11.25rem;
+  }
+}
+
+@media (hover: none) and (min-width: 640px),
+  (pointer: coarse) and (min-width: 640px) {
+  .bank-card-content {
+    padding-right: 11.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bank-card:hover,
+  .bank-card:focus-within,
+  .bank-action {
+    transform: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-container,
+  .reading-container {
+    width: min(100% - 1.25rem, 1200px);
+  }
+}

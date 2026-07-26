@@ -1,0 +1,131 @@
+:root {
+  font-family:
+    Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  color: #1f2937;
+  background: #f6f7fb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --brand: #3157d5;
+  --brand-soft: #eef2ff;
+  --text-primary: #1f2937;
+  --text-secondary: #64748b;
+  --line: #e5e7eb;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --success: #16855b;
+  --warning: #c57618;
+  --danger: #d83c4c;
+  --radius: 12px;
+  --shadow: 0 1px 2px rgb(15 23 42 / 5%), 0 8px 28px rgb(15 23 42 / 6%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  min-width: 1180px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.panel {
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 3%);
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.filter-bar .el-input,
+.filter-bar .el-select {
+  width: 220px;
+}
+
+.table-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 18px;
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+.danger-text {
+  color: var(--danger);
+}
+
+.empty-hint {
+  padding: 52px 0;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.form-tip {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.el-button {
+  border-radius: 8px;
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  border-radius: 8px;
+}
+
+.el-dialog {
+  border-radius: 14px;
+}
+
+.el-table {
+  --el-table-border-color: #edf0f4;
+  --el-table-header-bg-color: #f8fafc;
+}
