@@ -26,6 +26,14 @@ homework/
 后端继续保持原有 Maven 多模块关系，前端统一使用一个 pnpm workspace 和一个
 `pnpm-lock.yaml`。构建产物、依赖目录、IDE 配置和本地环境变量均不进入 Git。
 
+## 核心文档
+
+- [系统设计概览](docs/system-design.md)
+- [主要 API 接口文档](docs/api-reference.md)
+
+原有专题文档继续保留在 `docs/`，用于查询后台管理、消息、会员支付和文件存储等
+详细规则。
+
 ## 环境要求
 
 - JDK 21
