@@ -19,10 +19,6 @@ public class QuestionBankVO {
 
     private BigDecimal avgCorrectRate;
 
-    private Integer priority;
-
-    private Integer questionCount;
-
     private List<String> tagNames;
 
 }

@@ -1,0 +1,42 @@
+package com.homework.web.admin.dto;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
+
+import java.util.List;
+
+/** 后台编辑题目主体的请求。 */
+@Data
+public class QuestionUpdateDTO {
+
+    @NotBlank
+    private String questionType;
+
+    @NotBlank
+    @Size(max = 5000)
+    private String title;
+
+    @Size(max = 20000)
+    private String analysis;
+
+    @Size(max = 512)
+    private String imageUploadId;
+
+    private Boolean removeImage;
+
+    @Valid
+    @Size(max = 26)
+    private List<QuestionOptionDTO> options;
+
+    @Size(max = 26)
+    private List<String> correctAnswers;
+
+    @Size(max = 500)
+    private String reason;
+
+    @NotNull
+    private Integer version;
+}

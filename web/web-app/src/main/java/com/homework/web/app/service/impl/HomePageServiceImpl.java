@@ -61,6 +61,7 @@ public class HomePageServiceImpl implements HomePageService {
     private List<HotQuestionBankVO> getHotBanks(List<Long> submoduleIds){
         LambdaQueryWrapper<QuestionBank> bankQueryWrapper = new LambdaQueryWrapper<>();
         bankQueryWrapper.in(QuestionBank::getSubModuleId, submoduleIds)
+                .eq(QuestionBank::getStatus, com.homework.model.enums.QuestionBankStatus.PUBLISHED)
                 .orderByDesc(QuestionBank::getHotScore)
                 .orderByDesc(QuestionBank::getId)
                 .last("limit 5");

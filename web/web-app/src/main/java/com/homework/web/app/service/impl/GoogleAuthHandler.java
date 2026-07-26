@@ -11,6 +11,7 @@ import com.homework.web.app.config.GoogleOAuthProperties;
 import com.homework.web.app.dto.GoogleTokenResponse;
 import com.homework.web.app.dto.ThirdPartyUser;
 import com.homework.web.app.service.ThirdPartyAuthHandler;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -20,6 +21,7 @@ import org.springframework.web.client.RestClient;
 import java.util.List;
 
 @Service
+@ConditionalOnProperty(prefix = "oauth.google", name = "enabled", havingValue = "true")
 public class GoogleAuthHandler implements ThirdPartyAuthHandler {
 
     private final GoogleOAuthProperties properties;

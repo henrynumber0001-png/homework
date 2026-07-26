@@ -54,24 +54,27 @@ jwt:
 
 oauth:
   google:
-    client-id: ${GOOGLE_CLIENT_ID}
-    client-secret: ${GOOGLE_CLIENT_SECRET}
-    redirect-uri: ${GOOGLE_REDIRECT_URI}
+    enabled: ${GOOGLE_OAUTH_ENABLED:false}
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+    redirect-uri: ${GOOGLE_REDIRECT_URI:}
     token-uri: https://oauth2.googleapis.com/token
 
   apple:
-    client-id: ${APPLE_CLIENT_ID}
-    team-id: ${APPLE_TEAM_ID}
-    key-id: ${APPLE_KEY_ID}
-    private-key: ${APPLE_PRIVATE_KEY}
-    redirect-uri: ${APPLE_REDIRECT_URI}
+    enabled: ${APPLE_OAUTH_ENABLED:false}
+    client-id: ${APPLE_CLIENT_ID:}
+    team-id: ${APPLE_TEAM_ID:}
+    key-id: ${APPLE_KEY_ID:}
+    private-key: ${APPLE_PRIVATE_KEY:}
+    redirect-uri: ${APPLE_REDIRECT_URI:}
     token-uri: https://appleid.apple.com/auth/token
     jwks-uri: https://appleid.apple.com/auth/keys
 
   wechat:
-    app-id: ${WECHAT_APP_ID}
-    app-secret: ${WECHAT_APP_SECRET}
-    redirect-uri: ${WECHAT_REDIRECT_URI}
+    enabled: ${WECHAT_OAUTH_ENABLED:false}
+    app-id: ${WECHAT_APP_ID:}
+    app-secret: ${WECHAT_APP_SECRET:}
+    redirect-uri: ${WECHAT_REDIRECT_URI:}
     scope: snsapi_login
     state-prefix: homework
     authorize-url: https://open.weixin.qq.com/connect/qrconnect
@@ -80,9 +83,10 @@ oauth:
     lang: zh_CN
 
   qq:
-    app-id: ${QQ_CONNECT_APP_ID}
-    app-key: ${QQ_CONNECT_APP_KEY} #相当于其他平台里的 client-secret
-    redirect-uri: ${QQ_CONNECT_REDIRECT_URI}
+    enabled: ${QQ_OAUTH_ENABLED:false}
+    app-id: ${QQ_CONNECT_APP_ID:}
+    app-key: ${QQ_CONNECT_APP_KEY:} #相当于其他平台里的 client-secret
+    redirect-uri: ${QQ_CONNECT_REDIRECT_URI:}
     authorize-url: https://graph.qq.com/oauth2.0/authorize
     token-url: https://graph.qq.com/oauth2.0/token
     openid-url: https://graph.qq.com/oauth2.0/me

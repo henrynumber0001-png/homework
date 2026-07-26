@@ -1,6 +1,7 @@
 package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.homework.common.entity.BaseEntity;
 import com.homework.model.enums.HitPostStatus;
 import lombok.Data;
@@ -36,4 +37,8 @@ public class HitPost extends BaseEntity {
     private Integer favoriteCount;
 
     private Integer repostCount;
+
+    /** 乐观锁版本。 */
+    @Version
+    private Integer version;
 }

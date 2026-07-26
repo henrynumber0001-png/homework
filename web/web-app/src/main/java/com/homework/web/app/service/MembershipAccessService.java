@@ -4,10 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.model.entity.BaseVipRecord;
+import com.homework.model.entity.MembershipAccessSuspension;
 import com.homework.model.entity.SvipRecord;
 import com.homework.model.enums.MembershipStatus;
 import com.homework.model.enums.MembershipType;
 import com.homework.web.app.mapper.BaseVipRecordMapper;
+import com.homework.web.app.mapper.MembershipAccessSuspensionMapper;
 import com.homework.web.app.mapper.SvipRecordMapper;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ public class MembershipAccessService { //查询 BaseVipRecord 和 SvipRecord，�
 
     private final BaseVipRecordMapper baseVipRecordMapper;
     private final SvipRecordMapper svipRecordMapper;
+    private final MembershipAccessSuspensionMapper membershipAccessSuspensionMapper;
 
     public MembershipAccessSnapshot getAccess(Long userId) {
         if (userId == null) {
@@ -73,6 +76,13 @@ public class MembershipAccessService { //查询 BaseVipRecord 和 SvipRecord，�
     }
 
     public MembershipAccessSnapshot requireActiveMembership(Long userId) {
+        Long suspensionCount = membershipAccessSuspensionMapper.selectCount(
+                new LambdaQueryWrapper<MembershipAccessSuspension>()
+                        .eq(MembershipAccessSuspension::getUserId, userId)
+                        .isNull(MembershipAccessSuspension::getResumedTime));
+        if (suspensionCount > 0) {
+            throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_SUSPENDED);
+        }
         MembershipAccessSnapshot access = getAccess(userId);
         if (access.status() == MembershipStatus.FREE) {
             throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_REQUIRED);

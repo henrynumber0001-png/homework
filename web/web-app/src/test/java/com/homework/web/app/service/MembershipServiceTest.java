@@ -6,6 +6,7 @@ import com.homework.model.entity.BaseVipRecord;
 import com.homework.model.entity.MembershipOrder;
 import com.homework.model.entity.MembershipPlan;
 import com.homework.model.entity.SvipRecord;
+import com.homework.model.entity.UserInfo;
 import com.homework.model.enums.BillingType;
 import com.homework.model.enums.MembershipOrderAction;
 import com.homework.model.enums.MembershipOrderStatus;
@@ -121,6 +122,9 @@ class MembershipServiceTest {
 
     @Test
     void createFullPurchaseOrderUsesServerPlanPrice() {
+        UserInfo user = new UserInfo();
+        user.setId(7L);
+        when(userInfoMapper.selectOne(any())).thenReturn(user);
         when(orderMapper.selectOne(any())).thenReturn(null);
         when(orderMapper.selectList(any())).thenReturn(List.of());
         when(orderMapper.selectCount(any())).thenReturn(0L);
@@ -142,6 +146,9 @@ class MembershipServiceTest {
     @Test
     void createDiffUpgradeRejectsDurationBeyondPaidBaseBalance() {
         LocalDateTime now = LocalDateTime.now();
+        UserInfo user = new UserInfo();
+        user.setId(7L);
+        when(userInfoMapper.selectOne(any())).thenReturn(user);
         when(orderMapper.selectOne(any())).thenReturn(null);
         when(orderMapper.selectList(any())).thenReturn(List.of());
         when(orderMapper.selectCount(any())).thenReturn(0L);

@@ -1,6 +1,7 @@
 package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.homework.common.entity.BaseEntity;
 import com.homework.model.enums.QuestionInfoQuestionType;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -23,5 +24,15 @@ public class InterviewQuestionInfo extends BaseEntity {
 
     private Long createUserId;
 
+    /** 创建该题目的后台管理员 ID；历史 App 数据可为空。 */
+    private Long createAdminId;
+
     private Integer sortOrder;
+
+    /** 题干图片地址。 */
+    private String imageUrl;
+
+    /** 乐观锁版本。 */
+    @Version
+    private Integer version;
 }

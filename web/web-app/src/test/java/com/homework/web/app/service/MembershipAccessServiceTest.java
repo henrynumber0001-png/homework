@@ -7,6 +7,7 @@ import com.homework.model.entity.SvipRecord;
 import com.homework.model.enums.MembershipStatus;
 import com.homework.model.enums.MembershipType;
 import com.homework.web.app.mapper.BaseVipRecordMapper;
+import com.homework.web.app.mapper.MembershipAccessSuspensionMapper;
 import com.homework.web.app.mapper.SvipRecordMapper;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,8 @@ class MembershipAccessServiceTest {
     private BaseVipRecordMapper baseVipMapper;
     @Mock
     private SvipRecordMapper svipMapper;
+    @Mock
+    private MembershipAccessSuspensionMapper suspensionMapper;
 
     @Test
     void svipWinsAndBaseVipIsReportedAsFrozen() {
@@ -39,7 +42,7 @@ class MembershipAccessServiceTest {
         when(baseVipMapper.selectOne(any())).thenReturn(baseVip);
 
         MembershipAccessSnapshot access =
-                new MembershipAccessService(baseVipMapper, svipMapper).getAccess(7L);
+                new MembershipAccessService(baseVipMapper, svipMapper, suspensionMapper).getAccess(7L);
 
         assertEquals(MembershipStatus.PREMIUM_PLUS, access.status());
         assertEquals(MembershipType.PREMIUM_PLUS, access.membershipType());
@@ -59,7 +62,7 @@ class MembershipAccessServiceTest {
         when(baseVipMapper.selectOne(any())).thenReturn(baseVip);
 
         MembershipAccessSnapshot access =
-                new MembershipAccessService(baseVipMapper, svipMapper).getAccess(7L);
+                new MembershipAccessService(baseVipMapper, svipMapper, suspensionMapper).getAccess(7L);
 
         assertEquals(MembershipStatus.PREMIUM, access.status());
         assertEquals(baseVip.getExpireTime(), access.currentExpireTime());
@@ -76,7 +79,8 @@ class MembershipAccessServiceTest {
                 HomeworkException.class,
                 () -> new MembershipAccessService(
                         baseVipMapper,
-                        svipMapper
+                        svipMapper,
+                        suspensionMapper
                 ).requirePremiumPlus(7L)
         );
 
@@ -84,5 +88,21 @@ class MembershipAccessServiceTest {
                 ResultCodeEnum.PREMIUM_PLUS_MEMBERSHIP_REQUIRED,
                 error.getResultCodeEnum()
         );
+    }
+
+    @Test
+    void suspendedMembershipCannotAccessAppPremiumFeatures() {
+        when(suspensionMapper.selectCount(any())).thenReturn(1L);
+
+        HomeworkException error = assertThrows(
+                HomeworkException.class,
+                () -> new MembershipAccessService(
+                        baseVipMapper,
+                        svipMapper,
+                        suspensionMapper
+                ).requireActiveMembership(7L)
+        );
+
+        assertEquals(ResultCodeEnum.MEMBERSHIP_SUSPENDED, error.getResultCodeEnum());
     }
 }

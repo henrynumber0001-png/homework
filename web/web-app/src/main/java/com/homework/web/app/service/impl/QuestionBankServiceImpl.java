@@ -200,11 +200,12 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
 
         LambdaQueryWrapper<QuestionBank> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(QuestionBank::getSubModuleId, subModuleId)
+                .eq(QuestionBank::getStatus, com.homework.model.enums.QuestionBankStatus.PUBLISHED)
                 .orderByDesc(QuestionBank::getHotScore) //首次进入题库页面，默认按照“热度”排序
                 .orderByDesc(QuestionBank::getId);
         List<QuestionBank> questionBanks = questionBankMapper.selectList(queryWrapper);
-        if(questionBanks.isEmpty()){
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        if (questionBanks.isEmpty()) {
+            return List.of();
         }
 
         //QuestionBank表中是没有 题库平均正确率 这个值的，因此要通过 SQL聚合函数 把 BankCorrectRate表中的用户题库平均正确率（用bankId）聚合，算平均数，再set到对应bankId的 avgCorrectRate 字段；
@@ -218,18 +219,20 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         });
 
         List<QuestionBankVO> questionBankVOList = questionBanks.stream().map(this::toQuestionBankVO).collect(Collectors.toList());
+
         return questionBankVOList;
     }
 
     private List<QuestionBankVO> listQuestionBanksByLatest(Long subModuleId) {
         LambdaQueryWrapper<QuestionBank> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(QuestionBank::getSubModuleId, subModuleId)
+                .eq(QuestionBank::getStatus, com.homework.model.enums.QuestionBankStatus.PUBLISHED)
                 .orderByDesc(QuestionBank::getCreatedTime)
                 .orderByDesc(QuestionBank::getId);
 
         List<QuestionBank> questionBanks = questionBankMapper.selectList(queryWrapper);
         if (questionBanks.isEmpty()) {
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            return List.of();
         }
 
         List<QuestionBankVO> questionBankVos = questionBanks.stream().map(this::toQuestionBankVO).collect(Collectors.toList());

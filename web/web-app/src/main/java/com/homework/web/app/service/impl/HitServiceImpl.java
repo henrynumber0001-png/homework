@@ -17,6 +17,7 @@ import com.homework.web.app.dto.HitPostCreateDTO;
 import com.homework.web.app.dto.HitCommentLikeDTO;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.HitService;
+import com.homework.web.app.service.CommunityAccessService;
 import com.homework.web.app.service.NotificationService;
 import com.homework.web.app.vo.HitCommentVO;
 import com.homework.web.app.vo.HitCommentLikeResultVO;
@@ -48,6 +49,7 @@ public class HitServiceImpl implements HitService {
     private final HitCommentLikeMapper hitCommentLikeMapper;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
+    private final CommunityAccessService communityAccessService;
 
     /**
      * 匹配以 # 开头的标签。
@@ -168,6 +170,7 @@ public class HitServiceImpl implements HitService {
 
         LambdaQueryWrapper<HitComment> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(HitComment::getPostId, postId)
+                .eq(HitComment::getCommentStatus, HitPostStatus.PUBLISHED)
                 .orderByAsc(HitComment::getCreatedTime)
                 .orderByAsc(HitComment::getId);
         List<HitComment> comments = hitCommentMapper.selectPage(page, queryWrapper).getRecords();
@@ -224,6 +227,7 @@ public class HitServiceImpl implements HitService {
     public Long publish(HitPostCreateDTO dto) {
 
         Long postUserId = LoginUserHolder.getUserId();
+        communityAccessService.requirePostAllowed(postUserId);
 
         if (dto == null) throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         String normalizeContent = normalizeContent(dto.getContent(), MAX_POST_LENGTH);
@@ -255,6 +259,7 @@ public class HitServiceImpl implements HitService {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
         Long commentUserId = LoginUserHolder.getUserId();
+        communityAccessService.requireCommentAllowed(commentUserId);
 
         // 检查要评论的 HIT 是否存在
         LambdaQueryWrapper<HitPost> queryWrapper = new LambdaQueryWrapper<>();
@@ -283,6 +288,7 @@ public class HitServiceImpl implements HitService {
         comment.setCommentUserId(commentUserId);
         comment.setParentCommentId(parentComment == null ? null : dto.getParentCommentId()); //有 parent_comment_id，说明回复的是父评论，而非po主
         comment.setComment(normalizeContent);
+        comment.setCommentStatus(HitPostStatus.PUBLISHED);
         hitCommentMapper.insert(comment);
         int result = hitPostMapper.changeCommentCount(postId, 1); // 使用原子 SQL 把动态评论数加 1，避免并发丢失计数。
         if(result != 1){//如果 Post 在校验后被隐藏或删除，评论/互动可能已经写入，但计数没有更新。
@@ -315,7 +321,8 @@ public class HitServiceImpl implements HitService {
             throw new HomeworkException(ResultCodeEnum.HIT_NOT_EXIST);
         }
         HitComment comment = hitCommentMapper.selectById(commentId);
-        if (comment == null || !Objects.equals(comment.getPostId(), postId) || hitCommentMapper.lockActive(commentId) == null) {
+        if (comment == null || comment.getCommentStatus() != HitPostStatus.PUBLISHED
+                || !Objects.equals(comment.getPostId(), postId) || hitCommentMapper.lockActive(commentId) == null) {
             throw new HomeworkException(ResultCodeEnum.COMMENT_NOT_EXIST);
         }
         Long actionUserId = LoginUserHolder.getUserId();

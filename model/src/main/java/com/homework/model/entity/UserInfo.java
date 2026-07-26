@@ -1,6 +1,7 @@
 package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.homework.common.entity.BaseEntity;
 import com.homework.model.enums.UserInfoStatus;
 import com.homework.model.enums.UserInfoUserRole;
@@ -25,4 +26,8 @@ public class UserInfo extends BaseEntity {
 
     /** 1.user;2.admin */
     private UserInfoUserRole userRole;
+
+    /** 乐观锁版本。 */
+    @Version
+    private Integer version;
 }

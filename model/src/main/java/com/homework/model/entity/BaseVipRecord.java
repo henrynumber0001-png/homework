@@ -1,6 +1,7 @@
 package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.homework.common.entity.BaseEntity;
 
 import java.time.LocalDateTime;
@@ -17,4 +18,8 @@ public class BaseVipRecord extends BaseEntity {
 
     /** 包含前置 Premium Plus 时长后的最终到期时间。 */
     private LocalDateTime expireTime;
+
+    /** 乐观锁版本。 */
+    @Version
+    private Integer version;
 }

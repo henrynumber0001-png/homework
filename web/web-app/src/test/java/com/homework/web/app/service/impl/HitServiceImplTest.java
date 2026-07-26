@@ -16,6 +16,7 @@ import com.homework.web.app.dto.HitCommentLikeDTO;
 import com.homework.web.app.dto.HitPostCreateDTO;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.NotificationService;
+import com.homework.web.app.service.CommunityAccessService;
 import com.homework.web.app.vo.HitCommentLikeResultVO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,13 +44,16 @@ class HitServiceImplTest {
     private HitCommentLikeMapper hitCommentLikeMapper;
     @Mock
     private NotificationService notificationService;
+    @Mock
+    private CommunityAccessService communityAccessService;
 
     private HitServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new HitServiceImpl(hitPostMapper, hitCommentMapper, hitActionMapper,
-                userInfoMapper, hitCommentLikeMapper, notificationService, new ObjectMapper());
+                userInfoMapper, hitCommentLikeMapper, notificationService, new ObjectMapper(),
+                communityAccessService);
         LoginUserHolder.setUserId(7L);
     }
 
@@ -146,6 +150,7 @@ class HitServiceImplTest {
         comment.setCommentUserId(9L);
         comment.setComment("有帮助");
         comment.setLikeCount(0);
+        comment.setCommentStatus(HitPostStatus.PUBLISHED);
         when(hitPostMapper.selectById(100L)).thenReturn(post);
         when(hitCommentMapper.selectById(44L)).thenReturn(comment);
         when(hitCommentMapper.lockActive(44L)).thenReturn(44L);

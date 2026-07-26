@@ -13,6 +13,8 @@ import com.homework.web.app.service.LlmClient;
 import com.homework.web.app.service.MembershipAccessService;
 import com.homework.web.app.service.MembershipAccessSnapshot;
 import com.homework.web.app.service.QuestionInfoService;
+import com.homework.web.app.service.QuestionBankOrderService;
+import com.homework.web.app.service.PublishedQuestionBankAccessService;
 import com.homework.web.app.vo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -43,6 +45,8 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     private final UserFavoriteQuestionMapper userFavoriteQuestionMapper;
     private final MembershipAccessService membershipAccessService;
     private final UserBankCorrectRateMapper userBankCorrectRateMapper;
+    private final QuestionBankOrderService questionBankOrderService;
+    private final PublishedQuestionBankAccessService publishedQuestionBankAccessService;
 
     @Override
     public List<InterviewQuestionPageVO> getQuestionsByBankId(Long bankId) {
@@ -51,9 +55,12 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+        publishedQuestionBankAccessService.requirePublished(bankId);
 
         LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId)
+                .orderByAsc(QuestionBankQuestion::getSortOrder)
+                .orderByAsc(QuestionBankQuestion::getId);
 
         List<QuestionBankQuestion> questionBankQuestions = questionBankQuestionMapper.selectList(queryWrapper);
         if (questionBankQuestions.isEmpty()) {
@@ -65,11 +72,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         LambdaQueryWrapper<InterviewQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
         questionInfoQueryWrapper.in(InterviewQuestionInfo::getId, bankQuestionIds)
                 .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
-                .eq(InterviewQuestionInfo::getIsReleased, true)
-                .orderByAsc(InterviewQuestionInfo::getSortOrder) //用sort_order字段，在查询时候给题目一个排序，就能保持每次顺序的固定了
-                .orderByAsc(InterviewQuestionInfo::getId);
+                .eq(InterviewQuestionInfo::getIsReleased, true);
 
         List<InterviewQuestionInfo> questionInfos = interviewQuestionInfoMapper.selectList(questionInfoQueryWrapper);
+        questionInfos = questionBankOrderService.orderInterview(questionInfos, bankQuestionIds);
         if (questionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
@@ -107,6 +113,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
         Long questionId = submitDTO.getQuestionId();
         Long bankId = submitDTO.getBankId();
+        publishedQuestionBankAccessService.requirePublished(bankId);
 
         //bankId + questionId 关联校验
         //防止bankId = A，questionId = B 题库里的题
@@ -195,9 +202,12 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+        publishedQuestionBankAccessService.requirePublished(bankId);
 
         LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId)
+                .orderByAsc(QuestionBankQuestion::getSortOrder)
+                .orderByAsc(QuestionBankQuestion::getId);
         List<QuestionBankQuestion> questions = questionBankQuestionMapper.selectList(queryWrapper);
         if (questions.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
@@ -207,11 +217,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         LambdaQueryWrapper<InterviewQuestionInfo> interviewQueryWrapper = new LambdaQueryWrapper<>();
         interviewQueryWrapper.in(InterviewQuestionInfo::getId, questionIds)
                 .eq(InterviewQuestionInfo::getIsReleased, true)
-                .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
-                .orderByAsc(InterviewQuestionInfo::getSortOrder)
-                .orderByAsc(InterviewQuestionInfo::getId);
+                .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
 
         List<InterviewQuestionInfo> interviewQuestionInfos = interviewQuestionInfoMapper.selectList(interviewQueryWrapper);
+        interviewQuestionInfos = questionBankOrderService.orderInterview(interviewQuestionInfos, questionIds);
         if (interviewQuestionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
@@ -304,6 +313,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (noteDTO.getBankId() == null || noteDTO.getQuestionId() == null || noteDTO.getNoteContent() == null || noteDTO.getNoteContent().isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+        publishedQuestionBankAccessService.requirePublished(noteDTO.getBankId());
 
         //同样做bankId和questionId关联验证
         LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
@@ -329,8 +339,11 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+        publishedQuestionBankAccessService.requirePublished(bankId);
         LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId)
+                .orderByAsc(QuestionBankQuestion::getSortOrder)
+                .orderByAsc(QuestionBankQuestion::getId);
 
         List<QuestionBankQuestion> questionBankQuestions = questionBankQuestionMapper.selectList(queryWrapper);
         if (questionBankQuestions.isEmpty()) {
@@ -341,11 +354,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
         certificateQueryWrapper.in(CertificateQuestionInfo::getId, bankQuestionIds)
                 .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
-                .eq(CertificateQuestionInfo::getIsReleased, true)
-                .orderByAsc(CertificateQuestionInfo::getSortOrder)
-                .orderByAsc(CertificateQuestionInfo::getId);
+                .eq(CertificateQuestionInfo::getIsReleased, true);
 
         List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(certificateQueryWrapper);
+        certificateQuestionInfos = questionBankOrderService.orderCertificate(certificateQuestionInfos, bankQuestionIds);
         if (certificateQuestionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
@@ -381,6 +393,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
         Long questionId = submitDTO.getQuestionId();
         Long bankId = submitDTO.getBankId();
+        publishedQuestionBankAccessService.requirePublished(bankId);
 
         LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(QuestionBankQuestion::getBankId, bankId)
@@ -442,10 +455,13 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+        publishedQuestionBankAccessService.requirePublished(bankId);
 
         // 查询题库包含的题目
         LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId)
+                .orderByAsc(QuestionBankQuestion::getSortOrder)
+                .orderByAsc(QuestionBankQuestion::getId);
         List<QuestionBankQuestion> questions = questionBankQuestionMapper.selectList(queryWrapper);
         if (questions.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
@@ -455,11 +471,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
         certificateQueryWrapper.in(CertificateQuestionInfo::getId, bankQuestionIds)
                 .eq(CertificateQuestionInfo::getIsReleased, true)
-                .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
-                .orderByAsc(CertificateQuestionInfo::getSortOrder)
-                .orderByAsc(CertificateQuestionInfo::getId);
+                .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
 
         List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(certificateQueryWrapper);
+        certificateQuestionInfos = questionBankOrderService.orderCertificate(certificateQuestionInfos, bankQuestionIds);
         if (certificateQuestionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
@@ -532,10 +547,13 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+        publishedQuestionBankAccessService.requirePublished(bankId);
 
         // 查询题库包含的题目
         LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId)
+                .orderByAsc(QuestionBankQuestion::getSortOrder)
+                .orderByAsc(QuestionBankQuestion::getId);
         List<QuestionBankQuestion> questions = questionBankQuestionMapper.selectList(queryWrapper);
         if (questions.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
@@ -546,11 +564,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         LambdaQueryWrapper<InterviewQuestionInfo> interviewQueryWrapper = new LambdaQueryWrapper<>();
         interviewQueryWrapper.in(InterviewQuestionInfo::getId, bankQuestionIds)
                 .eq(InterviewQuestionInfo::getIsReleased, true)
-                .in(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
-                .orderByAsc(InterviewQuestionInfo::getSortOrder)
-                .orderByAsc(InterviewQuestionInfo::getId);
+                .in(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
 
         List<InterviewQuestionInfo> interviewQuestionInfos = interviewQuestionInfoMapper.selectList(interviewQueryWrapper);
+        interviewQuestionInfos = questionBankOrderService.orderInterview(interviewQuestionInfos, bankQuestionIds);
         if (interviewQuestionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
@@ -630,9 +647,12 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (bankId == null || groupType == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+        publishedQuestionBankAccessService.requirePublished(bankId);
 
         LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId)
+                .orderByAsc(QuestionBankQuestion::getSortOrder)
+                .orderByAsc(QuestionBankQuestion::getId);
         List<QuestionBankQuestion> questions = questionBankQuestionMapper.selectList(queryWrapper);
         if (questions.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
@@ -693,6 +713,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (bankId == null || questionId == null || actionStatus == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+        publishedQuestionBankAccessService.requirePublished(bankId);
 
         Long userId = LoginUserHolder.getUserId();
         QuestionBankQuestion bankQuestion = questionBankQuestionMapper.selectOne(
@@ -751,9 +772,12 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+        publishedQuestionBankAccessService.requirePublished(bankId);
 
         LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId);
+        queryWrapper.eq(QuestionBankQuestion::getBankId, bankId)
+                .orderByAsc(QuestionBankQuestion::getSortOrder)
+                .orderByAsc(QuestionBankQuestion::getId);
         List<QuestionBankQuestion> questions = questionBankQuestionMapper.selectList(queryWrapper);
         if (questions.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
@@ -763,11 +787,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
         certificateQueryWrapper.in(CertificateQuestionInfo::getId, questionIds)
                 .eq(CertificateQuestionInfo::getIsReleased, true)
-                .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
-                .orderByAsc(CertificateQuestionInfo::getSortOrder)
-                .orderByAsc(CertificateQuestionInfo::getId);
+                .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
 
         List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(certificateQueryWrapper);
+        certificateQuestionInfos = questionBankOrderService.orderCertificate(certificateQuestionInfos, questionIds);
         if (certificateQuestionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
@@ -854,6 +877,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (bankId == null || groupType == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+        publishedQuestionBankAccessService.requirePublished(bankId);
 
         // 2. 获取当前登录用户的 userId。
         // 这个 userId 是登录拦截器从 token 中解析后放进 ThreadLocal 的。
@@ -978,6 +1002,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (bankId == null || groupType == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+        publishedQuestionBankAccessService.requirePublished(bankId);
 
         Long userId = LoginUserHolder.getUserId();
 
@@ -1070,6 +1095,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                 || dto.getMessage().isBlank()) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+        publishedQuestionBankAccessService.requirePublished(dto.getBankId());
 
         // 2. 获取当前登录用户。AI 会话必须归属于用户，不能让用户读到别人的追问记录。
         Long userId = LoginUserHolder.getUserId();

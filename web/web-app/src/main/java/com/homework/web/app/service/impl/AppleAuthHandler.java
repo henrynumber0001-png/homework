@@ -16,6 +16,7 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -33,6 +34,7 @@ import java.util.Base64;
 import java.util.Date;
 
 @Service
+@ConditionalOnProperty(prefix = "oauth.apple", name = "enabled", havingValue = "true")
 public class AppleAuthHandler implements ThirdPartyAuthHandler {
 
     private final AppleOAuthProperties properties;

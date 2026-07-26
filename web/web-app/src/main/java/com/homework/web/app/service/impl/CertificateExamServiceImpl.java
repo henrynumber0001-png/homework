@@ -16,6 +16,7 @@ import com.homework.web.app.dto.CertificateExamAnswerDTO;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.CertificateExamService;
 import com.homework.web.app.service.MembershipAccessService;
+import com.homework.web.app.service.PublishedQuestionBankAccessService;
 import com.homework.web.app.vo.BankFinishVO;
 import com.homework.web.app.vo.CertificateExamQuestionVO;
 import com.homework.web.app.vo.CertificateExamVO;
@@ -58,6 +59,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
     private final UserFavoriteQuestionMapper userFavoriteQuestionMapper;
 
     private final MembershipAccessService membershipAccessService;
+    private final PublishedQuestionBankAccessService publishedQuestionBankAccessService;
 
 
     @Transactional(noRollbackFor = ExamExpiredException.class)
@@ -109,6 +111,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         }
 
         //如果没有 activeSession，那么就开始创建新的session
+        publishedQuestionBankAccessService.requirePublished(bankId);
         List<QuestionBankQuestion> bankQuestions = questionBankQuestionMapper.selectList(
                 new LambdaQueryWrapper<QuestionBankQuestion>()
                         .eq(QuestionBankQuestion::getBankId, bankId)

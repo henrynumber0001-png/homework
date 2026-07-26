@@ -1,6 +1,7 @@
 package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.homework.common.entity.BaseEntity;
 import com.homework.model.enums.BillingType;
 import com.homework.model.enums.MembershipPurchaseType;
@@ -30,4 +31,8 @@ public class MembershipPlan extends BaseEntity {
 
     //是否下架检测标识
     private Boolean enabled;
+
+    /** 乐观锁版本。 */
+    @Version
+    private Integer version;
 }

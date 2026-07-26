@@ -518,14 +518,6 @@ public class MembershipServiceImpl implements MembershipService {
                 newSvipExtensionEndTime = newSvipExtensionStartTime.plusMonths(order.getDurationMonths());
                 svip.setExpireTime(newSvipExtensionEndTime);
                 svipRecordMapper.insert(svip);
-                if(baseVip != null && baseVip.getExpireTime().isAfter(paidTime)) {
-                    //先算一下增加了多少天的svip
-                    int svipExtensionDays = order.getDurationMonths() * DIFF_UPGRADE_DAYS_PER_MONTH;
-                    newBaseVipExtensionStartTime = svip.getExpireTime();
-                    newBaseVipExtensionEndTime = newBaseVipExtensionStartTime.plusDays(svipExtensionDays);
-                    baseVip.setExpireTime(newBaseVipExtensionEndTime);
-                    baseVipRecordMapper.updateById(baseVip);
-                }
 
                 //存在有效premium plus，时长更新在原plus结尾
             } else if(svip.getExpireTime() != null && svip.getExpireTime().isAfter(paidTime)) {
@@ -534,25 +526,23 @@ public class MembershipServiceImpl implements MembershipService {
                 svip.setExpireTime(newSvipExtensionEndTime);
                 svipRecordMapper.updateById(svip);
 
-                //如果原来有 有效的premium，顺延精确天数
-                //为什么买的时候是自然月，但是顺延要精确到秒？
-                //因为买到时候是接受 买到是自然月这个事实的，但是冻结过程中你不能随便减我的天数
-                if(baseVip != null && baseVip.getExpireTime().isAfter(paidTime)) {
-                    //Duration 可以精确到纳秒
-                    Duration remainingBaseVipTime = Duration.between(newSvipExtensionStartTime, baseVip.getExpireTime());
-                    newBaseVipExtensionStartTime = svip.getExpireTime();
-                    newBaseVipExtensionEndTime = newBaseVipExtensionStartTime.plus(remainingBaseVipTime);
-                    baseVip.setExpireTime(newBaseVipExtensionEndTime);
-                    baseVipRecordMapper.updateById(baseVip);
-                }
-                
             }else { //plus过期，但有plus会员卡，时长从支付开始起算
                 newSvipExtensionStartTime = paidTime;
                 newSvipExtensionEndTime = newSvipExtensionStartTime.plusMonths(order.getDurationMonths());
                 svip.setExpireTime(newSvipExtensionEndTime);
                 svipRecordMapper.updateById(svip);
             }
-            //如果用户存在 有效的premium
+            //如果原来有 有效的premium，顺延精确天数
+            //为什么买的时候是自然月，但是顺延要精确到秒？
+            //因为买到时候是接受 买到是自然月这个事实的，但是冻结过程中你不能随便减我的天数
+            if(baseVip != null && baseVip.getExpireTime().isAfter(paidTime)) {
+                //Duration 可以精确到纳秒
+                Duration remainingBaseVipTime = Duration.between(newSvipExtensionStartTime, baseVip.getExpireTime());
+                newBaseVipExtensionStartTime = svip.getExpireTime();
+                newBaseVipExtensionEndTime = newBaseVipExtensionStartTime.plus(remainingBaseVipTime);
+                baseVip.setExpireTime(newBaseVipExtensionEndTime);
+                baseVipRecordMapper.updateById(baseVip);
+            }
 
             order.setPeriodEnd(newSvipExtensionEndTime);
 
@@ -563,6 +553,11 @@ public class MembershipServiceImpl implements MembershipService {
             int svipExtensionDays = order.getDurationMonths() * DIFF_UPGRADE_DAYS_PER_MONTH;
             //如果用户存在 有效的premium
             //注意：这是补差，是时间转换，不是顺延
+            /*
+            全款购买：使用 plusMonths() 增加自然月。
+            补差升级：每个月固定转换为 31 天。
+            Premium 冻结：保留剩余 Premium 时长，精确平移到新的 Plus 到期时间之后。
+             */
                 if(svip != null && svip.getExpireTime().isAfter(paidTime)){
                     newSvipExtensionStartTime = svip.getExpireTime();
                     newSvipExtensionEndTime = newSvipExtensionStartTime.plusDays(svipExtensionDays);

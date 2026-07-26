@@ -2,6 +2,7 @@ package com.homework.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.homework.common.entity.BaseEntity;
 import com.homework.model.enums.QuestionInfoQuestionType;
@@ -35,8 +36,15 @@ public class CertificateQuestionInfo extends BaseEntity {
 
     private Long createUserId;
 
+    /** 创建该题目的后台管理员 ID；历史 App 数据可为空。 */
+    private Long createAdminId;
+
     private Integer sortOrder;
 
     @Schema(description = "题目中的图片的地址")
     private String imageUrl;
+
+    /** 乐观锁版本。 */
+    @Version
+    private Integer version;
 }

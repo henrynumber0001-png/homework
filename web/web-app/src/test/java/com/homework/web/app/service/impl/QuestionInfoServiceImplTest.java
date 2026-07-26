@@ -13,6 +13,8 @@ import com.homework.web.app.service.AiEvaluationService;
 import com.homework.web.app.service.LlmClient;
 import com.homework.web.app.service.MembershipAccessService;
 import com.homework.web.app.service.MembershipAccessSnapshot;
+import com.homework.web.app.service.PublishedQuestionBankAccessService;
+import com.homework.web.app.service.QuestionBankOrderService;
 import com.homework.web.app.vo.InterviewQuestionPageVO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -57,6 +60,10 @@ class QuestionInfoServiceImplTest {
     private UserFavoriteQuestionMapper userFavoriteQuestionMapper;
     @Mock
     private MembershipAccessService membershipAccessService;
+    @Mock
+    private PublishedQuestionBankAccessService publishedQuestionBankAccessService;
+    @Spy
+    private QuestionBankOrderService questionBankOrderService = new QuestionBankOrderService();
 
     @InjectMocks
     private QuestionInfoServiceImpl service;

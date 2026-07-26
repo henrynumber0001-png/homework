@@ -10,12 +10,14 @@ import com.homework.web.app.dto.QqTokenResponse;
 import com.homework.web.app.dto.QqUserInfoResponse;
 import com.homework.web.app.dto.ThirdPartyUser;
 import com.homework.web.app.service.ThirdPartyAuthHandler;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Service
+@ConditionalOnProperty(prefix = "oauth.qq", name = "enabled", havingValue = "true")
 public class QqAuthHandler implements ThirdPartyAuthHandler {
 
     private final RestClient restClient;
