@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.homework.model.entity.UserFollow;
 import com.homework.model.entity.UserInfo;
 import com.homework.model.enums.UserInfoStatus;
-import com.homework.model.enums.UserInfoUserRole;
 import com.homework.model.enums.UserNotificationSendTo;
 import com.homework.model.enums.UserNotificationType;
 import com.homework.web.app.mapper.UserFollowMapper;
@@ -31,8 +30,7 @@ public class FollowServiceImpl implements FollowService {
         if (active == null) throw new IllegalArgumentException("active 不能为空");
         if (Objects.equals(currentUserId, targetUserId)) throw new IllegalArgumentException("不能关注自己");
         UserInfo target = userInfoMapper.selectById(targetUserId);
-        if (target == null || target.getStatus() != UserInfoStatus.ACTIVE
-                || target.getUserRole() != UserInfoUserRole.USER) {
+        if (target == null || target.getStatus() != UserInfoStatus.ACTIVE) {
             throw new IllegalArgumentException("用户不存在");
         }
         UserFollow row = followMapper.selectIncludingDeletedForUpdate(currentUserId, targetUserId);

@@ -188,7 +188,7 @@ public class AdminQuestionService {
             question.setIsReleased(false);
             question.setCreateAdminId(AdminContext.getAdminId());
             question.setSortOrder(0);
-            question.setImageObjectKey(imageService.bind(dto.getImageUploadId()));
+            question.setImageObjectKey(imageService.bind(dto.getImageObjectKey()));
             question.setVersion(0);
             interviewQuestionMapper.insert(question);
             questionId = question.getId();
@@ -205,7 +205,7 @@ public class AdminQuestionService {
             question.setIsReleased(false);
             question.setCreateAdminId(AdminContext.getAdminId());
             question.setSortOrder(0);
-            question.setImageObjectKey(imageService.bind(dto.getImageUploadId()));
+            question.setImageObjectKey(imageService.bind(dto.getImageObjectKey()));
             question.setVersion(0);
             certificateQuestionMapper.insert(question);
             questionId = question.getId();
@@ -239,7 +239,7 @@ public class AdminQuestionService {
                 dto.getCorrectAnswers()
         );
         if (Boolean.TRUE.equals(dto.getRemoveImage())
-                && dto.getImageUploadId() != null && !dto.getImageUploadId().isBlank()) {
+                && dto.getImageObjectKey() != null && !dto.getImageObjectKey().isBlank()) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
@@ -264,8 +264,8 @@ public class AdminQuestionService {
             question.setAnalysis(dto.getAnalysis());
             if (Boolean.TRUE.equals(dto.getRemoveImage())) {
                 question.setImageObjectKey(null);
-            } else if (dto.getImageUploadId() != null && !dto.getImageUploadId().isBlank()) {
-                question.setImageObjectKey(imageService.bind(dto.getImageUploadId()));
+            } else if (dto.getImageObjectKey() != null && !dto.getImageObjectKey().isBlank()) {
+                question.setImageObjectKey(imageService.bind(dto.getImageObjectKey()));
             }
             if (interviewQuestionMapper.updateById(question) == 0) {
                 throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
@@ -301,8 +301,8 @@ public class AdminQuestionService {
             question.setCorrectAnswer(correctAnswerContents);
             if (Boolean.TRUE.equals(dto.getRemoveImage())) {
                 question.setImageObjectKey(null);
-            } else if (dto.getImageUploadId() != null && !dto.getImageUploadId().isBlank()) {
-                question.setImageObjectKey(imageService.bind(dto.getImageUploadId()));
+            } else if (dto.getImageObjectKey() != null && !dto.getImageObjectKey().isBlank()) {
+                question.setImageObjectKey(imageService.bind(dto.getImageObjectKey()));
             }
             if (certificateQuestionMapper.updateById(question) == 0) {
                 throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);

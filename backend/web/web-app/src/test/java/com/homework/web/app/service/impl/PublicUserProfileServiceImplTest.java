@@ -3,7 +3,6 @@ package com.homework.web.app.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homework.model.entity.UserInfo;
 import com.homework.model.enums.UserInfoStatus;
-import com.homework.model.enums.UserInfoUserRole;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.UserCenterService;
 import com.homework.web.app.vo.MembershipInfoVO;
@@ -44,7 +43,6 @@ class PublicUserProfileServiceImplTest {
         UserInfo user = new UserInfo();
         user.setId(7L);
         user.setStatus(UserInfoStatus.ACTIVE);
-        user.setUserRole(UserInfoUserRole.USER);
         PublicUserProfileCountsVO counts = new PublicUserProfileCountsVO();
         counts.setPostCount(6);
         MembershipInfoVO membership = new MembershipInfoVO();

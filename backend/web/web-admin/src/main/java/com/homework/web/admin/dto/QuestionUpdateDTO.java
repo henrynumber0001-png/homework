@@ -23,7 +23,7 @@ public class QuestionUpdateDTO {
     private String analysis;
 
     @Size(max = 512)
-    private String imageUploadId;
+    private String imageObjectKey;
 
     private Boolean removeImage;
 

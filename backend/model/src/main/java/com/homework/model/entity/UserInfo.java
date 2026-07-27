@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 import com.homework.common.entity.BaseEntity;
 import com.homework.model.enums.UserInfoStatus;
-import com.homework.model.enums.UserInfoUserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -23,9 +22,6 @@ public class UserInfo extends BaseEntity {
 
     /** 1.active;2.disabled;3.banned */
     private UserInfoStatus status;
-
-    /** 1.user;2.admin */
-    private UserInfoUserRole userRole;
 
     /** 乐观锁版本。 */
     @Version

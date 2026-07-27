@@ -22,7 +22,7 @@ public class QuestionCreateDTO {
     private String analysis;
 
     @Size(max = 512)
-    private String imageUploadId;
+    private String imageObjectKey;
 
     @Valid
     @Size(max = 26)

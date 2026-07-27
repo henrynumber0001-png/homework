@@ -6,7 +6,6 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.model.enums.UserAuthIdentityProvider;
 import com.homework.model.enums.UserAuthIdentityStatus;
 import com.homework.model.enums.UserInfoStatus;
-import com.homework.model.enums.UserInfoUserRole;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.common.utils.JwtUtil;
@@ -96,7 +95,6 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
         UserAuthIdentity userAuthIdentity = new UserAuthIdentity();
 
         userInfo.setDisplayName(emailRegisterDTO.getDisplayName());
-        userInfo.setUserRole(UserInfoUserRole.USER);
         userInfo.setStatus(UserInfoStatus.ACTIVE);
         insertUserInfoWithAccountNo(userInfo);
 
@@ -154,7 +152,6 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
             displayName = thirdPartyRegisterDTO.getIdentityProvider().getLabel() + "用户" + RandomUtil.randomNumbers(6);
         }
         userInfo.setDisplayName(displayName);
-        userInfo.setUserRole(UserInfoUserRole.USER);
         userInfo.setStatus(UserInfoStatus.ACTIVE);
         insertUserInfoWithAccountNo(userInfo);
 
@@ -269,7 +266,6 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
             }
 
             userInfo.setDisplayName(displayName);
-            userInfo.setUserRole(UserInfoUserRole.USER);
             userInfo.setStatus(UserInfoStatus.ACTIVE);
             userInfo.setAvatar(thirdPartyUser.getAvatar());
             userInfo.setCreatedTime(LocalDateTime.now());

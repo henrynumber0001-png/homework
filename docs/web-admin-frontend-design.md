@@ -696,7 +696,7 @@ Spring Boot 高频面试题            [未发布]          [发布题库] [更�
 
 严格遵守以下请求规则：
 
-| 用户操作 | `imageUploadId` | `removeImage` |
+| 用户操作 | `imageObjectKey` | `removeImage` |
 | --- | --- | --- |
 | 编辑时未操作图片 | 不传或 `null` | `false` |
 | 上传新图片 | 新的上传 ID | `false` |

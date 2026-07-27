@@ -2,7 +2,6 @@ package com.homework.web.app.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homework.model.entity.*;
 import com.homework.model.enums.*;
@@ -32,12 +31,36 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
     private final UserCenterService userCenterService;
     private final ObjectMapper objectMapper;
 
+    /**
+     * 一次性完成主页用户校验、统计数据和当前用户关系的组装，
+     * 让调用方只拿到可展示且权限状态完整的公开主页数据。
+     */
     @Override
     public PublicUserProfileVO getProfile(Long currentUserId, Long profileUserId) {
-        UserInfo user = activeUser(profileUserId);
+        // 公开主页只属于正常启用的用户，先校验可避免继续查询无效用户的关联数据。
+        UserInfo user = userInfoMapper.selectById(profileUserId);
+        if (user == null || user.getStatus() != UserInfoStatus.ACTIVE) {
+            throw new IllegalArgumentException("用户不存在");
+        }
+
         PublicUserProfileCountsVO counts = profileMapper.selectCounts(profileUserId);
         boolean self = Objects.equals(currentUserId, profileUserId);
-        boolean following = !self && follows(currentUserId, profileUserId);
+
+        // 查看自己时没有关注关系，跳过查询既符合页面语义，也能减少不必要的数据库访问。
+        boolean following = false;
+        boolean mutualFollow = false;
+        if (!self) {
+            following = followMapper.selectCount(new LambdaQueryWrapper<UserFollow>()
+                    .eq(UserFollow::getFollowerUserId, currentUserId)
+                    .eq(UserFollow::getFolloweeUserId, profileUserId)) > 0;
+
+            // 只有当前用户已经关注对方时才需要反向检查，以最少查询判断是否互相关注。
+            if (following) {
+                mutualFollow = followMapper.selectCount(new LambdaQueryWrapper<UserFollow>()
+                        .eq(UserFollow::getFollowerUserId, profileUserId)
+                        .eq(UserFollow::getFolloweeUserId, currentUserId)) > 0;
+            }
+        }
 
         PublicUserProfileVO vo = new PublicUserProfileVO();
         vo.setUserId(user.getId());
@@ -51,9 +74,11 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
         vo.setReceivedTotalActionCount(counts.getReceivedTotalActionCount());
         vo.setSelf(self);
         vo.setFollowedByCurrentUser(self ? null : following);
-        vo.setMutualFollow(!self && following && follows(profileUserId, currentUserId));
+        vo.setMutualFollow(mutualFollow);
         vo.setCanFollow(!self);
         vo.setCanSendPrivateMessage(!self);
+
+        // 私聊会话只对“查看他人主页”有意义；统一用户顺序可匹配会话表的唯一记录。
         if (!self) {
             PrivateChatbox box = chatboxMapper.selectOne(new LambdaQueryWrapper<PrivateChatbox>()
                     .eq(PrivateChatbox::getUserAId, Math.min(currentUserId, profileUserId))
@@ -63,17 +88,33 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
         return vo;
     }
 
+    /**
+     * 按分页批量读取指定分类的动态及其关联数据，再连续组装成页面模型，
+     * 这样既避免逐条查询造成 N+1 问题，也能在一个方法中看清完整的数据流。
+     */
     @Override
     public List<PublicUserProfileActivityVO> listActivities(Long currentUserId, Long profileUserId,
                                                            String tab, Integer pageNum, Integer pageSize) {
-        activeUser(profileUserId);
-        if (!TABS.contains(tab)) throw new IllegalArgumentException("未知公开主页分类");
+        // 动态只能从有效用户的公开主页进入，避免泄露已停用用户的数据。
+        UserInfo profileUser = userInfoMapper.selectById(profileUserId);
+        if (profileUser == null || profileUser.getStatus() != UserInfoStatus.ACTIVE) {
+            throw new IllegalArgumentException("用户不存在");
+        }
+
+        if (!TABS.contains(tab)) {
+            throw new IllegalArgumentException("未知公开主页分类");
+        }
+
+        // 在服务端兜底页码和每页大小，防止异常参数形成无效分页或过大的单次查询。
         long page = pageNum == null ? 1 : Math.max(pageNum, 1);
         long size = pageSize == null ? 20 : Math.min(Math.max(pageSize, 1), 100);
         List<PublicUserProfileActivityRowVO> rows =
                 profileMapper.listActivities(profileUserId, tab, (page - 1) * size, size);
-        if (rows.isEmpty()) return List.of();
+        if (rows.isEmpty()) {
+            return List.of();
+        }
 
+        // 先收集本页所有外键再批量查询，避免为每一条动态分别访问数据库。
         Set<Long> postIds = rows.stream().map(PublicUserProfileActivityRowVO::getPostId)
                 .collect(Collectors.toSet());
         Set<Long> commentIds = rows.stream().map(PublicUserProfileActivityRowVO::getCommentId)
@@ -91,6 +132,7 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
                 : userInfoMapper.selectByIds(authorIds).stream()
                 .collect(Collectors.toMap(UserInfo::getId, user -> user));
 
+        // 当前用户的点赞、收藏、转发状态需要随动态返回，批量读取后按帖子分组便于组装。
         Map<Long, Set<HitActionType>> currentActions = actionMapper.selectList(new LambdaQueryWrapper<HitAction>()
                         .eq(HitAction::getActionUserId, currentUserId)
                         .in(HitAction::getPostId, postIds))
@@ -104,112 +146,104 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
                 .stream().map(HitCommentLike::getCommentId)
                 .collect(Collectors.toSet());
 
-        return rows.stream().map(row -> activityVO(row, posts, comments, users,
-                currentActions, currentCommentLikes)).toList();
+        // 按原查询顺序组装页面结果，使每条动态的帖子、评论和交互状态都在同一段代码中可见。
+        List<PublicUserProfileActivityVO> activities = new ArrayList<>(rows.size());
+        for (PublicUserProfileActivityRowVO row : rows) {
+            PublicUserProfileActivityVO activity = new PublicUserProfileActivityVO();
+            activity.setActivityType(row.getActivityType());
+            activity.setActivityTime(row.getActivityTime());
+
+            HitPost post = posts.get(row.getPostId());
+            if (post != null) {
+                UserInfo postAuthor = users.get(post.getPostUserId());
+                Set<HitActionType> postActions =
+                        currentActions.getOrDefault(post.getId(), Set.of());
+
+                HitPostVO postVO = new HitPostVO();
+                postVO.setPostId(post.getId());
+                postVO.setUserId(post.getPostUserId());
+                postVO.setDisplayName(postAuthor == null ? "该用户已注销" : postAuthor.getDisplayName());
+                postVO.setAvatar(postAuthor == null ? null : postAuthor.getAvatar());
+                postVO.setContent(post.getContent());
+
+                // 标签字段是 JSON；脏数据不应阻断整页动态，因此解析失败时按无标签展示。
+                List<String> tags = List.of();
+                String tagsJson = post.getTagsJson();
+                if (tagsJson != null && !tagsJson.isBlank()) {
+                    try {
+                        tags = objectMapper.readValue(
+                                tagsJson,
+                                objectMapper.getTypeFactory()
+                                        .constructCollectionType(List.class, String.class));
+                    } catch (JsonProcessingException ignored) {
+                        tags = List.of();
+                    }
+                }
+                postVO.setTags(tags);
+                postVO.setCommentCount(post.getCommentCount());
+                postVO.setLikeCount(post.getLikeCount());
+                postVO.setFavoriteCount(post.getFavoriteCount());
+                postVO.setRepostCount(post.getRepostCount());
+                postVO.setLiked(postActions.contains(HitActionType.LIKE));
+                postVO.setFavorited(postActions.contains(HitActionType.FAVORITE));
+                postVO.setReposted(postActions.contains(HitActionType.REPOST));
+                postVO.setCreatedTime(post.getCreatedTime());
+                activity.setPost(postVO);
+            }
+
+            if (row.getCommentId() != null) {
+                HitComment comment = comments.get(row.getCommentId());
+                if (comment != null) {
+                    UserInfo commentAuthor = users.get(comment.getCommentUserId());
+
+                    HitCommentVO commentVO = new HitCommentVO();
+                    commentVO.setCommentId(comment.getId());
+                    commentVO.setPostId(comment.getPostId());
+                    commentVO.setCommentUserId(comment.getCommentUserId());
+                    commentVO.setDisplayName(commentAuthor == null
+                            ? "该用户已注销" : commentAuthor.getDisplayName());
+                    commentVO.setAvatar(commentAuthor == null ? null : commentAuthor.getAvatar());
+                    commentVO.setParentCommentId(comment.getParentCommentId());
+                    commentVO.setComment(comment.getComment());
+                    commentVO.setLikeCount(comment.getLikeCount() == null ? 0 : comment.getLikeCount());
+                    commentVO.setLiked(currentCommentLikes.contains(comment.getId()));
+                    commentVO.setCreatedTime(comment.getCreatedTime());
+                    activity.setComment(commentVO);
+                }
+            }
+            activities.add(activity);
+        }
+        return activities;
     }
 
+    /**
+     * 只搜索可被当前用户提及的有效用户，并限制最大返回数量，
+     * 以保证联想列表相关、响应稳定且不会把当前用户自己重复列出。
+     */
     @Override
     public List<MentionUserVO> searchUsers(Long currentUserId, String keyword, Integer limit) {
         String value = keyword == null ? "" : keyword.trim();
-        if (value.isEmpty()) return List.of();
+        if (value.isEmpty()) {
+            return List.of();
+        }
+
+        // 联想搜索默认返回 10 条且最多 20 条，兼顾输入体验和数据库查询成本。
         int size = Math.min(limit == null ? 10 : Math.max(limit, 1), 20);
         return userInfoMapper.selectList(new LambdaQueryWrapper<UserInfo>()
                         .eq(UserInfo::getStatus, UserInfoStatus.ACTIVE)
-                        .eq(UserInfo::getUserRole, UserInfoUserRole.USER)
                         .ne(UserInfo::getId, currentUserId)
-                        .and(w -> w.likeRight(UserInfo::getAccountNo, value)
+                        .and(wrapper -> wrapper.likeRight(UserInfo::getAccountNo, value)
                                 .or().like(UserInfo::getDisplayName, value))
                         .last("LIMIT " + size))
-                .stream().map(user -> {
+                .stream()
+                .map(user -> {
                     MentionUserVO vo = new MentionUserVO();
                     vo.setUserId(user.getId());
                     vo.setAccountNo(user.getAccountNo());
                     vo.setDisplayName(user.getDisplayName());
                     vo.setAvatar(user.getAvatar());
                     return vo;
-                }).toList();
-    }
-
-    private PublicUserProfileActivityVO activityVO(
-            PublicUserProfileActivityRowVO row,
-            Map<Long, HitPost> posts,
-            Map<Long, HitComment> comments,
-            Map<Long, UserInfo> users,
-            Map<Long, Set<HitActionType>> currentActions,
-            Set<Long> currentCommentLikes) {
-        PublicUserProfileActivityVO vo = new PublicUserProfileActivityVO();
-        vo.setActivityType(row.getActivityType());
-        vo.setActivityTime(row.getActivityTime());
-        HitPost post = posts.get(row.getPostId());
-        if (post != null) {
-            vo.setPost(postVO(post, users.get(post.getPostUserId()),
-                    currentActions.getOrDefault(post.getId(), Set.of())));
-        }
-        if (row.getCommentId() != null) {
-            HitComment comment = comments.get(row.getCommentId());
-            if (comment != null) {
-                vo.setComment(commentVO(comment, users.get(comment.getCommentUserId()),
-                        currentCommentLikes.contains(comment.getId())));
-            }
-        }
-        return vo;
-    }
-
-    private HitPostVO postVO(HitPost post, UserInfo author, Set<HitActionType> currentActions) {
-        HitPostVO vo = new HitPostVO();
-        vo.setPostId(post.getId());
-        vo.setUserId(post.getPostUserId());
-        vo.setDisplayName(author == null ? "该用户已注销" : author.getDisplayName());
-        vo.setAvatar(author == null ? null : author.getAvatar());
-        vo.setContent(post.getContent());
-        vo.setTags(parseTags(post.getTagsJson()));
-        vo.setCommentCount(post.getCommentCount());
-        vo.setLikeCount(post.getLikeCount());
-        vo.setFavoriteCount(post.getFavoriteCount());
-        vo.setRepostCount(post.getRepostCount());
-        vo.setLiked(currentActions.contains(HitActionType.LIKE));
-        vo.setFavorited(currentActions.contains(HitActionType.FAVORITE));
-        vo.setReposted(currentActions.contains(HitActionType.REPOST));
-        vo.setCreatedTime(post.getCreatedTime());
-        return vo;
-    }
-
-    private HitCommentVO commentVO(HitComment comment, UserInfo author, boolean liked) {
-        HitCommentVO vo = new HitCommentVO();
-        vo.setCommentId(comment.getId());
-        vo.setPostId(comment.getPostId());
-        vo.setCommentUserId(comment.getCommentUserId());
-        vo.setDisplayName(author == null ? "该用户已注销" : author.getDisplayName());
-        vo.setAvatar(author == null ? null : author.getAvatar());
-        vo.setParentCommentId(comment.getParentCommentId());
-        vo.setComment(comment.getComment());
-        vo.setLikeCount(comment.getLikeCount() == null ? 0 : comment.getLikeCount());
-        vo.setLiked(liked);
-        vo.setCreatedTime(comment.getCreatedTime());
-        return vo;
-    }
-
-    private List<String> parseTags(String tagsJson) {
-        if (tagsJson == null || tagsJson.isBlank()) return List.of();
-        try {
-            return objectMapper.readValue(tagsJson, new TypeReference<List<String>>() {});
-        } catch (JsonProcessingException ignored) {
-            return List.of();
-        }
-    }
-
-    private UserInfo activeUser(Long userId) {
-        UserInfo user = userInfoMapper.selectById(userId);
-        if (user == null || user.getStatus() != UserInfoStatus.ACTIVE
-                || user.getUserRole() != UserInfoUserRole.USER) {
-            throw new IllegalArgumentException("用户不存在");
-        }
-        return user;
-    }
-
-    private boolean follows(Long follower, Long followee) {
-        return followMapper.selectCount(new LambdaQueryWrapper<UserFollow>()
-                .eq(UserFollow::getFollowerUserId, follower)
-                .eq(UserFollow::getFolloweeUserId, followee)) > 0;
+                })
+                .toList();
     }
 }

@@ -242,7 +242,7 @@ POST /api/payment/wechat/native/notify
 | `POST` | `/uploads/question-images` | 上传题目图片 |
 
 题目主要包含 `questionType`、`title`、`analysis`、`options`、`correctAnswers` 和可选的
-`imageUploadId`。正确答案由后端校验，用户端接口不会提前返回考试正确答案。
+`imageObjectKey`。正确答案由后端校验，用户端接口不会提前返回考试正确答案。
 
 ### 3.5 Excel 导入
 

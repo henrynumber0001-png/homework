@@ -184,7 +184,7 @@ export function updateQuestionOrder(
   })
 }
 
-/** 上传题目图片并返回临时 uploadId。 */
+/** 上传题目图片并返回临时 COS objectKey。 */
 export function uploadQuestionImage(file: File) {
   const data = new FormData()
   data.append('file', file)

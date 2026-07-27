@@ -15,7 +15,6 @@ import com.homework.model.enums.HitPostStatus;
 import com.homework.model.enums.PrivateChatAccess;
 import com.homework.model.enums.PrivateMessageStatus;
 import com.homework.model.enums.UserInfoStatus;
-import com.homework.model.enums.UserInfoUserRole;
 import com.homework.model.enums.UserNotificationReadStatus;
 import com.homework.model.enums.UserNotificationSendTo;
 import com.homework.model.enums.UserNotificationType;
@@ -578,8 +577,7 @@ public class MessageServiceImpl implements MessageService {
 
         UserInfo receiver = userInfoMapper.selectById(receiverUserId);
         boolean receiverCanReceiveMessage = receiver != null
-                && receiver.getStatus() == UserInfoStatus.ACTIVE
-                && receiver.getUserRole() == UserInfoUserRole.USER;
+                && receiver.getStatus() == UserInfoStatus.ACTIVE;
         if (!receiverCanReceiveMessage) {
             throw new IllegalArgumentException("接收者不存在");
         }

@@ -537,7 +537,6 @@ public class HitServiceImpl implements HitService {
         if (receiverIds.isEmpty()) return;
         Set<Long> activeUserIds = userInfoMapper.selectByIds(receiverIds).stream()
                 .filter(user -> user.getStatus() == UserInfoStatus.ACTIVE)
-                .filter(user -> user.getUserRole() == UserInfoUserRole.USER)
                 .map(UserInfo::getId)
                 .collect(Collectors.toSet());
         if (activeUserIds.size() != receiverIds.size()) {

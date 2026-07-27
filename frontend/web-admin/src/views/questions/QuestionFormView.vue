@@ -25,7 +25,7 @@ const uploading = ref(false)
 const bank = ref<QuestionBankDetail | null>(null)
 const original = ref<QuestionDetail | null>(null)
 const imagePreview = ref('')
-const uploadedImageId = ref<string>()
+const uploadedImageObjectKey = ref<string>()
 const removeImage = ref(false)
 
 const form = reactive<{
@@ -135,7 +135,7 @@ async function handleImage(file: UploadFile): Promise<void> {
   uploading.value = true
   try {
     const result = await uploadQuestionImage(raw)
-    uploadedImageId.value = result.uploadId
+    uploadedImageObjectKey.value = result.objectKey
     imagePreview.value = result.previewUrl
     removeImage.value = false
     ElMessage.success('图片已上传')
@@ -148,7 +148,7 @@ async function handleImage(file: UploadFile): Promise<void> {
 
 function clearImage(): void {
   imagePreview.value = ''
-  uploadedImageId.value = undefined
+  uploadedImageObjectKey.value = undefined
   removeImage.value = Boolean(original.value?.imageUrl)
 }
 
@@ -180,7 +180,7 @@ async function submit(): Promise<void> {
     questionType: form.questionType,
     title: form.title.trim(),
     analysis: form.analysis.trim() || undefined,
-    imageUploadId: uploadedImageId.value,
+    imageObjectKey: uploadedImageObjectKey.value,
     removeImage: editing.value ? removeImage.value : undefined,
     options: isChoice.value
       ? form.options.map((option) => ({ key: option.key, content: option.content.trim() }))

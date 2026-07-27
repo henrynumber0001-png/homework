@@ -21,7 +21,7 @@ ALTER TABLE certificate_question_info
     ADD COLUMN create_admin_id BIGINT NULL AFTER create_user_id;
 
 ALTER TABLE user_info
-    ADD COLUMN version INT NOT NULL DEFAULT 0 AFTER user_role;
+    ADD COLUMN version INT NOT NULL DEFAULT 0 AFTER status;
 
 ALTER TABLE hit_post
     ADD COLUMN version INT NOT NULL DEFAULT 0 AFTER repost_count;

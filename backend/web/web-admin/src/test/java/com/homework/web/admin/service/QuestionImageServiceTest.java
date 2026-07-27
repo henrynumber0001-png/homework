@@ -57,10 +57,10 @@ class QuestionImageServiceTest {
         verify(cosClient).putObject(requestCaptor.capture());
         PutObjectRequest request = requestCaptor.getValue();
         assertEquals("homework-1234567890", request.getBucketName());
-        assertEquals(result.getUploadId(), request.getKey());
+        assertEquals(result.getObjectKey(), request.getKey());
         assertEquals("image/png", request.getMetadata().getContentType());
         assertEquals(3L, request.getMetadata().getContentLength());
-        assertTrue(result.getUploadId().startsWith("admin-temp/questions/"));
+        assertTrue(result.getObjectKey().startsWith("admin-temp/questions/"));
         assertEquals("https://cos.example.com/signed-question.png", result.getPreviewUrl());
         assertTrue(result.getPreviewUrlExpiresTime().isAfter(beforeUpload.plusMinutes(59)));
         assertTrue(result.getPreviewUrlExpiresTime().isBefore(beforeUpload.plusMinutes(61)));
@@ -70,20 +70,20 @@ class QuestionImageServiceTest {
 
     @Test
     void bindCopiesImageToPermanentDirectoryAndDeletesTemporaryObject() {
-        String uploadId = "admin-temp/questions/2026-07-26/"
+        String objectKey = "admin-temp/questions/2026-07-26/"
                 + System.currentTimeMillis() + "-question.png";
 
-        String result = service.bind(uploadId);
+        String result = service.bind(objectKey);
 
         ArgumentCaptor<CopyObjectRequest> requestCaptor = ArgumentCaptor.forClass(CopyObjectRequest.class);
         verify(cosClient).copyObject(requestCaptor.capture());
         CopyObjectRequest request = requestCaptor.getValue();
         assertEquals("homework-1234567890", request.getSourceBucketName());
-        assertEquals(uploadId, request.getSourceKey());
+        assertEquals(objectKey, request.getSourceKey());
         assertEquals("homework-1234567890", request.getDestinationBucketName());
-        assertEquals("questions/2026-07-26/" + uploadId.substring(uploadId.lastIndexOf('/') + 1),
+        assertEquals("questions/2026-07-26/" + objectKey.substring(objectKey.lastIndexOf('/') + 1),
                 request.getDestinationKey());
-        verify(cosClient).deleteObject("homework-1234567890", uploadId);
+        verify(cosClient).deleteObject("homework-1234567890", objectKey);
         assertEquals(request.getDestinationKey(), result);
     }
 

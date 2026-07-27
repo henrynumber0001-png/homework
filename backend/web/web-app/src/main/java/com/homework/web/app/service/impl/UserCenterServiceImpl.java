@@ -55,8 +55,7 @@ public class UserCenterServiceImpl implements UserCenterService {
 
         LambdaQueryWrapper<UserInfo> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(UserInfo::getId, userId)
-                .eq(UserInfo::getStatus, UserInfoStatus.ACTIVE)
-                .eq(UserInfo::getUserRole, UserInfoUserRole.USER);
+                .eq(UserInfo::getStatus, UserInfoStatus.ACTIVE);
         UserInfo userInfo = userInfoMapper.selectOne(queryWrapper);
         //用户展示名称 和 AccountNo 不能为空或null
         if (userInfo == null || !StringUtils.hasText(userInfo.getDisplayName()) || !StringUtils.hasText(userInfo.getAccountNo())) {
@@ -79,7 +78,6 @@ public class UserCenterServiceImpl implements UserCenterService {
         if (graphInfo != null) {
             GraphInfoVO graphInfoVO = new GraphInfoVO();
             graphInfoVO.setUrl(graphInfo.getUrl());
-            graphInfoVO.setName(graphInfo.getName());
             userCenterPageVO.setGraphInfoVO(graphInfoVO);
         }
 
@@ -87,9 +85,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         MembershipAccessSnapshot membership = membershipAccessService.getAccess(userId);
         userCenterPageVO.setMembershipActive(membership.status() != MembershipStatus.FREE);
         userCenterPageVO.setMembershipType(membership.membershipType());
-        userCenterPageVO.setAiFeaturesEnabled(
-                membership.status() == MembershipStatus.PREMIUM_PLUS
-        );
+        userCenterPageVO.setAiFeaturesEnabled(membership.status() == MembershipStatus.PREMIUM_PLUS);
 
         //组装followerCount
         LambdaQueryWrapper<UserFollow> userFollowQueryWrapper = new LambdaQueryWrapper<>();

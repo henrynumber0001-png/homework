@@ -636,7 +636,7 @@ POST /api/admin/question-banks/101/questions
   "questionType": "ESSAY",
   "title": "Spring 事务失效的常见原因有哪些？",
   "analysis": "参考答案",
-  "imageUploadId": null
+  "imageObjectKey": null
 }
 ```
 
@@ -647,7 +647,7 @@ POST /api/admin/question-banks/101/questions
   "questionType": "MULTIPLE",
   "title": "以下哪些说法正确？",
   "analysis": "答案说明",
-  "imageUploadId": "IMG-20260726-000001",
+  "imageObjectKey": "admin-temp/questions/2026-07-26/1785062400000-a.webp",
   "options": [
     {
       "key": "A",
@@ -690,8 +690,8 @@ POST /api/admin/question-banks/101/questions
 
 规则：
 
-- `imageUploadId` 未传或为 `null` 时保留原图片，传入新上传标识时替换原图片。
-- 只有显式传入 `removeImage=true` 时才删除原图片；此时不能同时传 `imageUploadId`。
+- `imageObjectKey` 未传或为 `null` 时保留原图片，传入新的临时对象 Key 时替换原图片。
+- 只有显式传入 `removeImage=true` 时才删除原图片；此时不能同时传 `imageObjectKey`。
 - `ESSAY` 不能转换为选择题，选择题不能转换为 `ESSAY`。
 - `SINGLE_CHOICE` 与 `MULTIPLE` 可以互转，但必须重新校验正确答案。
 - 已发布题目修改标题、选项或正确答案时必须填写原因。
@@ -762,14 +762,14 @@ file=<binary>
 
 ```json
 {
-  "uploadId": "admin-temp/questions/2026-07-26/1785062400000-a.webp",
+  "objectKey": "admin-temp/questions/2026-07-26/1785062400000-a.webp",
   "previewUrl": "https://example-1250000000.cos.ap-guangzhou.myqcloud.com/admin-temp/questions/2026-07-26/a.webp?q-sign-algorithm=sha1&...",
   "previewUrlExpiresTime": "2026-07-26T17:00:00",
   "uploadExpiresTime": "2026-07-27T16:00:00"
 }
 ```
 
-支持 JPG、PNG、WebP，单文件最大 5 MB。`previewUrl` 是私有存储桶的 1 小时只读签名地址，只用于即时预览；`uploadId` 是 COS 对象 Key，24 小时内可用于创建或编辑题目。题目保存时对象从临时目录复制到永久目录并删除临时对象，数据库只保存永久对象 Key，不保存签名 URL。未绑定的临时对象需要通过腾讯云生命周期规则、控制台或后续后台清理任务删除。
+支持 JPG、PNG、WebP，单文件最大 5 MB。`previewUrl` 是私有存储桶的 1 小时只读签名地址，只用于即时预览；`objectKey` 是临时 COS 对象 Key，24 小时内可用于创建或编辑题目。题目保存时对象从临时目录复制到永久目录并删除临时对象，数据库只保存永久对象 Key，不保存签名 URL。未绑定的临时对象需要通过腾讯云生命周期规则、控制台或后续后台清理任务删除。
 
 ## 9. Excel 批量导入
 

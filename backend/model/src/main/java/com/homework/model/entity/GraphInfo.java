@@ -11,9 +11,8 @@ import lombok.Data;
 @TableName(value = "graph_info")
 public class GraphInfo extends BaseEntity {
 
-    @Schema(description = "图片名称")
-    @TableField(value = "name")
-    private String name;
+    private Long userId;
+
 
     @Schema(description = "图片所属枚举常量类型")
     @TableField(value = "item_type")

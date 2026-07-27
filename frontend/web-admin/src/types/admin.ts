@@ -131,7 +131,7 @@ export interface QuestionDetail extends Question {
 }
 
 export interface QuestionImageUpload {
-  uploadId: string
+  objectKey: string
   previewUrl: string
   previewUrlExpiresTime: string
   uploadExpiresTime: string
@@ -330,7 +330,7 @@ export interface QuestionPayload {
   questionType: QuestionType
   title: string
   analysis?: string
-  imageUploadId?: string
+  imageObjectKey?: string
   removeImage?: boolean
   options: QuestionOption[]
   correctAnswers: string[]

@@ -11,7 +11,6 @@ import com.homework.model.entity.UserNotification;
 import com.homework.model.enums.HitPostStatus;
 import com.homework.model.enums.PrivateChatAccess;
 import com.homework.model.enums.UserInfoStatus;
-import com.homework.model.enums.UserInfoUserRole;
 import com.homework.model.enums.UserNotificationReadStatus;
 import com.homework.model.enums.UserNotificationSendTo;
 import com.homework.model.enums.UserNotificationType;
@@ -235,7 +234,6 @@ class MessageServiceImplTest {
     private UserInfo activeUser() {
         UserInfo user = new UserInfo();
         user.setStatus(UserInfoStatus.ACTIVE);
-        user.setUserRole(UserInfoUserRole.USER);
         return user;
     }
 }

@@ -35,7 +35,7 @@ public class QuestionImportWorkbookService {
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("questions");
             Row header = sheet.createRow(0);
-            List<String> columns = new ArrayList<>(List.of("questionType", "title", "analysis", "imageUploadId"));
+            List<String> columns = new ArrayList<>(List.of("questionType", "title", "analysis", "imageObjectKey"));
             if (groupType == GroupType.CERTIFICATION) {
                 for (char key = 'A'; key <= 'Z'; key++) {
                     columns.add("option" + key);
@@ -91,8 +91,8 @@ public class QuestionImportWorkbookService {
                 dto.setQuestionType(formatter.formatCellValue(row.getCell(0)).trim());
                 dto.setTitle(formatter.formatCellValue(row.getCell(1)).trim());
                 dto.setAnalysis(formatter.formatCellValue(row.getCell(2)).trim());
-                String imageUploadId = formatter.formatCellValue(row.getCell(3)).trim();
-                dto.setImageUploadId(imageUploadId.isEmpty() ? null : imageUploadId);
+                String imageObjectKey = formatter.formatCellValue(row.getCell(3)).trim();
+                dto.setImageObjectKey(imageObjectKey.isEmpty() ? null : imageObjectKey);
                 boolean optionGap = false;
                 boolean optionGapViolation = false;
                 if (groupType == GroupType.CERTIFICATION) {
@@ -138,8 +138,8 @@ public class QuestionImportWorkbookService {
                             dto.getOptions(),
                             dto.getCorrectAnswers()
                     );
-                    if (dto.getImageUploadId() != null) {
-                        imageService.validateUploadId(dto.getImageUploadId());
+                    if (dto.getImageObjectKey() != null) {
+                        imageService.validateObjectKey(dto.getImageObjectKey());
                     }
                     questions.add(dto);
                 } catch (RuntimeException exception) {

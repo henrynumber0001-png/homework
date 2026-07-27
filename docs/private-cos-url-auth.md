@@ -7,7 +7,7 @@
 - 管理端临时上传目录为 `admin-temp/questions/*`，题目保存后复制到 `questions/*`。
 - web-admin 和 web-app 先完成原有登录、权限或会员校验，再在返回 VO 时生成只读签名 URL。
 - 题目图片签名 URL 有效期统一为 1 小时，不提供可传入任意对象 Key 的公共签名接口。
-- 上传接口返回的 `uploadId` 有效期为 24 小时；预览 URL 失效不影响 `uploadId` 继续绑定。
+- 上传接口返回的 `objectKey` 有效期为 24 小时；预览 URL 失效不影响 `objectKey` 继续绑定。
 
 ## 2. 创建两个子账号
 
@@ -133,7 +133,7 @@ mysql -u DB_USER -p DB_NAME < sql/private_cos_question_image_v1.sql
 
 ## 8. 验证
 
-1. 管理端上传图片后，响应应包含 `uploadId`、`previewUrl`、`previewUrlExpiresTime` 和 `uploadExpiresTime`。
+1. 管理端上传图片后，响应应包含 `objectKey`、`previewUrl`、`previewUrlExpiresTime` 和 `uploadExpiresTime`。
 2. 保存题目后，数据库应保存 `questions/*` 对象 Key，不应保存 `http://` 或 `https://` 地址。
 3. 退出登录后，不能通过后台接口获得新的签名 URL；已有签名 URL 最长还可使用 1 小时。
 4. web-app 密钥应能读取 `questions/*`，但上传、删除及读取 `admin-temp/questions/*` 都应被 COS 拒绝。

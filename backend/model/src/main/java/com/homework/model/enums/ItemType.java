@@ -7,7 +7,7 @@ import lombok.Getter;
 @Getter
 public enum ItemType implements BaseEnum {
 
-    MODULE(1, "module"),
+
     USER_CENTER_BANNER(2, "user_center_banner");
 
 

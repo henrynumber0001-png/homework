@@ -8,8 +8,8 @@ import java.time.LocalDateTime;
 @Data
 public class QuestionImageUploadVO {
 
-    /** 后续创建或编辑题目时提交的上传标识。 */
-    private String uploadId;
+    /** 后续创建或编辑题目时提交的临时 COS 对象 Key。 */
+    private String objectKey;
 
     /** 一小时内可访问私有临时图片的签名预览地址。 */
     private String previewUrl;
@@ -17,6 +17,6 @@ public class QuestionImageUploadVO {
     /** 签名预览地址的失效时间。 */
     private LocalDateTime previewUrlExpiresTime;
 
-    /** 上传标识的失效时间，失效后不可再绑定到题目。 */
+    /** 临时对象 Key 的失效时间，失效后不可再绑定到题目。 */
     private LocalDateTime uploadExpiresTime;
 }
