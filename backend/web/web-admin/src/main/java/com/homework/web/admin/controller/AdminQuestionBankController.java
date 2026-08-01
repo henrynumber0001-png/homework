@@ -9,7 +9,6 @@ import com.homework.web.admin.dto.QuestionBankUpdateDTO;
 import com.homework.web.admin.dto.ResourceActionDTO;
 import com.homework.web.admin.service.AdminQuestionBankService;
 import com.homework.web.admin.vo.ActionResultVO;
-import com.homework.web.admin.vo.QuestionBankDetailVO;
 import com.homework.web.admin.vo.QuestionBankRowVO;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -62,7 +61,7 @@ public class AdminQuestionBankController {
     @Operation(summary = "查询题库详情")
     @AdminPermission("bank:view")
     @GetMapping("/{bankId}")
-    public Result<QuestionBankDetailVO> get(@PathVariable Long bankId) {
+    public Result<QuestionBankRowVO> get(@PathVariable Long bankId) {
         return Result.success(bankService.get(bankId));
     }
 
@@ -70,7 +69,7 @@ public class AdminQuestionBankController {
     @Operation(summary = "创建题库")
     @AdminPermission("bank:create")
     @PostMapping
-    public Result<QuestionBankDetailVO> create(@Valid @RequestBody QuestionBankCreateDTO dto) {
+    public Result<QuestionBankRowVO> create(@Valid @RequestBody QuestionBankCreateDTO dto) {
         return Result.success(bankService.create(dto));
     }
 
@@ -78,7 +77,7 @@ public class AdminQuestionBankController {
     @Operation(summary = "编辑题库")
     @AdminPermission("bank:update")
     @PutMapping("/{bankId}")
-    public Result<QuestionBankDetailVO> update(
+    public Result<QuestionBankRowVO> update(
             @PathVariable Long bankId,
             @Valid @RequestBody QuestionBankUpdateDTO dto
     ) {

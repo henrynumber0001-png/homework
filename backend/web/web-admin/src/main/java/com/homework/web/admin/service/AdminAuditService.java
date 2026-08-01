@@ -31,14 +31,11 @@ public class AdminAuditService {
             Object after
     ) {
         AdminAccount admin = AdminContext.get();
-        ServletRequestAttributes attributes =
-                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         HttpServletRequest request = attributes == null ? null : attributes.getRequest();
 
         AdminOperationLog log = new AdminOperationLog();
-        log.setRequestId(request == null
-                ? "internal"
-                : String.valueOf(request.getAttribute(AdminRequestIdFilter.ATTRIBUTE)));
+        log.setRequestId(request == null ? "internal" : String.valueOf(request.getAttribute(AdminRequestIdFilter.ATTRIBUTE)));
         log.setOperatorAdminId(admin == null ? 0L : admin.getId());
         log.setOperatorName(admin == null ? "system" : admin.getDisplayName());
         log.setModule(module);

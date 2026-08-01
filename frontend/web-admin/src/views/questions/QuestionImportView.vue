@@ -15,7 +15,7 @@ import {
 } from '@/api/admin'
 import { showApiError } from '@/api/http'
 import type {
-  QuestionBankDetail,
+  QuestionBank,
   QuestionImportError,
   QuestionImportTask,
 } from '@/types/admin'
@@ -24,7 +24,7 @@ import { formatDateTime, saveBlob } from '@/utils/format'
 const route = useRoute()
 const router = useRouter()
 const bankId = Number(route.params.bankId)
-const bank = ref<QuestionBankDetail | null>(null)
+const bank = ref<QuestionBank | null>(null)
 const selectedFile = ref<File>()
 const task = ref<QuestionImportTask | null>(null)
 const errors = ref<QuestionImportError[]>([])

@@ -1,8 +1,12 @@
 package com.homework.web.admin.mapper;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.model.entity.QuestionBank;
 import com.homework.model.enums.GroupType;
+import com.homework.web.admin.vo.QuestionBankRowVO;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -48,4 +52,5 @@ public interface QuestionBankMapper extends BaseMapper<QuestionBank> {
             @Param("bankId") Long bankId,
             @Param("version") Integer version
     );
+
 }

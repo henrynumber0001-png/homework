@@ -18,7 +18,7 @@ import {
 } from '@/api/admin'
 import { showApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
-import type { CategoryGroup, Question, QuestionBankDetail } from '@/types/admin'
+import type { CategoryGroup, Question, QuestionBank } from '@/types/admin'
 import { runBatchActions, type BatchActionFailure } from '@/utils/batchActions'
 import { formatDateTime } from '@/utils/format'
 import { groupTypeLabels, questionTypeLabels } from '@/utils/dictionaries'
@@ -31,7 +31,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const bankId = Number(route.params.bankId)
-const bank = ref<QuestionBankDetail | null>(null)
+const bank = ref<QuestionBank | null>(null)
 const categories = ref<CategoryGroup[]>([])
 const questions = ref<Question[]>([])
 const selectedQuestions = ref<Question[]>([])

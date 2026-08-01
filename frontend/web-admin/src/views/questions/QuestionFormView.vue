@@ -12,7 +12,7 @@ import {
   uploadQuestionImage,
 } from '@/api/admin'
 import { showApiError } from '@/api/http'
-import type { QuestionBankDetail, QuestionDetail, QuestionOption, QuestionType } from '@/types/admin'
+import type { QuestionBank, QuestionDetail, QuestionOption, QuestionType } from '@/types/admin'
 
 const route = useRoute()
 const router = useRouter()
@@ -22,7 +22,7 @@ const editing = computed(() => questionId !== undefined)
 const loading = ref(false)
 const submitting = ref(false)
 const uploading = ref(false)
-const bank = ref<QuestionBankDetail | null>(null)
+const bank = ref<QuestionBank | null>(null)
 const original = ref<QuestionDetail | null>(null)
 const imagePreview = ref('')
 const uploadedImageObjectKey = ref<string>()

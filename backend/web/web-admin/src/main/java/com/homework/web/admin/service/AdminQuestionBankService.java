@@ -1,6 +1,7 @@
 package com.homework.web.admin.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.PageResult;
@@ -31,7 +32,6 @@ import com.homework.web.admin.mapper.CertificateQuestionMapper;
 import com.homework.web.admin.mapper.InterviewQuestionMapper;
 import com.homework.web.admin.mapper.QuestionBankMapper;
 import com.homework.web.admin.vo.ActionResultVO;
-import com.homework.web.admin.vo.QuestionBankDetailVO;
 import com.homework.web.admin.vo.QuestionBankRowVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -144,10 +144,11 @@ public class AdminQuestionBankService {
         }
 
 
+        // 查看管理员是否有查询题库的权限
         // 非超级管理员且数据范围为 ASSIGNED_BANKS 时，只能查看明确分配给自己的题库。
         boolean assignedOnly = AdminContext.get().getRole() != AdminRole.SUPER_ADMIN && AdminContext.get().getBankDataScope() == BankDataScope.ASSIGNED_BANKS;
 
-        // 管理员只能看已分配题库，但 allowedBankIds 为空，说明目前没有给他分配任何题库；
+        // 管理员只能看已分配题库，但 allowedBankIds 为空，说明目前没有给他分配任何题库
         // 此时要直接返回空分页，因为 allowedBankIds = [] → 无法安全生成 IN 条件 → 提前返回空分页
         if (assignedOnly && allowedBankIds.isEmpty()) {
             PageResult<QuestionBankRowVO> empty = new PageResult<>();
@@ -158,39 +159,26 @@ public class AdminQuestionBankService {
             return empty;
         }
 
-        // 创建未删除题库的分页查询条件；MyBatis-Plus 会自动追加 is_deleted = 0。
+        //接下来，汇总查询条件，准备开始查询
         LambdaQueryWrapper<QuestionBank> query = new LambdaQueryWrapper<>();
-        // 只有关键词非空且不是纯空白时，才添加名称或 ID 查询条件。
+
+        //查 是否传入了 关键词
         if (keyword != null && !keyword.isBlank()) {
-            // 去掉关键词首尾空白，避免空格影响名称和 ID 匹配。
             String normalizedKeyword = keyword.trim();
-            // 用括号包住“名称匹配 OR ID 匹配”，避免 OR 影响外层其他 AND 条件。
-            query.and(wrapper -> {
-                // 第一种关键词匹配方式：题库名称包含输入内容。
-                wrapper.like(QuestionBank::getBankName, normalizedKeyword);
-                // 尝试把关键词解析成 Long，以便同时支持按题库 ID 查询。
-                try {
-                    // 解析成功时追加 OR id = 关键词。
-                    wrapper.or().eq(QuestionBank::getId, Long.valueOf(normalizedKeyword));
-                } catch (NumberFormatException ignored) {
-                    // 解析失败说明关键词不是数字，此时保留名称查询，不追加 ID 条件。
-                }
-            });
+            query.like(QuestionBank::getBankName, normalizedKeyword);
         }
 
-        // status 非空时添加状态等值条件。
+        //查 是否传了 题库发布状态、管理员自己的权限题库、是否传了题库类型/模块/子模块
         query.eq(status != null, QuestionBank::getStatus, status)
                 // assignedOnly 为 true 时，只允许查询分配给当前管理员的题库 ID。
                 .in(assignedOnly, QuestionBank::getId, allowedBankIds)
-                // 选择了分类时，只允许查询位于目标子模块范围内的题库。
+                // 查 是否传了 题库类型/模块/子模块 中的任意一个或多个（最终都转换成了 categorySubModuleIds，以方便查找 bankId）
                 .in(categorySubModuleIds != null, QuestionBank::getSubModuleId, categorySubModuleIds);
 
-        // SORT_ORDER_DESC 模式使用题库人工权重作为第一排序字段。
+        //查 是否传了 题库排序方式
         if ("SORT_ORDER_DESC".equals(selectSortMode)) {
-            // 按 question_bank.sort_order 降序排列。
             query.orderByDesc(QuestionBank::getSortOrder);
         } else {
-            // 默认使用更新时间作为第一排序字段。
             query.orderByDesc(QuestionBank::getUpdatedTime);
         }
         // 把题库 ID 作为第二排序字段，第一字段相同时按较新 ID 优先。
@@ -200,52 +188,44 @@ public class AdminQuestionBankService {
         Page<QuestionBank> page = bankMapper.selectPage(new Page<>(selectPage, defaultSize), query);
         // 从 MyBatis-Plus 分页结果中取出当前页的题库实体。
         List<QuestionBank> questionBanks = page.getRecords();
-        // 把当前页题库实体逐条转换成前端列表所需的 VO。
+
+        // 弊端：每个题库分页查询2次，关联查询6次，有性能损耗（先用着）
         List<QuestionBankRowVO> questionBankRowVOS = questionBanks.stream()
                 .map(assembler::toRow)
                 .toList();
 
-        // 创建项目统一使用的分页响应对象。
         PageResult<QuestionBankRowVO> result = new PageResult<>();
-        // 设置转换后的当前页记录。
         result.setRecords(questionBankRowVOS);
-        // 设置数据库分页查询得到的总记录数。
         result.setTotal(page.getTotal());
-        // 设置 MyBatis-Plus 返回的当前页码。
         result.setPageNum(page.getCurrent());
-        // 设置 MyBatis-Plus 返回的每页数量。
         result.setPageSize(page.getSize());
-        // 返回普通题库分页结果。
         return result;
     }
 
-    /** 查询未删除题库的详情。 */
-    public QuestionBankDetailVO get(Long bankId) {
+    // 点击进入某个具体的题库；
+    public QuestionBankRowVO get(Long bankId) {
         // 校验当前管理员是否拥有该题库的数据访问范围。
         accessService.requireBank(bankId);
-        // 使用普通 BaseMapper 查询，因此已逻辑删除的题库不会被返回。
+
         QuestionBank bank = bankMapper.selectById(bankId);
-        // ID 不存在或题库已经删除时向前端返回“题库不存在”业务异常。
         if (bank == null) {
-            // 抛出项目统一的管理端题库不存在异常。
             throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_NOT_FOUND);
         }
-        // 把题库实体及关联信息组装成详情 VO 后返回。
-        return assembler.toDetail(bank);
+        // 把题库实体及关联信息组装成题库 VO 后返回。
+        return assembler.toRow(bank);
     }
 
     /** 创建一个草稿题库，并保存标签、管理员数据范围和审计记录。 */
     @Transactional
-    public QuestionBankDetailVO create(QuestionBankCreateDTO dto) {
-        // 校验前端提交的子模块确实存在且未被逻辑删除。
+    public QuestionBankRowVO create(QuestionBankCreateDTO dto) {
+
+        //首先，创建题库时，一定会要求选一个 subModuleId（不然不可能知道题库建在哪个分类下）
         CategorySubModule subModule = subModuleMapper.selectById(dto.getSubModuleId());
-        // 子模块不存在时不能创建题库。
         if (subModule == null) {
-            // 抛出题库分类不合法业务异常。
             throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_CATEGORY_INVALID);
         }
 
-        // 查询同一 SubModule 中是否已经存在同名且未删除的题库。
+        // 查询同一个 SubModule 中是否已经存在同名且未删除的题库。
         Long sameName = bankMapper.selectCount(new LambdaQueryWrapper<QuestionBank>()
                 .eq(QuestionBank::getSubModuleId, dto.getSubModuleId()) // 如果想要创建题库，是一定选择并进入到一个确定的subModule的，所以subModuleId一定是已知的
                 .eq(QuestionBank::getBankName, dto.getBankName().trim())); // 使用去除首尾空白后的题库名称做精确匹配。
@@ -291,7 +271,9 @@ public class AdminQuestionBankService {
             tag.setTagName(tagName);
             bankTagMapper.insert(tag);
         }
+        // 到这，一个新的题库就创建完毕了
 
+        // 接下来，是更新题库权限给对应的管理员
         // 受 ASSIGNED_BANKS 限制的普通管理员创建题库后，需要自动获得该题库的数据范围。
         if (AdminContext.get().getRole() != AdminRole.SUPER_ADMIN && AdminContext.get().getBankDataScope() == BankDataScope.ASSIGNED_BANKS) {
             // 创建管理员与新题库的数据范围关联。
@@ -306,20 +288,17 @@ public class AdminQuestionBankService {
 
         // 记录题库创建审计日志；before 为 null，after 为新题库实体。
         auditService.record("BANK", "CREATE", "QUESTION_BANK", bank.getId(), "创建题库", null, bank);
-        // 重新读取新题库并组装完整详情后返回。
-        return assembler.toDetail(bankMapper.selectById(bank.getId()));
+        // 重新读取新题库并组装题库 VO 后返回。
+        return assembler.toRow(bankMapper.selectById(bank.getId()));
     }
 
     /** 修改题库名称、分类、标签和人工排序权重。 */
     @Transactional
-    public QuestionBankDetailVO update(Long bankId, QuestionBankUpdateDTO dto) {
+    public QuestionBankRowVO update(Long bankId, QuestionBankUpdateDTO dto) {
         // 校验当前管理员是否拥有目标题库的数据访问范围。
         accessService.requireBank(bankId);
-        // 查询未被逻辑删除的目标题库。
         QuestionBank bank = bankMapper.selectById(bankId);
-        // 题库不存在或已删除时拒绝更新。
         if (bank == null) {
-            // 返回题库不存在业务异常。
             throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_NOT_FOUND);
         }
 
@@ -436,8 +415,8 @@ public class AdminQuestionBankService {
 
         // 记录题库更新审计日志，包含修改前快照和修改后实体。
         auditService.record("BANK", "UPDATE", "QUESTION_BANK", bankId, dto.getReason(), before, bank);
-        // 重新读取题库并组装更新后的完整详情。
-        return assembler.toDetail(bankMapper.selectById(bankId));
+        // 重新读取题库并组装更新后的题库 VO。
+        return assembler.toRow(bankMapper.selectById(bankId));
     }
 
     /** 发布、下架或删除题库。 */

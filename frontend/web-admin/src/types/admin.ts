@@ -93,11 +93,6 @@ export interface QuestionBank {
   version: number
 }
 
-export interface QuestionBankDetail extends QuestionBank {
-  createAdmin: AdminSummary
-  createdTime: string
-}
-
 export interface QuestionOption {
   key: string
   content: string

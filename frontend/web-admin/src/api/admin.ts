@@ -17,7 +17,6 @@ import type {
   PageResult,
   Question,
   QuestionBank,
-  QuestionBankDetail,
   QuestionDetail,
   QuestionImageUpload,
   QuestionImportError,
@@ -91,7 +90,7 @@ export function listQuestionBanks(params: Query) {
 
 /** 查询单个题库详情。 */
 export function getQuestionBank(bankId: number) {
-  return request<QuestionBankDetail>({ method: 'GET', url: `/question-banks/${bankId}` })
+  return request<QuestionBank>({ method: 'GET', url: `/question-banks/${bankId}` })
 }
 
 /** 手动创建一个草稿题库。 */
@@ -102,7 +101,7 @@ export function createQuestionBank(payload: {
   // 变更：原 priority 请求字段改为 sortOrder 人工曝光权重。
   sortOrder: number
 }) {
-  return request<QuestionBankDetail>({ method: 'POST', url: '/question-banks', data: payload })
+  return request<QuestionBank>({ method: 'POST', url: '/question-banks', data: payload })
 }
 
 /** 编辑题库基础信息。 */
@@ -118,7 +117,7 @@ export function updateQuestionBank(
     version: number
   },
 ) {
-  return request<QuestionBankDetail>({ method: 'PUT', url: `/question-banks/${bankId}`, data: payload })
+  return request<QuestionBank>({ method: 'PUT', url: `/question-banks/${bankId}`, data: payload })
 }
 
 /** 发布、下架或删除题库。 */

@@ -162,14 +162,16 @@ async function submitCreate(): Promise<void> {
     <section class="panel filter-panel">
       <div class="filter-bar">
         <el-input
+          class="filter-keyword"
           v-model="query.keyword"
           :prefix-icon="Search"
           clearable
-          placeholder="搜索题库名称或 ID"
+          placeholder="搜索题库名称"
           @keyup.enter="search"
           @clear="search"
         />
         <el-select
+          class="filter-type"
           v-model="query.groupId"
           clearable
           placeholder="题库类型"
@@ -184,6 +186,7 @@ async function submitCreate(): Promise<void> {
         </el-select>
         <!-- 严格三级联动：必须先选择 Group，才允许选择 Module。 -->
         <el-select
+          class="filter-module"
           v-model="query.moduleId"
           clearable
           :disabled="query.groupId === undefined"
@@ -199,6 +202,7 @@ async function submitCreate(): Promise<void> {
         </el-select>
         <!-- 必须先选择 Module，才允许选择 SubModule。 -->
         <el-select
+          class="filter-submodule"
           v-model="query.subModuleId"
           clearable
           :disabled="query.moduleId === undefined"
@@ -211,13 +215,13 @@ async function submitCreate(): Promise<void> {
             :value="subModule.id"
           />
         </el-select>
-        <el-select v-model="query.status" clearable placeholder="发布状态">
+        <el-select class="filter-status" v-model="query.status" clearable placeholder="发布状态">
           <el-option label="草稿" value="DRAFT" />
           <el-option label="已发布" value="PUBLISHED" />
           <el-option label="已下架" value="OFFLINE" />
         </el-select>
         <!-- 变更：排序模式是请求参数，不是新增数据库字段。 -->
-        <el-select v-model="query.sortMode" placeholder="排序方式" @change="search">
+        <el-select class="filter-sort" v-model="query.sortMode" placeholder="排序方式" @change="search">
           <el-option label="按更新时间降序" value="UPDATED_TIME_DESC" />
           <el-option label="按题库权重降序" value="SORT_ORDER_DESC" />
         </el-select>
@@ -331,6 +335,35 @@ async function submitCreate(): Promise<void> {
 <style scoped>
 .filter-panel {
   padding: 16px 20px;
+}
+
+.filter-bar {
+  gap: 8px;
+}
+
+.filter-bar .filter-keyword {
+  width: 220px;
+}
+
+.filter-bar .filter-type,
+.filter-bar .filter-module {
+  width: 120px;
+}
+
+.filter-bar .filter-submodule {
+  width: 128px;
+}
+
+.filter-bar .filter-status {
+  width: 108px;
+}
+
+.filter-bar .filter-sort {
+  width: 148px;
+}
+
+.filter-bar :deep(.el-button + .el-button) {
+  margin-left: 0;
 }
 
 .result-count {
