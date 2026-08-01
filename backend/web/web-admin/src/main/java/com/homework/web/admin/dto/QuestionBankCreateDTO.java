@@ -3,6 +3,7 @@ package com.homework.web.admin.dto;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -21,9 +22,10 @@ public class QuestionBankCreateDTO {
     private String bankName;
 
     @Size(max = 10)
-    private List<@Size(min = 1, max = 30) String> tags;
+    private List<@NotBlank @Size(max = 30) String> tagNames;
 
-    @Min(0)
+    @Min(10)
     @Max(9999)
-    private Integer priority;
+    /** 变更：原 priority 改为题库人工曝光权重，数值越大越优先。 */
+    private Integer sortOrder;
 }

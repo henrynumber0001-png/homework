@@ -32,7 +32,7 @@ public class QuestionImageService {
     private final TencentCosProperties properties; //配置文件，配置我的腾讯云账号和桶地址
     private final CosReadUrlSigner readUrlSigner; //为私有 COS 对象生成临时只读地址
 
-    /** 将题目图片上传到24小时有效的临时目录。 */
+    //“临时图片必须在 24 小时内绑定到题目”
     public QuestionImageUploadVO upload(MultipartFile file) { //Spring 上传的图片都会变成 MultipartFile类型
         if (file == null || file.isEmpty() || file.getSize() > MAX_IMAGE_SIZE || !ALLOWED_CONTENT_TYPES.contains(file.getContentType())) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
@@ -48,11 +48,21 @@ public class QuestionImageService {
         /*
         Bucket
             │
-            └── Object
-                  │
-                  ├── Key(objectKey) 也就是存储桶中一个具体对象的 键Key
-                  ├── Metadata
-                  └── Binary Content //实际的图片，存储于COS的服务器硬盘上
+            ├── objectKey1 // 也就是存储桶中一个具体对象的 键Key
+            │      │
+            │      ▼
+            │   Object
+            │     ├── Metadata
+            │     └── Binary Content //实际的图片，存储于COS的服务器硬盘上
+            │
+            ├── objectKey2
+            │      │
+            │      ▼
+            │   Object
+            │     ├── Metadata
+            │     └── Binary Content
+            │
+            └── ...
          */
         String objectKey = "admin-temp/questions/%s/%s.%s".formatted( //自主设计一个 Key的格式：admin-temp+questions+时间+随机数+扩展名
                 LocalDate.now(),
@@ -68,6 +78,8 @@ public class QuestionImageService {
 
             metadata.setContentLength(file.getSize());
             metadata.setContentType(file.getContentType());
+
+            //调用腾讯COS客户端，把前端传过来的图片都字节数、文件类型、objectKey存入指定的存储桶里的一个object中
             cosClient.putObject(new PutObjectRequest(
                     properties.getBucket(), //保存到哪个桶
                     objectKey, //桶里的键 输入什么
@@ -90,36 +102,38 @@ public class QuestionImageService {
     }
 
     /** 将临时图片复制到正式目录、删除原对象，并返回正式对象 Key。 */
-    public String bind(String objectKey) {
+    public String bind(String objectKey) { //再把这个临时照片的 objectKey 传回来
         if (objectKey == null || objectKey.isBlank()) {
             return null;
         }
-        validateObjectKey(objectKey);
+        validateObjectKey(objectKey); //验证临时图片的 objectKey 是否有效
+
+        //设置正式图片的 objectKey
         String targetObjectKey = objectKey.replaceFirst("^admin-temp/questions/", "questions/");
         try {
-            cosClient.copyObject(new CopyObjectRequest(
+            cosClient.copyObject(new CopyObjectRequest( //把临时照片的 object 复制一份，其他 metadata 和 binary content 不变
                     properties.getBucket(),
                     objectKey,
                     properties.getBucket(),
                     targetObjectKey
-            ));
-            cosClient.deleteObject(properties.getBucket(), objectKey);
+            )); //注意：此时存储桶中有两个 object
+            cosClient.deleteObject(properties.getBucket(), objectKey); //把临时照片的 object 删除
         } catch (Exception exception) {
             throw new HomeworkException(ResultCodeEnum.SERVICE_ERROR, exception);
         }
-        return targetObjectKey;
+        return targetObjectKey; //把正式照片的 objectKey 返回前端
     }
 
     /** 校验临时图片标识的目录和24小时有效期。 */
     public void validateObjectKey(String objectKey) {
-        if (!objectKey.startsWith("admin-temp/questions/") || objectKey.contains("..")) {
+        if (!objectKey.startsWith("admin-temp/questions/") || objectKey.contains("..")) { //防止 Path Traversal（路径穿越攻击）
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
-        String fileName = objectKey.substring(objectKey.lastIndexOf('/') + 1);
-        int separator = fileName.indexOf('-');
+        String fileName = objectKey.substring(objectKey.lastIndexOf('/') + 1); //从 objectKey 中的最后一个 / 之后开始截取
+        int separator = fileName.indexOf('-'); //找到 - 的索引
         try {
-            long uploadedAt = Long.parseLong(fileName.substring(0, separator));
-            long expiresAt = uploadedAt + java.time.Duration.ofHours(24).toMillis();
+            long uploadedAt = Long.parseLong(fileName.substring(0, separator)); // 就是自主设计的规则中的 System.currentTimeMillis()，也就是上传时间
+            long expiresAt = uploadedAt + java.time.Duration.ofHours(24).toMillis(); // + 24小时并转换到毫秒，然后校验临时图片过期了没
             if (System.currentTimeMillis() > expiresAt) {
                 throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
             }

@@ -1,22 +1,12 @@
 package com.homework.web.admin.service;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.homework.common.storage.CosReadUrlSigner;
 import com.homework.model.entity.CertificateQuestionInfo;
 import com.homework.model.entity.InterviewQuestionInfo;
-import com.homework.model.entity.QuestionBank;
-import com.homework.model.entity.QuestionBankQuestion;
-import com.homework.model.enums.AdminRole;
-import com.homework.model.enums.BankDataScope;
 import com.homework.model.enums.GroupType;
-import com.homework.web.admin.auth.AdminAccessService;
-import com.homework.web.admin.context.AdminContext;
-import com.homework.web.admin.mapper.QuestionBankMapper;
-import com.homework.web.admin.mapper.QuestionBankQuestionMapper;
 import com.homework.web.admin.vo.QuestionDetailVO;
 import com.homework.web.admin.vo.QuestionOptionVO;
 import com.homework.web.admin.vo.QuestionRowVO;
-import com.homework.web.admin.vo.ReferencedBankVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -28,56 +18,45 @@ import java.util.List;
 @RequiredArgsConstructor
 public class QuestionAssembler {
 
-    private final QuestionBankQuestionMapper relationMapper;
-    private final QuestionBankMapper bankMapper;
-    private final AdminAccessService accessService;
     private final CosReadUrlSigner readUrlSigner;
 
-    public QuestionRowVO toRow(Long bankId, QuestionBankQuestion relation, InterviewQuestionInfo question) {
+    /** 变更：原来需要关系实体提供 bankId 和顺序，现在全部直接取自面试题实体。 */
+    public QuestionRowVO toRow(InterviewQuestionInfo question) {
         QuestionRowVO vo = new QuestionRowVO();
         vo.setId(question.getId());
-        vo.setBankId(bankId);
+        vo.setBankId(question.getBankId());
         vo.setQuestionType(question.getQuestionType().name());
         vo.setTitle(question.getTitle());
         vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setReleased(question.getIsReleased());
-        vo.setDeleted(question.getDeleted());
-        vo.setBankSortOrder(relation.getSortOrder());
-        vo.setReferencedBankCount((long) relationMapper
-                .selectQuestionRelations(question.getId(), GroupType.INTERVIEW).size());
+        vo.setSortOrder(question.getSortOrder());
         vo.setCreatedTime(question.getCreatedTime());
         vo.setUpdatedTime(question.getUpdatedTime());
         vo.setVersion(question.getVersion());
         return vo;
     }
 
-    public QuestionRowVO toRow(Long bankId, QuestionBankQuestion relation, CertificateQuestionInfo question) {
+    /** 变更：原来需要关系实体提供 bankId 和顺序，现在全部直接取自认证题实体。 */
+    public QuestionRowVO toRow(CertificateQuestionInfo question) {
         QuestionRowVO vo = new QuestionRowVO();
         vo.setId(question.getId());
-        vo.setBankId(bankId);
+        vo.setBankId(question.getBankId());
         vo.setQuestionType(question.getQuestionType().name());
         vo.setTitle(question.getTitle());
         vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setReleased(question.getIsReleased());
-        vo.setDeleted(question.getDeleted());
-        vo.setBankSortOrder(relation.getSortOrder());
-        vo.setReferencedBankCount((long) relationMapper
-                .selectQuestionRelations(question.getId(), GroupType.CERTIFICATION).size());
+        vo.setSortOrder(question.getSortOrder());
         vo.setCreatedTime(question.getCreatedTime());
         vo.setUpdatedTime(question.getUpdatedTime());
         vo.setVersion(question.getVersion());
         return vo;
     }
 
-    public QuestionDetailVO toDetail(
-            Long bankId,
-            GroupType groupType,
-            QuestionBankQuestion currentRelation,
-            InterviewQuestionInfo question
-    ) {
+    /** 变更：一题只属于一个题库，详情不再组装共享题库列表。 */
+    public QuestionDetailVO toDetail(GroupType groupType, InterviewQuestionInfo question) {
         QuestionDetailVO vo = new QuestionDetailVO();
         vo.setId(question.getId());
-        vo.setBankId(bankId);
+        vo.setBankId(question.getBankId());
         vo.setGroupType(groupType.name());
         vo.setQuestionType(question.getQuestionType().name());
         vo.setTitle(question.getTitle());
@@ -86,22 +65,16 @@ public class QuestionAssembler {
         vo.setOptions(List.of());
         vo.setCorrectAnswers(List.of());
         vo.setReleased(question.getIsReleased());
-        vo.setDeleted(question.getDeleted());
-        vo.setBankSortOrder(currentRelation.getSortOrder());
+        vo.setSortOrder(question.getSortOrder());
         vo.setVersion(question.getVersion());
-        setReferences(vo, question.getId(), groupType);
         return vo;
     }
 
-    public QuestionDetailVO toDetail(
-            Long bankId,
-            GroupType groupType,
-            QuestionBankQuestion currentRelation,
-            CertificateQuestionInfo question
-    ) {
+    /** 变更：认证题详情直接使用实体中的 bankId 和 sortOrder，不再查询关系表。 */
+    public QuestionDetailVO toDetail(GroupType groupType, CertificateQuestionInfo question) {
         QuestionDetailVO vo = new QuestionDetailVO();
         vo.setId(question.getId());
-        vo.setBankId(bankId);
+        vo.setBankId(question.getBankId());
         vo.setGroupType(groupType.name());
         vo.setQuestionType(question.getQuestionType().name());
         vo.setTitle(question.getTitle());
@@ -123,34 +96,8 @@ public class QuestionAssembler {
         vo.setOptions(optionVos);
         vo.setCorrectAnswers(correctKeys);
         vo.setReleased(question.getIsReleased());
-        vo.setDeleted(question.getDeleted());
-        vo.setBankSortOrder(currentRelation.getSortOrder());
+        vo.setSortOrder(question.getSortOrder());
         vo.setVersion(question.getVersion());
-        setReferences(vo, question.getId(), groupType);
         return vo;
-    }
-
-    public void setReferences(QuestionDetailVO vo, Long questionId, GroupType groupType) {
-        List<QuestionBankQuestion> relations = relationMapper.selectQuestionRelations(questionId, groupType);
-        boolean canSeeAll = AdminContext.get().getRole() == AdminRole.SUPER_ADMIN
-                || AdminContext.get().getBankDataScope() == BankDataScope.ALL_BANKS;
-        List<Long> allowedBankIds = canSeeAll
-                ? List.of()
-                : accessService.listAssignedBankIds(AdminContext.getAdminId());
-        List<ReferencedBankVO> visible = new ArrayList<>();
-        for (QuestionBankQuestion relation : relations) {
-            if (canSeeAll || allowedBankIds.contains(relation.getBankId())) {
-                QuestionBank bank = bankMapper.selectIncludingDeleted(relation.getBankId());
-                if (bank != null) {
-                    ReferencedBankVO bankVO = new ReferencedBankVO();
-                    bankVO.setBankId(bank.getId());
-                    bankVO.setBankName(bank.getBankName());
-                    visible.add(bankVO);
-                }
-            }
-        }
-        vo.setReferencedBankCount((long) relations.size());
-        vo.setVisibleReferencedBanks(visible);
-        vo.setHasHiddenReferences(visible.size() < relations.size());
     }
 }

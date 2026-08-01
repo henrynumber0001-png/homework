@@ -4,7 +4,6 @@ import com.homework.common.storage.CosReadUrlSigner;
 import com.homework.model.entity.InterviewQuestionInfo;
 import com.homework.model.enums.MembershipStatus;
 import com.homework.model.enums.MembershipType;
-import com.homework.model.entity.QuestionBankQuestion;
 import com.homework.model.entity.UserFavoriteQuestion;
 import com.homework.model.enums.ActionStatus;
 import com.homework.model.enums.QuestionInfoQuestionType;
@@ -15,7 +14,6 @@ import com.homework.web.app.service.LlmClient;
 import com.homework.web.app.service.MembershipAccessService;
 import com.homework.web.app.service.MembershipAccessSnapshot;
 import com.homework.web.app.service.PublishedQuestionBankAccessService;
-import com.homework.web.app.service.QuestionBankOrderService;
 import com.homework.web.app.vo.InterviewQuestionPageVO;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,7 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -38,8 +35,6 @@ class QuestionInfoServiceImplTest {
 
     @Mock
     private InterviewQuestionInfoMapper interviewQuestionInfoMapper;
-    @Mock
-    private QuestionBankQuestionMapper questionBankQuestionMapper;
     @Mock
     private UserQuestionAnswerMapper userQuestionAnswerMapper;
     @Mock
@@ -66,9 +61,6 @@ class QuestionInfoServiceImplTest {
     private PublishedQuestionBankAccessService publishedQuestionBankAccessService;
     @Mock
     private CosReadUrlSigner readUrlSigner;
-    @Spy
-    private QuestionBankOrderService questionBankOrderService = new QuestionBankOrderService();
-
     @InjectMocks
     private QuestionInfoServiceImpl service;
 
@@ -91,7 +83,8 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void activateMissingFavoriteInsertsCurrentUserAndBank() {
-        when(questionBankQuestionMapper.selectOne(any())).thenReturn(new QuestionBankQuestion());
+        // 变更：关系表已删除，收藏测试直接模拟题目实体归属校验通过。
+        when(interviewQuestionInfoMapper.selectCount(any())).thenReturn(1L);
         when(userFavoriteQuestionMapper.selectIncludingDeletedForUpdate(7L, 11L, 22L)).thenReturn(null);
         when(userFavoriteQuestionMapper.insert(any(UserFavoriteQuestion.class))).thenReturn(1);
 
@@ -106,7 +99,7 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void deactivateMissingFavoriteIsIdempotent() {
-        when(questionBankQuestionMapper.selectOne(any())).thenReturn(new QuestionBankQuestion());
+        when(interviewQuestionInfoMapper.selectCount(any())).thenReturn(1L);
         when(userFavoriteQuestionMapper.selectIncludingDeletedForUpdate(7L, 11L, 22L)).thenReturn(null);
 
         service.collect(11L, 22L, ActionStatus.DEACTIVATE);
@@ -119,7 +112,7 @@ class QuestionInfoServiceImplTest {
     @Test
     void activateDeletedFavoriteRestoresFavoriteRecordId() {
         UserFavoriteQuestion existing = favorite(99L, true);
-        when(questionBankQuestionMapper.selectOne(any())).thenReturn(new QuestionBankQuestion());
+        when(interviewQuestionInfoMapper.selectCount(any())).thenReturn(1L);
         when(userFavoriteQuestionMapper.selectIncludingDeletedForUpdate(7L, 11L, 22L)).thenReturn(existing);
         when(userFavoriteQuestionMapper.restoreById(99L)).thenReturn(1);
 
@@ -132,7 +125,7 @@ class QuestionInfoServiceImplTest {
     @Test
     void deactivateActiveFavoriteUsesFavoriteRecordId() {
         UserFavoriteQuestion existing = favorite(99L, false);
-        when(questionBankQuestionMapper.selectOne(any())).thenReturn(new QuestionBankQuestion());
+        when(interviewQuestionInfoMapper.selectCount(any())).thenReturn(1L);
         when(userFavoriteQuestionMapper.selectIncludingDeletedForUpdate(7L, 11L, 22L)).thenReturn(existing);
         when(userFavoriteQuestionMapper.deleteById(99L)).thenReturn(1);
 
@@ -143,7 +136,7 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void repeatedActivateOnActiveFavoriteDoesNotWriteAgain() {
-        when(questionBankQuestionMapper.selectOne(any())).thenReturn(new QuestionBankQuestion());
+        when(interviewQuestionInfoMapper.selectCount(any())).thenReturn(1L);
         when(userFavoriteQuestionMapper.selectIncludingDeletedForUpdate(7L, 11L, 22L))
                 .thenReturn(favorite(99L, false));
 
@@ -156,17 +149,16 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void interviewQuestionListUsesFavoriteMap() {
-        QuestionBankQuestion bankQuestion = new QuestionBankQuestion();
-        bankQuestion.setQuestionId(22L);
         InterviewQuestionInfo question = new InterviewQuestionInfo();
         question.setId(22L);
+        question.setBankId(11L);
+        question.setSortOrder(10);
         question.setTitle("Java 并发");
         question.setImageObjectKey("questions/java-concurrency.png");
         question.setQuestionType(QuestionInfoQuestionType.ESSAY);
         question.setIsReleased(true);
         UserFavoriteQuestion favorite = favorite(99L, false);
 
-        when(questionBankQuestionMapper.selectList(any())).thenReturn(List.of(bankQuestion));
         when(interviewQuestionInfoMapper.selectList(any())).thenReturn(List.of(question));
         when(userFavoriteQuestionMapper.selectList(any())).thenReturn(List.of(favorite));
         when(readUrlSigner.sign("questions/java-concurrency.png"))

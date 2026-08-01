@@ -24,7 +24,8 @@ export interface QuestionBank {
   subModuleId: number
   completeCount: number
   avgCorrectRate: number | null
-  priority?: number
+  /** 变更：原 priority 已统一命名为 sortOrder；App排序仍由后端完成。 */
+  sortOrder?: number
   questionCount?: number
   tagNames: string[]
 }

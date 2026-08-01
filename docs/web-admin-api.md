@@ -142,12 +142,12 @@ X-Admin-Reauth-Token: <one_time_token>
 | `bank:create` | 创建题库 |
 | `bank:update` | 编辑题库 |
 | `bank:publish` | 发布和下架题库 |
-| `bank:delete` | 删除和恢复题库 |
+| `bank:delete` | 删除题库 |
 | `question:view` | 查看题目 |
 | `question:create` | 创建题目和上传图片 |
 | `question:update` | 编辑题目 |
 | `question:publish` | 发布和下架题目 |
-| `question:delete` | 删除和恢复题目 |
+| `question:delete` | 删除题目 |
 | `question:sort` | 题库内排序 |
 | `question:import` | Excel 预检和导入 |
 | `user:view` | 查看用户 |
@@ -299,7 +299,7 @@ POST /api/admin/auth/reauth
 | `GET` | `/categories/tree` | `bank:view` 或 `bank:create` |
 
 ```http
-GET /api/admin/categories/tree?groupType=INTERVIEW
+GET /api/admin/categories/tree
 ```
 
 响应：
@@ -396,22 +396,17 @@ GET /api/admin/dashboard?date=2026-07-26
 | `PUBLISH` | `bank:publish` | `DRAFT`、`OFFLINE` |
 | `OFFLINE` | `bank:publish` | `PUBLISHED` |
 | `DELETE` | `bank:delete` | `DRAFT`、`OFFLINE` |
-| `RESTORE` | `bank:delete` | 已逻辑删除 |
 
 ### 7.2 题库列表
 
 ```http
-GET /api/admin/question-banks?keyword=spring&groupType=INTERVIEW&moduleId=11&subModuleId=111&status=PUBLISHED&deleted=false&pageNum=1&pageSize=20&sortBy=UPDATED_TIME&sortDirection=DESC
+GET /api/admin/question-banks?keyword=spring&groupId=1&moduleId=11&subModuleId=111&status=PUBLISHED&pageNum=1&pageSize=20&sortMode=UPDATED_TIME_DESC
 ```
 
-允许的 `sortBy`：
+变更：删除原 `sortBy + sortDirection` 组合，改为语义明确的 `sortMode`：
 
-- `CREATED_TIME`
-- `UPDATED_TIME`
-- `PUBLISHED_TIME`
-- `PRIORITY`
-- `VIEW_COUNT`
-- `COMPLETE_COUNT`
+- `UPDATED_TIME_DESC`：按 `question_bank.updated_time DESC, question_bank.id DESC`。
+- `SORT_ORDER_DESC`：按 `question_bank.sort_order DESC, question_bank.id DESC`。
 
 记录：
 
@@ -434,7 +429,7 @@ GET /api/admin/question-banks?keyword=spring&groupType=INTERVIEW&moduleId=11&sub
   },
   "status": "PUBLISHED",
   "tags": ["Spring", "Backend"],
-  "priority": 10,
+  "sortOrder": 10,
   "questionCount": 100,
   "releasedQuestionCount": 98,
   "viewCount": 5000,
@@ -444,8 +439,6 @@ GET /api/admin/question-banks?keyword=spring&groupType=INTERVIEW&moduleId=11&sub
   "version": 3
 }
 ```
-
-`deleted=true` 只允许拥有 `bank:delete` 权限的管理员使用。
 
 ### 7.3 题库详情
 
@@ -461,9 +454,7 @@ GET /api/admin/question-banks/101
     "id": 2,
     "displayName": "Content Admin"
   },
-  "createdTime": "2026-06-30T12:00:00",
-  "deleted": false,
-  "deleteReason": null
+  "createdTime": "2026-06-30T12:00:00"
 }
 ```
 
@@ -475,16 +466,16 @@ POST /api/admin/question-banks
   "subModuleId": 111,
   "bankName": "Spring Boot 高频面试题",
   "tags": ["Spring", "Backend"],
-  "priority": 10
+  "sortOrder": 10
 }
 ```
 
 规则：
 
 - 题库只能单条创建。
-- `bankName` 去除首尾空格后全局唯一，最大 100 字。
-- 标签最多 10 个，每个最大 30 字。
-- `priority` 为 `0～9999`，默认 0。
+- `bankName` 去除首尾空格后，在同一 SubModule 的未删除题库中不能重名，最大 100 字。
+- 标签必填且至少 1 个，最多 10 个；每个标签不能为纯空白，最大 30 字。
+- `sortOrder` 为 `0～9999`，数据库及创建接口默认 10；数值越大，App 端人工曝光优先级越高。
 - 初始状态固定为 `DRAFT`。
 - `ASSIGNED_BANKS` 管理员自动获得新题库权限。
 
@@ -499,7 +490,7 @@ PUT /api/admin/question-banks/101
   "subModuleId": 112,
   "bankName": "Spring Boot 核心面试题",
   "tags": ["Spring"],
-  "priority": 20,
+  "sortOrder": 20,
   "reason": "调整题库定位",
   "version": 3
 }
@@ -525,7 +516,7 @@ POST /api/admin/question-banks/101/actions
 - 首次发布写入 `published_time`，重新发布不覆盖。
 - 发布中的题库必须先下架才能删除。
 - 删除为逻辑删除，不级联删除题目和用户数据。
-- 恢复后的题库状态固定为 `OFFLINE`。
+- 管理端不提供题库回收站查询和恢复动作。
 
 返回 `ActionResultVO`。
 
@@ -540,8 +531,8 @@ POST /api/admin/question-banks/101/actions
 | `GET` | `/question-banks/{bankId}/questions` | `question:view` + 题库范围 |
 | `GET` | `/question-banks/{bankId}/questions/{questionId}` | `question:view` + 题库范围 |
 | `POST` | `/question-banks/{bankId}/questions` | `question:create` + 题库范围 |
-| `PUT` | `/question-banks/{bankId}/questions/{questionId}` | `question:update` + 全部关联题库范围 |
-| `POST` | `/question-banks/{bankId}/questions/{questionId}/actions` | 按动作校验 + 全部关联题库范围 |
+| `PUT` | `/question-banks/{bankId}/questions/{questionId}` | `question:update` + 题库范围 |
+| `POST` | `/question-banks/{bankId}/questions/{questionId}/actions` | 按动作校验 + 题库范围 |
 | `PUT` | `/question-banks/{bankId}/questions/order` | `question:sort` + 题库范围 |
 | `POST` | `/uploads/question-images` | `question:create` 或 `question:update` |
 
@@ -550,13 +541,13 @@ POST /api/admin/question-banks/101/actions
 | 动作 | 权限 |
 | --- | --- |
 | `PUBLISH`、`OFFLINE` | `question:publish` |
-| `DELETE`、`RESTORE` | `question:delete` |
+| `DELETE` | `question:delete` |
 
 ### 8.2 题型规则
 
 | 题库 Group | 题目表 | 允许题型 |
 | --- | --- | --- |
-| `INTERVIEW` | `question_info` | `ESSAY` |
+| `INTERVIEW` | `interview_question_info` | `ESSAY` |
 | `CERTIFICATION` | `certificate_question_info` | `SINGLE_CHOICE`、`MULTIPLE` |
 
 V1 不支持判断题。
@@ -564,7 +555,7 @@ V1 不支持判断题。
 ### 8.3 题目列表
 
 ```http
-GET /api/admin/question-banks/101/questions?keyword=事务&questionType=ESSAY&released=true&deleted=false&pageNum=1&pageSize=20&sortBy=BANK_ORDER&sortDirection=ASC
+GET /api/admin/question-banks/101/questions?keyword=事务&questionType=ESSAY&released=true&pageNum=1&pageSize=20&sortMode=MANUAL_ORDER_ASC
 ```
 
 记录：
@@ -577,15 +568,16 @@ GET /api/admin/question-banks/101/questions?keyword=事务&questionType=ESSAY&re
   "title": "Spring 事务失效的常见原因有哪些？",
   "imageUrl": null,
   "released": true,
-  "deleted": false,
-  "bankSortOrder": 10,
-  "referencedBankCount": 1,
+  "sortOrder": 10,
   "updatedTime": "2026-07-20T10:00:00",
   "version": 3
 }
 ```
 
-允许的 `sortBy`：`BANK_ORDER`、`CREATED_TIME`、`UPDATED_TIME`、`QUESTION_ID`。
+变更：题目列表只接受两个 `sortMode`：
+
+- `UPDATED_TIME_DESC`：按题目 `updated_time DESC, id DESC`。
+- `MANUAL_ORDER_ASC`：按题目 `sort_order ASC, id ASC`。
 
 ### 8.4 题目详情
 
@@ -610,21 +602,12 @@ GET /api/admin/question-banks/101/questions?keyword=事务&questionType=ESSAY&re
   ],
   "correctAnswers": ["A"],
   "released": true,
-  "deleted": false,
-  "bankSortOrder": 20,
-  "referencedBankCount": 1,
-  "visibleReferencedBanks": [
-    {
-      "bankId": 201,
-      "bankName": "认证题库"
-    }
-  ],
-  "hasHiddenReferences": false,
+  "sortOrder": 20,
   "version": 3
 }
 ```
 
-面试题的 `options`、`correctAnswers` 返回空数组。超出管理员数据范围的关联题库不返回 ID 和名称，只通过 `hasHiddenReferences=true` 表示，并禁止该管理员编辑题目主体。
+面试题的 `options`、`correctAnswers` 返回空数组。变更后一道题只属于一个题库，详情不再返回共享引用题库字段。
 
 ### 8.5 创建题目
 
@@ -673,8 +656,10 @@ POST /api/admin/question-banks/101/questions
 - 单选题只能有一个正确答案。
 - 多选题至少有两个正确答案。
 - 题型必须与题库 Group 匹配。
+- 同一题库的未删除题目中不能存在相同 `title`；已删除历史记录不参与重复校验。
 - 创建后默认未发布。
-- 题目主体和 `question_bank_question` 关系在同一事务创建。
+- 题目实体直接保存 `bank_id` 和 `sort_order`，不再创建关系表记录。
+- 新题的 `sort_order` 为当前题库有效题目的最大值加 10。
 
 ### 8.6 编辑题目
 
@@ -694,8 +679,8 @@ POST /api/admin/question-banks/101/questions
 - 只有显式传入 `removeImage=true` 时才删除原图片；此时不能同时传 `imageObjectKey`。
 - `ESSAY` 不能转换为选择题，选择题不能转换为 `ESSAY`。
 - `SINGLE_CHOICE` 与 `MULTIPLE` 可以互转，但必须重新校验正确答案。
+- 修改后的 `title` 不能与同一题库中的其他未删除题目相同。
 - 已发布题目修改标题、选项或正确答案时必须填写原因。
-- 被多个题库引用时，管理员必须拥有全部关联题库数据权限。
 - 编辑题目主体不修改任何题库中的排序。
 
 ### 8.7 题目动作
@@ -712,9 +697,9 @@ POST /api/admin/question-banks/101/questions/10001/actions
 
 规则：
 
-- 发布只允许未发布、未删除题目。
-- 删除前自动下架，恢复后保持未发布。
-- 被多个题库引用的题目不能通过单个题库删除主体。
+- 发布只允许未发布题目。
+- 删除时自动下架，并逻辑删除题目实体。
+- 管理端不提供题目回收站查询和恢复动作，删除记录仅用于保留历史数据。
 - 已开始的认证考试 Session 不受下架和排序变化影响。
 
 ### 8.8 题目排序
@@ -734,8 +719,8 @@ PUT /api/admin/question-banks/101/questions/order
 - 必须提交题库全部未删除题目 ID。
 - 不能缺失、重复或包含其他题库题目。
 - 数组顺序映射为 `10、20、30...`。
-- `question_bank_question.sort_order` 是唯一排序来源。
-- 全部关系在同一事务更新。
+- 面试题直接更新 `interview_question_info.sort_order`，认证题直接更新 `certificate_question_info.sort_order`。
+- 全部题目顺序在同一事务更新；不建立 `(bank_id, sort_order)` 唯一约束。
 - 认证考试仍在创建 Session 时随机题序。
 
 响应：
@@ -1215,8 +1200,8 @@ GET /api/admin/audit-logs?operatorAdminId=2&module=QUESTION&action=UPDATE&target
 | `1302` | `ADMIN_QUESTION_TYPE_INVALID` | 题型与题库不匹配 |
 | `1303` | `ADMIN_QUESTION_OPTION_INVALID` | 选项或正确答案不合法 |
 | `1304` | `ADMIN_QUESTION_STATE_INVALID` | 题目状态不允许当前操作 |
-| `1305` | `ADMIN_SHARED_QUESTION_FORBIDDEN` | 无权修改共享题目 |
 | `1306` | `ADMIN_QUESTION_ORDER_INVALID` | 题目排序数据不合法 |
+| `1307` | `ADMIN_QUESTION_TITLE_CONFLICT` | 同一题库中已存在相同题目 |
 | `1310` | `ADMIN_IMPORT_FILE_INVALID` | 导入文件不合法 |
 | `1311` | `ADMIN_IMPORT_ROW_INVALID` | 导入文件存在错误行 |
 | `1312` | `ADMIN_IMPORT_TASK_INVALID` | 导入任务不存在、过期或状态错误 |
@@ -1227,16 +1212,13 @@ GET /api/admin/audit-logs?operatorAdminId=2&module=QUESTION&action=UPDATE&target
 
 ## 16. 核心数据约束
 
-### 16.1 一题多库
+### 16.1 一题一库
 
-- `question_bank_question` 保持多对多关系。
-- 建立 `(bank_id, question_id)` 唯一索引。
-- 不建立 `question_id` 单列唯一索引。
-- V1 新建题目只创建一条目标题库关系。
-- V1 不提供关联已有题目的接口。
-- 关系表 `sort_order` 是题库内顺序的唯一来源。
-- 题目被多个题库引用时，编辑需要全部关联题库权限。
-- 题目仍被其他题库引用时，不能删除题目主体。
+- 变更：删除 `question_bank_question` 多对多关系表。
+- `interview_question_info` 和 `certificate_question_info` 直接保存非空 `bank_id`。
+- 两张题目表直接保存非空 `sort_order`，默认 10。
+- 同一内容需要出现在另一个题库时，创建一条新的题目记录并获得新的题目 ID。
+- 管理端不提供“引用已有题目”入口，题目的编辑和删除只影响其所属题库中的该条记录。
 
 ### 16.2 必要数据能力
 
@@ -1247,7 +1229,7 @@ GET /api/admin/audit-logs?operatorAdminId=2&module=QUESTION&action=UPDATE&target
 | 题库业务状态和版本 | 发布、下架和并发控制 |
 | 题库与题目的 `create_admin_id` | 后台创建人，不复用带 App 用户外键的 `create_user_id` |
 | 面试题 `image_object_key` | 保存私有 COS 对象 Key，用于图文题目 |
-| 关系表排序版本 | 原子拖拽排序 |
+| 题库 `version` + 题目表 `sort_order` | 原子拖拽排序与并发控制 |
 | 题目导入任务和错误明细 | 两阶段 Excel 导入 |
 | Comment 业务状态 | 隐藏、删除和恢复 |
 | 用户社区限制 | 控制发帖和评论 |
@@ -1266,14 +1248,14 @@ GET /api/admin/audit-logs?operatorAdminId=2&module=QUESTION&action=UPDATE&target
 - Excel 有错误行时不写入任何题目。
 - 排序失败时不产生部分更新。
 - 普通练习读取新题序，进行中的认证考试不受影响。
-- 数据库不存在限制一道题只能关联一个题库的约束。
+- 两张题目表的 `bank_id` 都是非空外键，一道题只能归属于一个题库。
 
 ### 17.2 权限与审计
 
 - App Token 不能访问管理接口。
 - 普通管理员不能构造请求执行超级管理员动作。
 - `ASSIGNED_BANKS` 管理员不能读取或修改未分配题库。
-- 共享题目不会泄露无权限题库信息。
+- `bankId + questionId` 归属校验会阻止跨题库读取或修改题目。
 - 每个写操作都记录请求 ID、操作者、目标、原因和结果。
 
 ### 17.3 低频模块

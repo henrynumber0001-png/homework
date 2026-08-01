@@ -82,7 +82,8 @@ export interface QuestionBank {
   subModule: NamedId
   status: 'DRAFT' | 'PUBLISHED' | 'OFFLINE'
   tags: string[]
-  priority: number
+  /** 变更：原 priority 改为题库人工曝光权重。 */
+  sortOrder: number
   questionCount: number
   releasedQuestionCount: number
   viewCount: number
@@ -95,8 +96,6 @@ export interface QuestionBank {
 export interface QuestionBankDetail extends QuestionBank {
   createAdmin: AdminSummary
   createdTime: string
-  deleted: boolean
-  deleteReason?: string
 }
 
 export interface QuestionOption {
@@ -113,9 +112,8 @@ export interface Question {
   title: string
   imageUrl?: string
   released: boolean
-  deleted: boolean
-  bankSortOrder: number
-  referencedBankCount: number
+  /** 变更：关系表已删除，题目手动顺序直接来自题目实体。 */
+  sortOrder: number
   createdTime: string
   updatedTime: string
   version: number
@@ -126,8 +124,6 @@ export interface QuestionDetail extends Question {
   analysis?: string
   options: QuestionOption[]
   correctAnswers: string[]
-  visibleReferencedBanks: Array<{ bankId: number; bankName: string }>
-  hasHiddenReferences: boolean
 }
 
 export interface QuestionImageUpload {

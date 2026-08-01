@@ -26,14 +26,8 @@ public class QuestionRowVO {
     /** 是否已发布。 */
     private Boolean released;
 
-    /** 是否已逻辑删除。 */
-    private Boolean deleted;
-
-    /** 当前题库中的排序值。 */
-    private Integer bankSortOrder;
-
-    /** 引用该题目的题库数量。 */
-    private Long referencedBankCount;
+    /** 变更：关系表已删除，题库内手动顺序直接来自题目实体。 */
+    private Integer sortOrder;
 
     /** 创建时间。 */
     private LocalDateTime createdTime;

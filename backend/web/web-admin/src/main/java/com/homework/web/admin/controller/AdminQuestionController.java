@@ -48,19 +48,18 @@ public class AdminQuestionController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String questionType,
             @RequestParam(required = false) Boolean released,
-            @RequestParam(required = false) Boolean deleted,
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize,
-            @RequestParam(required = false) String sortBy,
-            @RequestParam(required = false) String sortDirection
+            // 变更：原 sortBy + sortDirection 合并为一个可读的排序模式参数。
+            @RequestParam(required = false) String sortMode
     ) {
         return Result.success(questionService.list(
-                bankId, keyword, questionType, released, deleted,
-                pageNum, pageSize, sortBy, sortDirection
+                bankId, keyword, questionType, released,
+                pageNum, pageSize, sortMode
         ));
     }
 
-    /** 查询题目主体、选项和关联题库详情。 */
+    /** 变更：查询当前题库直接拥有的题目主体和选项，不再返回关联题库列表。 */
     @Operation(summary = "查询题目详情")
     @AdminPermission("question:view")
     @GetMapping("/question-banks/{bankId}/questions/{questionId}")
@@ -94,7 +93,7 @@ public class AdminQuestionController {
         return Result.success(questionService.update(bankId, questionId, dto));
     }
 
-    /** 发布、下架、删除或恢复题目。 */
+    /** 发布、下架或删除题目。 */
     @Operation(summary = "执行题目状态动作")
     @PostMapping("/question-banks/{bankId}/questions/{questionId}/actions")
     public Result<ActionResultVO> action(

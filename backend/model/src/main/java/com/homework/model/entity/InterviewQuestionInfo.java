@@ -10,8 +10,11 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("question_info")
+@TableName("interview_question_info")
 public class InterviewQuestionInfo extends BaseEntity {
+
+    /** 变更：题目原来通过 question_bank_question 关联题库，现在直接保存所属题库 ID。 */
+    private Long bankId;
 
     private String title;
 
@@ -27,6 +30,7 @@ public class InterviewQuestionInfo extends BaseEntity {
     /** 创建该题目的后台管理员 ID；历史 App 数据可为空。 */
     private Long createAdminId;
 
+    /** 变更：排序值现在属于题目本身，数值越小，在题库中的手动顺序越靠前。 */
     private Integer sortOrder;
 
     /** 题干图片在私有对象存储中的对象 Key。 */

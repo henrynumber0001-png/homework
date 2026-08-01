@@ -8,7 +8,6 @@ import com.homework.common.storage.CosReadUrlSigner;
 import com.homework.model.entity.CertificateExamAnswer;
 import com.homework.model.entity.CertificateExamSession;
 import com.homework.model.entity.CertificateQuestionInfo;
-import com.homework.model.entity.QuestionBankQuestion;
 import com.homework.model.entity.UserFavoriteQuestion;
 import com.homework.model.enums.ExamSessionStatus;
 import com.homework.model.enums.QuestionInfoQuestionType;
@@ -52,8 +51,6 @@ public class CertificateExamServiceImpl implements CertificateExamService {
     private final CertificateExamAnswerMapper certificateExamAnswerMapper;
 
     private final CertificateQuestionInfoMapper certificateQuestionInfoMapper;
-
-    private final QuestionBankQuestionMapper questionBankQuestionMapper;
 
     private final CertificateExamLockMapper certificateExamLockMapper;
 
@@ -114,22 +111,10 @@ public class CertificateExamServiceImpl implements CertificateExamService {
 
         //如果没有 activeSession，那么就开始创建新的session
         publishedQuestionBankAccessService.requirePublished(bankId);
-        List<QuestionBankQuestion> bankQuestions = questionBankQuestionMapper.selectList(
-                new LambdaQueryWrapper<QuestionBankQuestion>()
-                        .eq(QuestionBankQuestion::getBankId, bankId)
-        );
-
-        if (bankQuestions.isEmpty()) {
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
-        }
-
-        List<Long> questionIds = bankQuestions.stream()
-                .map(QuestionBankQuestion::getQuestionId)
-                .toList();
-
+        // 变更：认证考试原来先查关系表；现在直接按 certificate_question_info.bank_id 选择可用题目。
         List<CertificateQuestionInfo> certQuestionInfos = certificateQuestionInfoMapper.selectList(
                 new LambdaQueryWrapper<CertificateQuestionInfo>()
-                        .in(CertificateQuestionInfo::getId, questionIds)
+                        .eq(CertificateQuestionInfo::getBankId, bankId)
                         .eq(CertificateQuestionInfo::getIsReleased, true)
                         .in(
                                 CertificateQuestionInfo::getQuestionType,

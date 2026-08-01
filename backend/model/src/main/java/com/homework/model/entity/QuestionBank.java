@@ -33,7 +33,8 @@ public class QuestionBank extends BaseEntity {
     @TableField(insertStrategy = FieldStrategy.NEVER, updateStrategy = FieldStrategy.NEVER)
     private Integer hotScore;
 
-    private Integer priority;
+    /** 变更：原 priority 已改为人工曝光权重；默认值相同时继续按 Hot/Latest 排序。 */
+    private Integer sortOrder;
 
     private Long createUserId;
 

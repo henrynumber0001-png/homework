@@ -11,7 +11,6 @@ import com.homework.model.entity.CategorySubModule;
 import com.homework.model.entity.CertificateQuestionInfo;
 import com.homework.model.entity.InterviewQuestionInfo;
 import com.homework.model.entity.QuestionBank;
-import com.homework.model.entity.QuestionBankQuestion;
 import com.homework.model.enums.GroupType;
 import com.homework.web.admin.mapper.AdminAccountMapper;
 import com.homework.web.admin.mapper.BankTagMapper;
@@ -20,7 +19,6 @@ import com.homework.web.admin.mapper.CategoryModuleMapper;
 import com.homework.web.admin.mapper.CategorySubModuleMapper;
 import com.homework.web.admin.mapper.CertificateQuestionMapper;
 import com.homework.web.admin.mapper.InterviewQuestionMapper;
-import com.homework.web.admin.mapper.QuestionBankQuestionMapper;
 import com.homework.web.admin.vo.AdminSummaryVO;
 import com.homework.web.admin.vo.NamedIdVO;
 import com.homework.web.admin.vo.QuestionBankDetailVO;
@@ -38,7 +36,6 @@ public class QuestionBankAssembler {
     private final CategorySubModuleMapper subModuleMapper;
     private final CategoryModuleMapper moduleMapper;
     private final CategoryGroupMapper groupMapper;
-    private final QuestionBankQuestionMapper relationMapper;
     private final InterviewQuestionMapper interviewQuestionMapper;
     private final CertificateQuestionMapper certificateQuestionMapper;
     private final BankTagMapper bankTagMapper;
@@ -55,23 +52,26 @@ public class QuestionBankAssembler {
             throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_CATEGORY_INVALID);
         }
 
-        List<Long> questionIds = relationMapper.selectList(
-                        new LambdaQueryWrapper<QuestionBankQuestion>()
-                                .eq(QuestionBankQuestion::getBankId, bank.getId()))
-                .stream()
-                .map(QuestionBankQuestion::getQuestionId)
-                .toList();
+        // 变更：题目总数原来由关系表计算，现在按题目实体的 bank_id 直接统计。
+        long questionCount;
         long releasedCount = 0;
-        if (!questionIds.isEmpty() && group.getGroupType() == GroupType.INTERVIEW) {
+        if (group.getGroupType() == GroupType.INTERVIEW) {
+            questionCount = interviewQuestionMapper.selectCount(
+                    new LambdaQueryWrapper<InterviewQuestionInfo>()
+                            .eq(InterviewQuestionInfo::getBankId, bank.getId())
+            );
             releasedCount = interviewQuestionMapper.selectCount(
                     new LambdaQueryWrapper<InterviewQuestionInfo>()
-                            .in(InterviewQuestionInfo::getId, questionIds)
+                            .eq(InterviewQuestionInfo::getBankId, bank.getId())
                             .eq(InterviewQuestionInfo::getIsReleased, true));
-        }
-        if (!questionIds.isEmpty() && group.getGroupType() == GroupType.CERTIFICATION) {
+        } else {
+            questionCount = certificateQuestionMapper.selectCount(
+                    new LambdaQueryWrapper<CertificateQuestionInfo>()
+                            .eq(CertificateQuestionInfo::getBankId, bank.getId())
+            );
             releasedCount = certificateQuestionMapper.selectCount(
                     new LambdaQueryWrapper<CertificateQuestionInfo>()
-                            .in(CertificateQuestionInfo::getId, questionIds)
+                            .eq(CertificateQuestionInfo::getBankId, bank.getId())
                             .eq(CertificateQuestionInfo::getIsReleased, true));
         }
 
@@ -98,8 +98,9 @@ public class QuestionBankAssembler {
                 .stream()
                 .map(BankTag::getTagName)
                 .toList());
-        vo.setPriority(bank.getPriority());
-        vo.setQuestionCount((long) questionIds.size());
+        // 变更：原 priority 字段已改为 sortOrder 人工曝光权重。
+        vo.setSortOrder(bank.getSortOrder());
+        vo.setQuestionCount(questionCount);
         vo.setReleasedQuestionCount(releasedCount);
         vo.setViewCount(bank.getViewCount());
         vo.setCompleteCount(bank.getCompleteCount());
@@ -126,8 +127,6 @@ public class QuestionBankAssembler {
             vo.setCreateAdmin(adminVO);
         }
         vo.setCreatedTime(bank.getCreatedTime());
-        vo.setDeleted(bank.getDeleted());
-        vo.setDeleteReason(bank.getDeleteReason());
         return vo;
     }
 }

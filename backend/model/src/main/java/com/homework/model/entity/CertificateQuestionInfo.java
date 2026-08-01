@@ -17,6 +17,9 @@ import java.util.List;
 @TableName(value = "certificate_question_info", autoResultMap = true)
 public class CertificateQuestionInfo extends BaseEntity {
 
+    /** 变更：题目原来通过 question_bank_question 关联题库，现在直接保存所属题库 ID。 */
+    private Long bankId;
+
     private String title;
 
     @Schema(description = "题目选项")
@@ -39,6 +42,7 @@ public class CertificateQuestionInfo extends BaseEntity {
     /** 创建该题目的后台管理员 ID；历史 App 数据可为空。 */
     private Long createAdminId;
 
+    /** 变更：排序值现在属于题目本身，数值越小，在题库中的手动顺序越靠前。 */
     private Integer sortOrder;
 
     @Schema(description = "题目图片在私有对象存储中的对象 Key")

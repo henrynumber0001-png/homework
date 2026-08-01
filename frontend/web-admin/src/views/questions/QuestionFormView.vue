@@ -357,9 +357,7 @@ async function submit(): Promise<void> {
           <li>新建题目保存后默认为未发布。</li>
           <li>发布操作请回到题库工作台完成。</li>
           <li>题目编辑不会改变其在题库中的顺序。</li>
-          <li v-if="original?.referencedBankCount && original.referencedBankCount > 1">
-            此题被 {{ original.referencedBankCount }} 个题库引用，保存会修改共享题目内容。
-          </li>
+          <!-- 变更：一题只属于一个题库，因此不再展示共享题目影响提示。 -->
         </ul>
         <el-button type="primary" size="large" :loading="submitting" @click="submit">
           {{ editing ? '保存修改' : '创建未发布题目' }}

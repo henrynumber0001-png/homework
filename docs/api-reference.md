@@ -224,10 +224,12 @@ POST /api/payment/wechat/native/notify
 | `GET` | `/question-banks/{bankId}` | 查询题库详情 |
 | `POST` | `/question-banks` | 创建题库 |
 | `PUT` | `/question-banks/{bankId}` | 编辑题库 |
-| `POST` | `/question-banks/{bankId}/actions` | 发布、下架、删除或恢复题库 |
+| `POST` | `/question-banks/{bankId}/actions` | 发布、下架或删除题库 |
 
-创建题库的主要字段为 `subModuleId`、`bankName`、`tags` 和 `priority`。编辑与状态动作
-需要提交当前 `version`，状态动作同时提交 `action` 和 `reason`。
+创建题库的主要字段为 `subModuleId`、`bankName`、`tags` 和 `sortOrder`。其中
+`sortOrder` 是题库的人工曝光权重，默认 10，数值越大越优先。编辑与状态动作
+需要提交当前 `version`，状态动作同时提交 `action` 和 `reason`。同一 SubModule
+中的未删除题库不能重名。
 
 ### 3.4 题目管理
 
@@ -242,7 +244,8 @@ POST /api/payment/wechat/native/notify
 | `POST` | `/uploads/question-images` | 上传题目图片 |
 
 题目主要包含 `questionType`、`title`、`analysis`、`options`、`correctAnswers` 和可选的
-`imageObjectKey`。正确答案由后端校验，用户端接口不会提前返回考试正确答案。
+`imageObjectKey`。同一题库的未删除题目不能使用相同 `title`；正确答案由后端校验，
+用户端接口不会提前返回考试正确答案。
 
 ### 3.5 Excel 导入
 

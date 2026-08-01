@@ -7,8 +7,6 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
-import java.util.List;
-
 /** 管理端题库数据访问接口。 */
 public interface QuestionBankMapper extends BaseMapper<QuestionBank> {
 
@@ -27,10 +25,6 @@ public interface QuestionBankMapper extends BaseMapper<QuestionBank> {
     @Select("SELECT * FROM question_bank WHERE id = #{bankId}")
     QuestionBank selectIncludingDeleted(@Param("bankId") Long bankId);
 
-    /** 查询题库回收站记录。 */
-    @Select("SELECT * FROM question_bank WHERE is_deleted = 1 ORDER BY updated_time DESC, id DESC")
-    List<QuestionBank> selectDeletedList();
-
     /** 按版本逻辑删除已下架题库。 */
     @Update("""
             UPDATE question_bank
@@ -41,18 +35,6 @@ public interface QuestionBankMapper extends BaseMapper<QuestionBank> {
     int logicalDelete(
             @Param("bankId") Long bankId,
             @Param("reason") String reason,
-            @Param("version") Integer version
-    );
-
-    /** 按版本恢复题库并保持下架状态。 */
-    @Update("""
-            UPDATE question_bank
-            SET is_deleted = 0, status = 3, delete_reason = NULL, version = version + 1,
-                updated_time = CURRENT_TIMESTAMP(3)
-            WHERE id = #{bankId} AND is_deleted = 1 AND version = #{version}
-            """)
-    int restore(
-            @Param("bankId") Long bankId,
             @Param("version") Integer version
     );
 

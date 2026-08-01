@@ -77,7 +77,7 @@ async function load(): Promise<void> {
 
 async function loadBanks(): Promise<void> {
   try {
-    const result = await listQuestionBanks({ pageNum: 1, pageSize: 100, deleted: false })
+    const result = await listQuestionBanks({ pageNum: 1, pageSize: 100 })
     banks.value = result.records
   } catch {
     banks.value = []

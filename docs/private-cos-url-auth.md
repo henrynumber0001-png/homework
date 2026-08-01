@@ -129,7 +129,9 @@ sudo systemctl restart homework-web-admin homework-web-app
 mysql -u DB_USER -p DB_NAME < sql/private_cos_question_image_v1.sql
 ```
 
-该脚本将 `question_info` 和 `certificate_question_info` 的 `image_url` 字段直接更名为 `image_object_key`。
+该历史脚本先将原 `question_info` 和 `certificate_question_info` 的 `image_url` 字段直接更名为
+`image_object_key`。随后执行 `sql/question_ownership_single_bank_migration.sql` 时，
+`question_info` 会进一步更名为 `interview_question_info`。
 
 ## 8. 验证
 

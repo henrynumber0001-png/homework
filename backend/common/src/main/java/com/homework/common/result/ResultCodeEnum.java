@@ -81,8 +81,9 @@ public enum ResultCodeEnum {
     ADMIN_QUESTION_TYPE_INVALID(1302, "题型与题库不匹配"),
     ADMIN_QUESTION_OPTION_INVALID(1303, "选项或正确答案不合法"),
     ADMIN_QUESTION_STATE_INVALID(1304, "题目状态不允许当前操作"),
-    ADMIN_SHARED_QUESTION_FORBIDDEN(1305, "无权修改共享题目"),
+    // 变更：一题一库后不再存在“共享题目无权修改”的业务错误，1305 预留不复用。
     ADMIN_QUESTION_ORDER_INVALID(1306, "题目排序数据不合法"),
+    ADMIN_QUESTION_TITLE_CONFLICT(1307, "同一题库中已存在相同题目"),
     ADMIN_IMPORT_FILE_INVALID(1310, "导入文件不合法"),
     ADMIN_IMPORT_ROW_INVALID(1311, "导入文件存在错误行"),
     ADMIN_IMPORT_TASK_INVALID(1312, "导入任务不存在、过期或状态错误"),

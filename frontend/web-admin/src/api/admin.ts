@@ -99,7 +99,8 @@ export function createQuestionBank(payload: {
   subModuleId: number
   bankName: string
   tags: string[]
-  priority: number
+  // 变更：原 priority 请求字段改为 sortOrder 人工曝光权重。
+  sortOrder: number
 }) {
   return request<QuestionBankDetail>({ method: 'POST', url: '/question-banks', data: payload })
 }
@@ -111,7 +112,8 @@ export function updateQuestionBank(
     subModuleId: number
     bankName: string
     tags: string[]
-    priority: number
+    // 变更：编辑题库时同步使用 sortOrder，不再发送 priority。
+    sortOrder: number
     reason: string
     version: number
   },
@@ -119,7 +121,7 @@ export function updateQuestionBank(
   return request<QuestionBankDetail>({ method: 'PUT', url: `/question-banks/${bankId}`, data: payload })
 }
 
-/** 发布、下架、删除或恢复题库。 */
+/** 发布、下架或删除题库。 */
 export function actOnQuestionBank(bankId: number, payload: ResourceActionPayload) {
   return request<ActionResult>({
     method: 'POST',
@@ -163,7 +165,7 @@ export function updateQuestion(bankId: number, questionId: number, payload: Ques
   })
 }
 
-/** 发布、下架、删除或恢复单条题目。 */
+/** 发布、下架或删除单条题目。 */
 export function actOnQuestion(bankId: number, questionId: number, payload: ResourceActionPayload) {
   return request<ActionResult>({
     method: 'POST',

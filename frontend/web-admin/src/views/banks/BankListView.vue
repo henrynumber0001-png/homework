@@ -22,7 +22,10 @@ const categories = ref<CategoryGroup[]>([])
 const total = ref(0)
 const query = reactive({
   keyword: '',
-  groupType: '',
+  groupId: undefined as number | undefined,
+  moduleId: undefined as number | undefined,
+  subModuleId: undefined as number | undefined,
+  sortMode: 'UPDATED_TIME_DESC',
   status: '',
   pageNum: 1,
   pageSize: 12,
@@ -31,7 +34,8 @@ const createForm = reactive({
   subModuleId: undefined as number | undefined,
   bankName: '',
   tags: [] as string[],
-  priority: 0,
+  // 变更：原 priority 改为默认 10 的人工曝光权重。
+  sortOrder: 10,
 })
 
 const cascaderOptions = computed(() =>
@@ -47,6 +51,20 @@ const cascaderOptions = computed(() =>
       })),
     })),
   })),
+)
+
+// 未选择 Group 时不提供 Module 选项；选择 Group 后只显示它的下级 Module。
+const moduleOptions = computed(() =>
+  query.groupId === undefined
+    ? []
+    : categories.value.find((group) => group.id === query.groupId)?.modules ?? [],
+)
+
+// 未选择 Module 时不提供 SubModule 选项；选择 Module 后只显示它的下级 SubModule。
+const subModuleOptions = computed(() =>
+  query.moduleId === undefined
+    ? []
+    : moduleOptions.value.find((module) => module.id === query.moduleId)?.subModules ?? [],
 )
 
 onMounted(async () => {
@@ -66,13 +84,14 @@ async function loadBanks(): Promise<void> {
   try {
     const result = await listQuestionBanks({
       keyword: query.keyword || undefined,
-      groupType: query.groupType || undefined,
+      groupId: query.groupId,
+      moduleId: query.moduleId,
+      subModuleId: query.subModuleId,
       status: query.status || undefined,
-      deleted: false,
       pageNum: query.pageNum,
       pageSize: query.pageSize,
-      sortBy: 'UPDATED_TIME',
-      sortDirection: 'DESC',
+      // 变更：原 sortBy + sortDirection 合并为一个明确的排序模式。
+      sortMode: query.sortMode,
     })
     banks.value = result.records
     total.value = result.total
@@ -89,12 +108,20 @@ function search(): void {
 }
 
 function resetFilters(): void {
-  Object.assign(query, { keyword: '', groupType: '', status: '', pageNum: 1 })
+  Object.assign(query, {
+    keyword: '',
+    groupId: undefined,
+    moduleId: undefined,
+    subModuleId: undefined,
+    sortMode: 'UPDATED_TIME_DESC',
+    status: '',
+    pageNum: 1,
+  })
   void loadBanks()
 }
 
 function openCreate(): void {
-  Object.assign(createForm, { subModuleId: undefined, bankName: '', tags: [], priority: 0 })
+  Object.assign(createForm, { subModuleId: undefined, bankName: '', tags: [], sortOrder: 10 })
   createVisible.value = true
 }
 
@@ -103,14 +130,15 @@ function selectCategory(path: Array<string | number> | null): void {
 }
 
 async function submitCreate(): Promise<void> {
-  if (!createForm.subModuleId || !createForm.bankName.trim()) return
+  if (!createForm.subModuleId || !createForm.bankName.trim() || !createForm.tags.length) return
   creating.value = true
   try {
     const bank = await createQuestionBank({
       subModuleId: createForm.subModuleId,
       bankName: createForm.bankName.trim(),
       tags: createForm.tags,
-      priority: createForm.priority,
+      // 变更：创建题库发送 sortOrder，普通题库保持默认权重 10。
+      sortOrder: createForm.sortOrder,
     })
     ElMessage.success('题库已创建')
     createVisible.value = false
@@ -141,14 +169,57 @@ async function submitCreate(): Promise<void> {
           @keyup.enter="search"
           @clear="search"
         />
-        <el-select v-model="query.groupType" clearable placeholder="题库类型">
-          <el-option label="面试题库" value="INTERVIEW" />
-          <el-option label="认证题库" value="CERTIFICATION" />
+        <el-select
+          v-model="query.groupId"
+          clearable
+          placeholder="题库类型"
+          @change="Object.assign(query, { moduleId: undefined, subModuleId: undefined })"
+        >
+          <el-option
+            v-for="group in categories"
+            :key="group.id"
+            :label="group.groupName"
+            :value="group.id"
+          />
+        </el-select>
+        <!-- 严格三级联动：必须先选择 Group，才允许选择 Module。 -->
+        <el-select
+          v-model="query.moduleId"
+          clearable
+          :disabled="query.groupId === undefined"
+          placeholder="模块"
+          @change="query.subModuleId = undefined"
+        >
+          <el-option
+            v-for="module in moduleOptions"
+            :key="module.id"
+            :label="module.moduleName"
+            :value="module.id"
+          />
+        </el-select>
+        <!-- 必须先选择 Module，才允许选择 SubModule。 -->
+        <el-select
+          v-model="query.subModuleId"
+          clearable
+          :disabled="query.moduleId === undefined"
+          placeholder="子模块"
+        >
+          <el-option
+            v-for="subModule in subModuleOptions"
+            :key="subModule.id"
+            :label="subModule.subModuleName"
+            :value="subModule.id"
+          />
         </el-select>
         <el-select v-model="query.status" clearable placeholder="发布状态">
           <el-option label="草稿" value="DRAFT" />
           <el-option label="已发布" value="PUBLISHED" />
           <el-option label="已下架" value="OFFLINE" />
+        </el-select>
+        <!-- 变更：排序模式是请求参数，不是新增数据库字段。 -->
+        <el-select v-model="query.sortMode" placeholder="排序方式" @change="search">
+          <el-option label="按更新时间降序" value="UPDATED_TIME_DESC" />
+          <el-option label="按题库权重降序" value="SORT_ORDER_DESC" />
         </el-select>
         <el-button type="primary" plain @click="search">查询</el-button>
         <el-button @click="resetFilters">重置</el-button>
@@ -226,7 +297,7 @@ async function submitCreate(): Promise<void> {
         <el-form-item label="题库名称" required>
           <el-input v-model="createForm.bankName" maxlength="100" show-word-limit />
         </el-form-item>
-        <el-form-item label="标签">
+        <el-form-item label="标签" required>
           <el-select
             v-model="createForm.tags"
             multiple
@@ -237,9 +308,9 @@ async function submitCreate(): Promise<void> {
             placeholder="输入标签后按回车"
           />
         </el-form-item>
-        <el-form-item label="优先级">
-          <el-input-number v-model="createForm.priority" :min="0" :max="9999" controls-position="right" />
-          <div class="form-tip">数值越高，题库在 App 端的展示优先级越高。</div>
+        <el-form-item label="题库权重">
+          <el-input-number v-model="createForm.sortOrder" :min="0" :max="9999" controls-position="right" />
+          <div class="form-tip">默认10；只有需要优先曝光的题库才设置更高数值。</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -247,7 +318,7 @@ async function submitCreate(): Promise<void> {
         <el-button
           type="primary"
           :loading="creating"
-          :disabled="!createForm.subModuleId || !createForm.bankName.trim()"
+          :disabled="!createForm.subModuleId || !createForm.bankName.trim() || !createForm.tags.length"
           @click="submitCreate"
         >
           创建并进入

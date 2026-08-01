@@ -38,20 +38,8 @@ public class QuestionDetailVO {
     /** 是否已发布。 */
     private Boolean released;
 
-    /** 是否已逻辑删除。 */
-    private Boolean deleted;
-
-    /** 当前题库中的排序值。 */
-    private Integer bankSortOrder;
-
-    /** 引用该题目的题库数量。 */
-    private Long referencedBankCount;
-
-    /** 当前管理员可见的关联题库。 */
-    private List<ReferencedBankVO> visibleReferencedBanks;
-
-    /** 是否还存在当前管理员不可见的关联题库。 */
-    private Boolean hasHiddenReferences;
+    /** 变更：一题只属于一个题库，手动顺序直接来自题目实体。 */
+    private Integer sortOrder;
 
     /** 乐观锁版本。 */
     private Integer version;

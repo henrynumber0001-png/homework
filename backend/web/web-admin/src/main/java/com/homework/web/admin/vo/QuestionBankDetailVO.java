@@ -16,9 +16,4 @@ public class QuestionBankDetailVO extends QuestionBankRowVO {
     /** 题库创建时间。 */
     private LocalDateTime createdTime;
 
-    /** 是否已逻辑删除。 */
-    private Boolean deleted;
-
-    /** 最近一次删除原因。 */
-    private String deleteReason;
 }

@@ -7,12 +7,10 @@ import com.homework.common.result.ResultCodeEnum;
 import com.homework.model.entity.AiChatMessage;
 import com.homework.model.entity.CertificateQuestionInfo;
 import com.homework.model.entity.InterviewQuestionInfo;
-import com.homework.model.entity.QuestionBankQuestion;
 import com.homework.model.enums.GroupType;
 import com.homework.web.app.dto.AiFollowUpDTO;
 import com.homework.web.app.mapper.CertificateQuestionInfoMapper;
 import com.homework.web.app.mapper.InterviewQuestionInfoMapper;
-import com.homework.web.app.mapper.QuestionBankQuestionMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -25,7 +23,6 @@ public class AiPromptBuilder {
 
     private final InterviewQuestionInfoMapper interviewQuestionInfoMapper;
     private final CertificateQuestionInfoMapper certificateQuestionInfoMapper;
-    private final QuestionBankQuestionMapper questionBankQuestionMapper;
 
     //返回的是 当前用户停留题目的题目内容 + 答案解析（字符串）
     public String buildQuestionContext(AiFollowUpDTO dto) {
@@ -73,18 +70,11 @@ public class AiPromptBuilder {
 
     //返回的是 当前用户停留题目的题目内容 + 答案解析（字符串）
     private String buildInterviewQuestionContext(AiFollowUpDTO dto) {
-        //校验题库与题目
-        LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(QuestionBankQuestion::getBankId, dto.getBankId())
-                .eq(QuestionBankQuestion::getQuestionId, dto.getQuestionId());
-        QuestionBankQuestion questionBankQuestion = questionBankQuestionMapper.selectOne(queryWrapper);
-        if (questionBankQuestion == null) {
-            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR); //PARAM_ERROR = 前端传参问题；
-        }
-
+        // 变更：关系表已删除，AI上下文查询直接用题目实体的 bank_id + id 校验归属。
         InterviewQuestionInfo question = interviewQuestionInfoMapper.selectOne(
                 new LambdaQueryWrapper<InterviewQuestionInfo>()
                         .eq(InterviewQuestionInfo::getId, dto.getQuestionId())
+                        .eq(InterviewQuestionInfo::getBankId, dto.getBankId())
                         .eq(InterviewQuestionInfo::getIsReleased, true)
         );
 
@@ -111,18 +101,11 @@ public class AiPromptBuilder {
     }
 
     private String buildCertificateQuestionContext(AiFollowUpDTO dto) {
-        //校验题库与题目
-        LambdaQueryWrapper<QuestionBankQuestion> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(QuestionBankQuestion::getBankId, dto.getBankId())
-                .eq(QuestionBankQuestion::getQuestionId, dto.getQuestionId());
-        QuestionBankQuestion questionBankQuestion = questionBankQuestionMapper.selectOne(queryWrapper);
-        if (questionBankQuestion == null) {
-            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR); //PARAM_ERROR = 前端传参问题；
-        }
-
+        // 变更：认证题 AI 上下文也直接在题目查询中校验 bank_id。
         CertificateQuestionInfo question = certificateQuestionInfoMapper.selectOne(
                 new LambdaQueryWrapper<CertificateQuestionInfo>()
                         .eq(CertificateQuestionInfo::getId, dto.getQuestionId())
+                        .eq(CertificateQuestionInfo::getBankId, dto.getBankId())
                         .eq(CertificateQuestionInfo::getIsReleased, true)
         );
 

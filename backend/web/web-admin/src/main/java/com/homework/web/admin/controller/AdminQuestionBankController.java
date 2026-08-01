@@ -2,7 +2,6 @@ package com.homework.web.admin.controller;
 
 import com.homework.common.result.PageResult;
 import com.homework.common.result.Result;
-import com.homework.model.enums.GroupType;
 import com.homework.model.enums.QuestionBankStatus;
 import com.homework.web.admin.auth.AdminPermission;
 import com.homework.web.admin.dto.QuestionBankCreateDTO;
@@ -38,27 +37,24 @@ public class AdminQuestionBankController {
     @GetMapping
     public Result<PageResult<QuestionBankRowVO>> list(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) GroupType groupType,
+            @RequestParam(required = false) Long groupId,
             @RequestParam(required = false) Long moduleId,
             @RequestParam(required = false) Long subModuleId,
             @RequestParam(required = false) QuestionBankStatus status,
-            @RequestParam(required = false) Boolean deleted,
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize,
-            @RequestParam(required = false) String sortBy,
-            @RequestParam(required = false) String sortDirection
+            // 变更：原 sortBy + sortDirection 合并为 UPDATED_TIME_DESC / SORT_ORDER_DESC。
+            @RequestParam(required = false) String sortMode
     ) {
         return Result.success(bankService.list(
                 keyword,
-                groupType,
+                groupId,
                 moduleId,
                 subModuleId,
                 status,
-                deleted,
                 pageNum,
                 pageSize,
-                sortBy,
-                sortDirection
+                sortMode
         ));
     }
 
@@ -89,7 +85,7 @@ public class AdminQuestionBankController {
         return Result.success(bankService.update(bankId, dto));
     }
 
-    /** 发布、下架、删除或恢复题库。 */
+    /** 发布、下架或删除题库。 */
     @Operation(summary = "执行题库状态动作")
     @PostMapping("/{bankId}/actions")
     public Result<ActionResultVO> action(

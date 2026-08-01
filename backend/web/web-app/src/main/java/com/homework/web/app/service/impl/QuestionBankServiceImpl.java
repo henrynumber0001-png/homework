@@ -6,6 +6,7 @@ import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.model.entity.*;
 import com.homework.model.enums.ItemType;
+import com.homework.model.enums.QuestionBankStatus;
 import com.homework.model.enums.SortType;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.mapper.UserBankCorrectRateMapper;
@@ -200,7 +201,9 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
 
         LambdaQueryWrapper<QuestionBank> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(QuestionBank::getSubModuleId, subModuleId)
-                .eq(QuestionBank::getStatus, com.homework.model.enums.QuestionBankStatus.PUBLISHED)
+                .eq(QuestionBank::getStatus, QuestionBankStatus.PUBLISHED)
+                // 变更：题库人工权重优先；默认值都为10时，实际顺序继续由 hot_score 决定。
+                .orderByDesc(QuestionBank::getSortOrder)
                 .orderByDesc(QuestionBank::getHotScore) //首次进入题库页面，默认按照“热度”排序
                 .orderByDesc(QuestionBank::getId);
         List<QuestionBank> questionBanks = questionBankMapper.selectList(queryWrapper);
@@ -226,7 +229,9 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
     private List<QuestionBankVO> listQuestionBanksByLatest(Long subModuleId) {
         LambdaQueryWrapper<QuestionBank> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(QuestionBank::getSubModuleId, subModuleId)
-                .eq(QuestionBank::getStatus, com.homework.model.enums.QuestionBankStatus.PUBLISHED)
+                .eq(QuestionBank::getStatus, QuestionBankStatus.PUBLISHED)
+                // 变更：题库人工权重优先；默认值都为10时，实际顺序继续由创建时间决定。
+                .orderByDesc(QuestionBank::getSortOrder)
                 .orderByDesc(QuestionBank::getCreatedTime)
                 .orderByDesc(QuestionBank::getId);
 
@@ -234,6 +239,15 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         if (questionBanks.isEmpty()) {
             return List.of();
         }
+
+        List<Long> questionIds = questionBanks.stream().map(QuestionBank::getId).toList();
+        List<BankCorrectRateVO> bankCorrectRateVOList = userBankCorrectRate.selectAverageByBankIds(questionIds);//这里有个细节，这种查询集合的SQL，返回的也是集合
+        Map<Long, BigDecimal> avgCorrectRateMap = bankCorrectRateVOList.stream().collect(Collectors.toMap(BankCorrectRateVO::getBankId, BankCorrectRateVO::getAvgCorrectRate));
+
+        questionBanks.forEach(questionBank -> {
+            BigDecimal averageCorrectRate = avgCorrectRateMap.get(questionBank.getId());
+            questionBank.setAvgCorrectRate(averageCorrectRate);
+        });
 
         List<QuestionBankVO> questionBankVos = questionBanks.stream().map(this::toQuestionBankVO).collect(Collectors.toList());
         return questionBankVos;

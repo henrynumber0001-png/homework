@@ -62,7 +62,8 @@ const query = reactive({
   released: (route.query.released === 'false' || route.query.released === 'true'
     ? route.query.released
     : '') as '' | 'true' | 'false',
-  deleted: false,
+  // 变更：题目列表支持按更新时间或管理员手动顺序查看。
+  sortMode: 'UPDATED_TIME_DESC',
   pageNum: 1,
   pageSize: 20,
 })
@@ -71,7 +72,8 @@ const settings = reactive({
   subModuleId: undefined as number | undefined,
   bankName: '',
   tags: [] as string[],
-  priority: 0,
+  // 变更：原 priority 改为题库人工曝光权重。
+  sortOrder: 10,
   reason: '',
 })
 const savingSettings = ref(false)
@@ -118,7 +120,7 @@ async function loadBank(): Promise<void> {
       subModuleId: bank.value.subModule.id,
       bankName: bank.value.bankName,
       tags: [...(bank.value.tags || [])],
-      priority: bank.value.priority,
+      sortOrder: bank.value.sortOrder,
       reason: '',
     })
   } catch (error) {
@@ -143,11 +145,10 @@ async function loadQuestions(): Promise<void> {
       keyword: query.keyword || undefined,
       questionType: query.questionType || undefined,
       released: query.released === '' ? undefined : query.released === 'true',
-      deleted: query.deleted,
       pageNum: query.pageNum,
       pageSize: query.pageSize,
-      sortBy: 'BANK_ORDER',
-      sortDirection: 'ASC',
+      // 变更：原 sortBy + sortDirection 合并为题目排序模式。
+      sortMode: query.sortMode,
     })
     questions.value = result.records
     total.value = result.total
@@ -169,7 +170,7 @@ function resetQuestionFilters(): void {
     keyword: '',
     questionType: '',
     released: '',
-    deleted: false,
+    sortMode: 'UPDATED_TIME_DESC',
     pageNum: 1,
   })
   void loadQuestions()
@@ -181,10 +182,10 @@ function handleSelectionChange(rows: Question[]): void {
 
 function openQuestionOperation(action: string, rows: Question[], title: string): void {
   const allowedRows = rows.filter((row) => {
-    if (action === 'PUBLISH') return !row.deleted && !row.released
-    if (action === 'OFFLINE') return !row.deleted && row.released
-    if (action === 'DELETE') return !row.deleted && row.referencedBankCount <= 1
-    if (action === 'RESTORE') return row.deleted
+    if (action === 'PUBLISH') return !row.released
+    if (action === 'OFFLINE') return row.released
+    // 变更：一题只属于当前题库，删除不再受共享引用数量限制。
+    if (action === 'DELETE') return true
     return false
   })
   const excludedCount = rows.length - allowedRows.length
@@ -262,14 +263,21 @@ async function confirmOperation(reason: string): Promise<void> {
 }
 
 async function saveSettings(): Promise<void> {
-  if (!bank.value || !settings.subModuleId || !settings.bankName.trim() || !settings.reason.trim()) return
+  if (
+    !bank.value ||
+    !settings.subModuleId ||
+    !settings.bankName.trim() ||
+    !settings.tags.length ||
+    !settings.reason.trim()
+  ) return
   savingSettings.value = true
   try {
     bank.value = await updateQuestionBank(bankId, {
       subModuleId: settings.subModuleId,
       bankName: settings.bankName.trim(),
       tags: settings.tags,
-      priority: settings.priority,
+      // 变更：保存题库设置时发送 sortOrder，不再发送 priority。
+      sortOrder: settings.sortOrder,
       reason: settings.reason.trim(),
       version: bank.value.version,
     })
@@ -288,21 +296,18 @@ function selectSettingCategory(path: Array<string | number> | null): void {
 
 async function loadAllActiveQuestions(): Promise<Question[]> {
   const first = await listQuestions(bankId, {
-    deleted: false,
     pageNum: 1,
     pageSize: 100,
-    sortBy: 'BANK_ORDER',
-    sortDirection: 'ASC',
+    // 变更：拖拽弹窗必须按当前手动顺序加载全部有效题目。
+    sortMode: 'MANUAL_ORDER_ASC',
   })
   const rows = [...first.records]
   const pageCount = Math.ceil(first.total / 100)
   for (let pageNum = 2; pageNum <= pageCount; pageNum += 1) {
     const page = await listQuestions(bankId, {
-      deleted: false,
       pageNum,
       pageSize: 100,
-      sortBy: 'BANK_ORDER',
-      sortDirection: 'ASC',
+      sortMode: 'MANUAL_ORDER_ASC',
     })
     rows.push(...page.records)
   }
@@ -457,12 +462,16 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
                 <el-option label="未发布" value="false" />
                 <el-option label="已发布" value="true" />
               </el-select>
-              <el-checkbox v-model="query.deleted" @change="search">查看回收站</el-checkbox>
+              <!-- 变更：更新时间与手动题序是两种明确的排序模式。 -->
+              <el-select v-model="query.sortMode" placeholder="排序方式" @change="search">
+                <el-option label="按更新时间降序" value="UPDATED_TIME_DESC" />
+                <el-option label="按手动顺序" value="MANUAL_ORDER_ASC" />
+              </el-select>
               <el-button type="primary" plain @click="search">查询</el-button>
               <el-button @click="resetQuestionFilters">重置</el-button>
             </div>
             <el-button
-              v-if="!query.deleted && auth.hasPermission('question:sort')"
+              v-if="auth.hasPermission('question:sort')"
               :icon="Rank"
               @click="openSort"
             >
@@ -473,7 +482,7 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
           <div v-if="selectedQuestions.length" class="batch-bar">
             <strong>已选择 {{ selectedQuestions.length }} 道题</strong>
             <el-button
-              v-if="!query.deleted && auth.hasPermission('question:publish')"
+              v-if="auth.hasPermission('question:publish')"
               type="primary"
               plain
               @click="openQuestionOperation('PUBLISH', selectedQuestions, '批量发布题目')"
@@ -481,24 +490,18 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
               批量发布
             </el-button>
             <el-button
-              v-if="!query.deleted && auth.hasPermission('question:publish')"
+              v-if="auth.hasPermission('question:publish')"
               @click="openQuestionOperation('OFFLINE', selectedQuestions, '批量下架题目')"
             >
               批量下架
             </el-button>
             <el-button
-              v-if="!query.deleted && auth.hasPermission('question:delete')"
+              v-if="auth.hasPermission('question:delete')"
               type="danger"
               plain
               @click="openQuestionOperation('DELETE', selectedQuestions, '批量删除题目')"
             >
               批量删除
-            </el-button>
-            <el-button
-              v-if="query.deleted && auth.hasPermission('question:delete')"
-              @click="openQuestionOperation('RESTORE', selectedQuestions, '批量恢复题目')"
-            >
-              批量恢复
             </el-button>
             <el-button link @click="questionTable?.clearSelection()">取消选择</el-button>
           </div>
@@ -511,7 +514,8 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
             @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="46" />
-            <el-table-column label="顺序" prop="bankSortOrder" width="72" align="center" />
+            <!-- 变更：关系表已删除，顺序字段直接来自题目实体。 -->
+            <el-table-column label="顺序" prop="sortOrder" width="72" align="center" />
             <el-table-column label="题目" min-width="390">
               <template #default="{ row }">
                 <div class="question-cell">
@@ -527,7 +531,7 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
                   <div class="question-copy">
                     <button
                       class="question-title"
-                      :disabled="row.deleted || !auth.hasPermission('question:update')"
+                      :disabled="!auth.hasPermission('question:update')"
                       @click="router.push(`/question-banks/${bankId}/questions/${row.id}/edit`)"
                     >
                       {{ row.title }}
@@ -542,11 +546,8 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
             </el-table-column>
             <el-table-column label="状态" width="100">
               <template #default="{ row }">
-                <StatusTag :value="row.deleted ? 'DELETED' : row.released ? 'PUBLISHED' : 'DRAFT'" />
+                <StatusTag :value="row.released ? 'PUBLISHED' : 'DRAFT'" />
               </template>
-            </el-table-column>
-            <el-table-column label="关联题库" width="90" align="center">
-              <template #default="{ row }">{{ row.referencedBankCount }}</template>
             </el-table-column>
             <el-table-column label="更新时间" width="156">
               <template #default="{ row }">{{ formatDateTime(row.updatedTime) }}</template>
@@ -554,7 +555,7 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
             <el-table-column label="操作" width="180" fixed="right">
               <template #default="{ row }">
                 <el-button
-                  v-if="!row.deleted && auth.hasPermission('question:update')"
+                  v-if="auth.hasPermission('question:update')"
                   link
                   type="primary"
                   :icon="Edit"
@@ -567,29 +568,23 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item
-                        v-if="!row.deleted && !row.released && auth.hasPermission('question:publish')"
+                        v-if="!row.released && auth.hasPermission('question:publish')"
                         @click="openQuestionOperation('PUBLISH', [row], '发布题目')"
                       >
                         发布
                       </el-dropdown-item>
                       <el-dropdown-item
-                        v-if="!row.deleted && row.released && auth.hasPermission('question:publish')"
+                        v-if="row.released && auth.hasPermission('question:publish')"
                         @click="openQuestionOperation('OFFLINE', [row], '下架题目')"
                       >
                         下架
                       </el-dropdown-item>
                       <el-dropdown-item
-                        v-if="!row.deleted && auth.hasPermission('question:delete')"
+                        v-if="auth.hasPermission('question:delete')"
                         divided
                         @click="openQuestionOperation('DELETE', [row], '删除题目')"
                       >
                         删除
-                      </el-dropdown-item>
-                      <el-dropdown-item
-                        v-if="row.deleted && auth.hasPermission('question:delete')"
-                        @click="openQuestionOperation('RESTORE', [row], '恢复题目')"
-                      >
-                        恢复
                       </el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
@@ -624,7 +619,7 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
               <el-form-item label="题库名称" required>
                 <el-input v-model="settings.bankName" maxlength="100" show-word-limit />
               </el-form-item>
-              <el-form-item label="标签">
+              <el-form-item label="标签" required>
                 <el-select
                   v-model="settings.tags"
                   multiple
@@ -634,8 +629,9 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
                   :multiple-limit="10"
                 />
               </el-form-item>
-              <el-form-item label="优先级">
-                <el-input-number v-model="settings.priority" :min="0" :max="9999" controls-position="right" />
+              <el-form-item label="题库权重">
+                <el-input-number v-model="settings.sortOrder" :min="0" :max="9999" controls-position="right" />
+                <div class="form-tip">默认10；需要优先曝光时才提高该值。</div>
               </el-form-item>
               <el-form-item label="修改原因" required>
                 <el-input
@@ -651,7 +647,7 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
                 v-if="auth.hasPermission('bank:update')"
                 type="primary"
                 :loading="savingSettings"
-                :disabled="!settings.bankName.trim() || !settings.subModuleId || !settings.reason.trim()"
+                :disabled="!settings.bankName.trim() || !settings.subModuleId || !settings.tags.length || !settings.reason.trim()"
                 @click="saveSettings"
               >
                 保存设置

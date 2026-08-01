@@ -33,8 +33,8 @@ public class QuestionBankRowVO {
     /** 题库标签。 */
     private List<String> tags;
 
-    /** 运营优先级。 */
-    private Integer priority;
+    /** 变更：原运营优先级改为题库人工曝光权重。 */
+    private Integer sortOrder;
 
     /** 题目总数。 */
     private Long questionCount;
