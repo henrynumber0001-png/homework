@@ -7,6 +7,7 @@ import com.homework.common.result.ResultCodeEnum;
 import com.homework.model.entity.CertificateQuestionInfo;
 import com.homework.model.entity.InterviewQuestionInfo;
 import com.homework.model.entity.QuestionBank;
+import com.homework.model.enums.AdminSortMode;
 import com.homework.model.enums.GroupType;
 import com.homework.model.enums.QuestionInfoQuestionType;
 import com.homework.model.enums.QuestionBankStatus;
@@ -14,7 +15,7 @@ import com.homework.web.admin.auth.AdminAccessService;
 import com.homework.web.admin.context.AdminContext;
 import com.homework.web.admin.dto.QuestionActionDTO;
 import com.homework.web.admin.dto.QuestionCreateDTO;
-import com.homework.web.admin.dto.QuestionOrderDTO;
+import com.homework.web.admin.dto.QuestionNoUpdateDTO;
 import com.homework.web.admin.dto.QuestionUpdateDTO;
 import com.homework.model.enums.QuestionAction;
 import com.homework.web.admin.mapper.CertificateQuestionMapper;
@@ -22,18 +23,17 @@ import com.homework.web.admin.mapper.InterviewQuestionMapper;
 import com.homework.web.admin.mapper.QuestionBankMapper;
 import com.homework.web.admin.vo.ActionResultVO;
 import com.homework.web.admin.vo.QuestionDetailVO;
-import com.homework.web.admin.vo.QuestionOrderResultVO;
+import com.homework.web.admin.vo.QuestionNoUpdateResultVO;
 import com.homework.web.admin.vo.QuestionRowVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 /** 后台题目查询、写入、状态和题库内顺序管理。 */
 @Service
@@ -49,10 +49,7 @@ public class AdminQuestionService {
     private final QuestionAssembler assembler;
     private final AdminAuditService auditService;
 
-    /**
-     * 查询指定题库中的题目，并按请求条件完成过滤、排序和分页。
-     * 变更：原来先查 question_bank_question 再逐题查实体；现在直接按题目表 bank_id 查询。
-     */
+    // 根据筛选条件查询指定题目
     public PageResult<QuestionRowVO> list(
             Long bankId,
             String keyword,
@@ -60,7 +57,7 @@ public class AdminQuestionService {
             Boolean released,
             Integer pageNum,
             Integer pageSize,
-            String sortMode
+            AdminSortMode sortMode
         ) {
         accessService.requireBank(bankId);
         QuestionBank bank = bankMapper.selectById(bankId);
@@ -69,32 +66,32 @@ public class AdminQuestionService {
             throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_NOT_FOUND);
         }
 
-        QuestionInfoQuestionType typeFilter = questionType;
-
         String normalizedKeyword = keyword == null ? null : keyword.trim();
-        String normalizedSortMode = sortMode == null || sortMode.isBlank() ? "UPDATED_TIME_DESC" : sortMode.trim().toUpperCase(Locale.ROOT);
-        if (!"UPDATED_TIME_DESC".equals(normalizedSortMode) && !"MANUAL_ORDER_ASC".equals(normalizedSortMode)) {
+        // 前端未传排序模式时，默认按更新时间降序。
+        AdminSortMode selectedSortMode = sortMode == null ? AdminSortMode.UPDATED_TIME_DESC : sortMode;
+        // 题目列表不支持题库专用的权重排序模式。
+        if (selectedSortMode != AdminSortMode.UPDATED_TIME_DESC && selectedSortMode != AdminSortMode.QUESTION_NO_ASC) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
         List<QuestionRowVO> rows = new ArrayList<>();
+
+        //从这一步开始，就是把查询条件，根据管理员输入的情况，串起来
         if (groupType == GroupType.INTERVIEW) {
             LambdaQueryWrapper<InterviewQuestionInfo> query = new LambdaQueryWrapper<>();
+            //bankId, questionType, released
             query.eq(InterviewQuestionInfo::getBankId, bankId)
-                    .eq(typeFilter != null, InterviewQuestionInfo::getQuestionType, typeFilter)
+                    .eq(questionType != null, InterviewQuestionInfo::getQuestionType, questionType)
                     .eq(released != null, InterviewQuestionInfo::getIsReleased, released);
+            //keyword
             if (normalizedKeyword != null && !normalizedKeyword.isBlank()) {
                 query.and(wrapper -> {
                     wrapper.like(InterviewQuestionInfo::getTitle, normalizedKeyword);
-                    try {
-                        wrapper.or().eq(InterviewQuestionInfo::getId, Long.valueOf(normalizedKeyword));
-                    } catch (NumberFormatException ignored) {
-                        // 变更：非数字关键词只匹配题干，避免无效 ID 转换中断查询。
-                    }
                 });
             }
-            if ("MANUAL_ORDER_ASC".equals(normalizedSortMode)) {
-                query.orderByAsc(InterviewQuestionInfo::getSortOrder)
+            //排序方式
+            if (selectedSortMode == AdminSortMode.QUESTION_NO_ASC) {
+                query.orderByAsc(InterviewQuestionInfo::getQuestionNo)
                         .orderByAsc(InterviewQuestionInfo::getId);
             } else {
                 query.orderByDesc(InterviewQuestionInfo::getUpdatedTime)
@@ -107,20 +104,15 @@ public class AdminQuestionService {
         } else {
             LambdaQueryWrapper<CertificateQuestionInfo> query = new LambdaQueryWrapper<>();
             query.eq(CertificateQuestionInfo::getBankId, bankId)
-                    .eq(typeFilter != null, CertificateQuestionInfo::getQuestionType, typeFilter)
+                    .eq(questionType != null, CertificateQuestionInfo::getQuestionType, questionType)
                     .eq(released != null, CertificateQuestionInfo::getIsReleased, released);
             if (normalizedKeyword != null && !normalizedKeyword.isBlank()) {
                 query.and(wrapper -> {
                     wrapper.like(CertificateQuestionInfo::getTitle, normalizedKeyword);
-                    try {
-                        wrapper.or().eq(CertificateQuestionInfo::getId, Long.valueOf(normalizedKeyword));
-                    } catch (NumberFormatException ignored) {
-                        // 变更：非数字关键词只匹配题干，避免无效 ID 转换中断查询。
-                    }
                 });
             }
-            if ("MANUAL_ORDER_ASC".equals(normalizedSortMode)) {
-                query.orderByAsc(CertificateQuestionInfo::getSortOrder)
+            if (selectedSortMode == AdminSortMode.QUESTION_NO_ASC) {
+                query.orderByAsc(CertificateQuestionInfo::getQuestionNo)
                         .orderByAsc(CertificateQuestionInfo::getId);
             } else {
                 query.orderByDesc(CertificateQuestionInfo::getUpdatedTime)
@@ -186,7 +178,7 @@ public class AdminQuestionService {
     @Transactional
     public QuestionDetailVO create(Long bankId, QuestionCreateDTO dto) {
         accessService.requireBank(bankId);
-        QuestionBank bank = bankMapper.selectById(bankId);
+        QuestionBank bank = bankMapper.selectForUpdate(bankId);
         GroupType groupType = bank == null ? null : bankMapper.selectGroupType(bankId);
         if (bank == null || groupType == null) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_NOT_FOUND);
@@ -210,8 +202,8 @@ public class AdminQuestionService {
             question.setQuestionType(questionType);
             question.setIsReleased(false);
             question.setCreateAdminId(AdminContext.getAdminId());
-            // 变更：新题默认追加到当前题库末尾，使用 10 的间隔方便人工理解。
-            question.setSortOrder(interviewQuestionMapper.selectMaxSortOrder(bankId) + 10);
+            // 新题使用当前最大序号加一，默认追加到题库末尾。
+            question.setQuestionNo(interviewQuestionMapper.selectMaxQuestionNo(bankId) + 1);
             question.setImageObjectKey(imageService.bind(dto.getImageObjectKey()));
             question.setVersion(0);
             interviewQuestionMapper.insert(question);
@@ -229,14 +221,16 @@ public class AdminQuestionService {
             ));
             question.setIsReleased(false);
             question.setCreateAdminId(AdminContext.getAdminId());
-            // 变更：认证题也直接在实体表中计算并保存题库内顺序。
-            question.setSortOrder(certificateQuestionMapper.selectMaxSortOrder(bankId) + 10);
+            question.setQuestionNo(certificateQuestionMapper.selectMaxQuestionNo(bankId) + 1);
             question.setImageObjectKey(imageService.bind(dto.getImageObjectKey()));
             question.setVersion(0);
             certificateQuestionMapper.insert(question);
             questionId = question.getId();
         }
 
+        if (bankMapper.bumpVersion(bankId, bank.getVersion()) == 0) {
+            throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
+        }
         auditService.record("QUESTION", "CREATE", "QUESTION", questionId, "创建题目", null, dto);
         return get(bankId, questionId);
     }
@@ -281,11 +275,10 @@ public class AdminQuestionService {
             requireUniqueTitle(bankId, groupType, normalizedTitle, questionId);
 
             InterviewQuestionInfo before = new InterviewQuestionInfo();
-            org.springframework.beans.BeanUtils.copyProperties(question, before);
+            BeanUtils.copyProperties(question, before);
+
             boolean publishedContentChanged = !Objects.equals(question.getTitle(), normalizedTitle);
-            if (Boolean.TRUE.equals(question.getIsReleased())
-                    && publishedContentChanged
-                    && (dto.getReason() == null || dto.getReason().isBlank())) {
+            if (Boolean.TRUE.equals(question.getIsReleased()) && publishedContentChanged && (dto.getReason() == null || dto.getReason().isBlank())) {
                 throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
             }
 
@@ -385,12 +378,15 @@ public class AdminQuestionService {
     @Transactional
     public ActionResultVO action(Long bankId, Long questionId, QuestionActionDTO dto) {
         accessService.requireBank(bankId);
+        QuestionAction action = dto.getAction();
+        QuestionBank bank = action == QuestionAction.DELETE
+                ? bankMapper.selectForUpdate(bankId)
+                : bankMapper.selectById(bankId);
         GroupType groupType = bankMapper.selectGroupType(bankId);
-        if (groupType == null) {
+        if (bank == null || groupType == null) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_NOT_FOUND);
         }
 
-        QuestionAction action = dto.getAction();
         Object before;
         Object updated;
 
@@ -432,6 +428,8 @@ public class AdminQuestionService {
                 if (interviewQuestionMapper.logicalDelete(bankId, questionId, dto.getVersion()) == 0) {
                     throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
                 }
+                compactInterviewQuestionNosAfterDelete(bankId, question.getQuestionNo());
+                bumpBankQuestionOrderVersion(bankId, bank.getVersion());
             } else {
                 throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
             }
@@ -474,6 +472,8 @@ public class AdminQuestionService {
                 if (certificateQuestionMapper.logicalDelete(bankId, questionId, dto.getVersion()) == 0) {
                     throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
                 }
+                compactCertificateQuestionNosAfterDelete(bankId, question.getQuestionNo());
+                bumpBankQuestionOrderVersion(bankId, bank.getVersion());
             } else {
                 throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
             }
@@ -504,83 +504,144 @@ public class AdminQuestionService {
         return result;
     }
 
-    /**
-     * 原子更新题库内全部有效题目的显示顺序。
-     * 变更：原来更新关系表，现在直接把题目表顺序重排为 10、20、30……
-     */
+    /** 把一道题移动到目标序号，中间题目自动顺移。 */
     @Transactional
-    public QuestionOrderResultVO updateOrder(Long bankId, QuestionOrderDTO dto) {
+    public QuestionNoUpdateResultVO updateQuestionNo(
+            Long bankId,
+            Long questionId,
+            QuestionNoUpdateDTO dto
+    ) {
         accessService.requireBank(bankId);
-        QuestionBank bank = bankMapper.selectById(bankId);
+        QuestionBank bank = bankMapper.selectForUpdate(bankId);
         GroupType groupType = bank == null ? null : bankMapper.selectGroupType(bankId);
         if (bank == null || groupType == null) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_NOT_FOUND);
         }
-
-        List<Long> activeQuestionIds;
-        if (groupType == GroupType.INTERVIEW) {
-            activeQuestionIds = interviewQuestionMapper.selectList(
-                            new LambdaQueryWrapper<InterviewQuestionInfo>()
-                                    .eq(InterviewQuestionInfo::getBankId, bankId)
-                    ).stream()
-                    .map(InterviewQuestionInfo::getId)
-                    .toList();
-        } else {
-            activeQuestionIds = certificateQuestionMapper.selectList(
-                            new LambdaQueryWrapper<CertificateQuestionInfo>()
-                                    .eq(CertificateQuestionInfo::getBankId, bankId)
-                    ).stream()
-                    .map(CertificateQuestionInfo::getId)
-                    .toList();
-        }
-
-        Set<Long> requestIds = new HashSet<>(dto.getQuestionIds());
-        if (requestIds.size() != dto.getQuestionIds().size()
-                || requestIds.size() != activeQuestionIds.size()
-                || !requestIds.containsAll(activeQuestionIds)) {
-            throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_ORDER_INVALID);
-        }
-        if (!bank.getVersion().equals(dto.getBankQuestionOrderVersion())
-                || bankMapper.bumpVersion(bankId, dto.getBankQuestionOrderVersion()) == 0) {
+        if (!bank.getVersion().equals(dto.getBankQuestionOrderVersion())) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
         }
 
-        for (int index = 0; index < dto.getQuestionIds().size(); index++) {
-            int sortOrder = (index + 1) * 10;
-            int updatedRows;
-            if (groupType == GroupType.INTERVIEW) {
-                updatedRows = interviewQuestionMapper.updateSortOrder(
-                        bankId,
-                        dto.getQuestionIds().get(index),
-                        sortOrder
-                );
-            } else {
-                updatedRows = certificateQuestionMapper.updateSortOrder(
-                        bankId,
-                        dto.getQuestionIds().get(index),
-                        sortOrder
-                );
+        int previousQuestionNo;
+        int questionCount;
+        if (groupType == GroupType.INTERVIEW) {
+            InterviewQuestionInfo question = interviewQuestionMapper.selectActiveForUpdate(bankId, questionId);
+            if (question == null) {
+                throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_NOT_FOUND);
             }
-            if (updatedRows != 1) {
-                throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_ORDER_INVALID);
+            previousQuestionNo = question.getQuestionNo();
+            questionCount = interviewQuestionMapper.selectActiveQuestionCount(bankId);
+        } else {
+            CertificateQuestionInfo question = certificateQuestionMapper.selectActiveForUpdate(bankId, questionId);
+            if (question == null) {
+                throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_NOT_FOUND);
             }
+            previousQuestionNo = question.getQuestionNo();
+            questionCount = certificateQuestionMapper.selectActiveQuestionCount(bankId);
         }
 
+        int targetQuestionNo = dto.getQuestionNo();
+        if (targetQuestionNo < 1 || targetQuestionNo > questionCount) {
+            throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_ORDER_INVALID);
+        }
+
+        if (targetQuestionNo != previousQuestionNo) {
+            bumpBankQuestionOrderVersion(bankId, bank.getVersion());
+            if (groupType == GroupType.INTERVIEW) {
+                moveInterviewQuestionNo(bankId, questionId, previousQuestionNo, targetQuestionNo);
+            } else {
+                moveCertificateQuestionNo(bankId, questionId, previousQuestionNo, targetQuestionNo);
+            }
+            auditService.record(
+                    "QUESTION",
+                    "QUESTION_NO_UPDATE",
+                    "QUESTION",
+                    questionId,
+                    dto.getReason(),
+                    Map.of("questionNo", previousQuestionNo),
+                    Map.of("questionNo", targetQuestionNo)
+            );
+        }
         QuestionBank updatedBank = bankMapper.selectById(bankId);
-        auditService.record(
-                "QUESTION",
-                "SORT",
-                "QUESTION_BANK",
-                bankId,
-                dto.getReason(),
-                activeQuestionIds,
-                dto.getQuestionIds()
-        );
-        QuestionOrderResultVO result = new QuestionOrderResultVO();
+
+        QuestionNoUpdateResultVO result = new QuestionNoUpdateResultVO();
         result.setBankId(bankId);
-        result.setQuestionCount(dto.getQuestionIds().size());
+        result.setQuestionId(questionId);
+        result.setPreviousQuestionNo(previousQuestionNo);
+        result.setQuestionNo(targetQuestionNo);
         result.setBankQuestionOrderVersion(updatedBank.getVersion());
         result.setUpdatedTime(updatedBank.getUpdatedTime());
         return result;
+    }
+
+    private void moveInterviewQuestionNo(Long bankId, Long questionId, int previousNo, int targetNo) {
+        requireSingleRow(interviewQuestionMapper.parkQuestionNo(bankId, questionId, previousNo));
+        int lower = Math.min(previousNo, targetNo);
+        int upper = Math.max(previousNo, targetNo);
+        if (targetNo < previousNo) {
+            upper--;
+        } else {
+            lower++;
+        }
+        shiftInterviewQuestionNoRange(bankId, lower, upper, targetNo < previousNo ? 1 : -1);
+        requireSingleRow(interviewQuestionMapper.placeQuestionNo(bankId, questionId, targetNo));
+    }
+
+    private void moveCertificateQuestionNo(Long bankId, Long questionId, int previousNo, int targetNo) {
+        requireSingleRow(certificateQuestionMapper.parkQuestionNo(bankId, questionId, previousNo));
+        int lower = Math.min(previousNo, targetNo);
+        int upper = Math.max(previousNo, targetNo);
+        if (targetNo < previousNo) {
+            upper--;
+        } else {
+            lower++;
+        }
+        shiftCertificateQuestionNoRange(bankId, lower, upper, targetNo < previousNo ? 1 : -1);
+        requireSingleRow(certificateQuestionMapper.placeQuestionNo(bankId, questionId, targetNo));
+    }
+
+    private void compactInterviewQuestionNosAfterDelete(Long bankId, int deletedQuestionNo) {
+        int maxQuestionNo = interviewQuestionMapper.selectMaxQuestionNo(bankId);
+        shiftInterviewQuestionNoRange(bankId, deletedQuestionNo + 1, maxQuestionNo, -1);
+    }
+
+    private void compactCertificateQuestionNosAfterDelete(Long bankId, int deletedQuestionNo) {
+        int maxQuestionNo = certificateQuestionMapper.selectMaxQuestionNo(bankId);
+        shiftCertificateQuestionNoRange(bankId, deletedQuestionNo + 1, maxQuestionNo, -1);
+    }
+
+    private void shiftInterviewQuestionNoRange(Long bankId, int lower, int upper, int delta) {
+        if (lower > upper) {
+            return;
+        }
+        int expectedRows = upper - lower + 1;
+        int parkedRows = interviewQuestionMapper.negateQuestionNoRange(bankId, lower, upper);
+        int restoredRows = interviewQuestionMapper.restoreQuestionNoRange(bankId, lower, upper, delta);
+        if (parkedRows != expectedRows || restoredRows != expectedRows) {
+            throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_ORDER_INVALID);
+        }
+    }
+
+    private void shiftCertificateQuestionNoRange(Long bankId, int lower, int upper, int delta) {
+        if (lower > upper) {
+            return;
+        }
+        int expectedRows = upper - lower + 1;
+        int parkedRows = certificateQuestionMapper.negateQuestionNoRange(bankId, lower, upper);
+        int restoredRows = certificateQuestionMapper.restoreQuestionNoRange(bankId, lower, upper, delta);
+        if (parkedRows != expectedRows || restoredRows != expectedRows) {
+            throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_ORDER_INVALID);
+        }
+    }
+
+    private void bumpBankQuestionOrderVersion(Long bankId, Integer version) {
+        if (bankMapper.bumpVersion(bankId, version) == 0) {
+            throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
+        }
+    }
+
+    private void requireSingleRow(int updatedRows) {
+        if (updatedRows != 1) {
+            throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_ORDER_INVALID);
+        }
     }
 }

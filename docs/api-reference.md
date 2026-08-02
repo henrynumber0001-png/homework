@@ -240,7 +240,7 @@ POST /api/payment/wechat/native/notify
 | `POST` | `/question-banks/{bankId}/questions` | 创建题目 |
 | `PUT` | `/question-banks/{bankId}/questions/{questionId}` | 编辑题目 |
 | `POST` | `/question-banks/{bankId}/questions/{questionId}/actions` | 发布、下架或删除题目 |
-| `PUT` | `/question-banks/{bankId}/questions/order` | 调整题目顺序 |
+| `PUT` | `/question-banks/{bankId}/questions/{questionId}/question-no` | 修改题目序号，中间题目自动顺移 |
 | `POST` | `/uploads/question-images` | 上传题目图片 |
 
 题目主要包含 `questionType`、`title`、`analysis`、`options`、`correctAnswers` 和可选的

@@ -2,6 +2,7 @@ package com.homework.web.admin.controller;
 
 import com.homework.common.result.PageResult;
 import com.homework.common.result.Result;
+import com.homework.model.enums.AdminSortMode;
 import com.homework.model.enums.QuestionBankStatus;
 import com.homework.web.admin.auth.AdminPermission;
 import com.homework.web.admin.dto.QuestionBankActionDTO;
@@ -42,8 +43,8 @@ public class AdminQuestionBankController {
             @RequestParam(required = false) QuestionBankStatus status,
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize,
-            // 变更：原 sortBy + sortDirection 合并为 UPDATED_TIME_DESC / SORT_ORDER_DESC。
-            @RequestParam(required = false) String sortMode
+            // 数字 1 表示更新时间降序，数字 2 表示题库权重降序。
+            @RequestParam(required = false) AdminSortMode sortMode
     ) {
         return Result.success(bankService.list(
                 keyword,

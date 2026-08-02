@@ -533,7 +533,7 @@ POST /api/admin/question-banks/101/actions
 | `POST` | `/question-banks/{bankId}/questions` | `question:create` + 题库范围 |
 | `PUT` | `/question-banks/{bankId}/questions/{questionId}` | `question:update` + 题库范围 |
 | `POST` | `/question-banks/{bankId}/questions/{questionId}/actions` | 按动作校验 + 题库范围 |
-| `PUT` | `/question-banks/{bankId}/questions/order` | `question:sort` + 题库范围 |
+| `PUT` | `/question-banks/{bankId}/questions/{questionId}/question-no` | `question:sort` + 题库范围 |
 | `POST` | `/uploads/question-images` | `question:create` 或 `question:update` |
 
 题目动作：
@@ -555,7 +555,7 @@ V1 不支持判断题。
 ### 8.3 题目列表
 
 ```http
-GET /api/admin/question-banks/101/questions?keyword=事务&questionType=ESSAY&released=true&pageNum=1&pageSize=20&sortMode=MANUAL_ORDER_ASC
+GET /api/admin/question-banks/101/questions?keyword=事务&questionType=ESSAY&released=true&pageNum=1&pageSize=20&sortMode=3
 ```
 
 记录：
@@ -568,7 +568,7 @@ GET /api/admin/question-banks/101/questions?keyword=事务&questionType=ESSAY&re
   "title": "Spring 事务失效的常见原因有哪些？",
   "imageUrl": null,
   "released": true,
-  "sortOrder": 10,
+  "questionNo": 1,
   "updatedTime": "2026-07-20T10:00:00",
   "version": 3
 }
@@ -577,7 +577,7 @@ GET /api/admin/question-banks/101/questions?keyword=事务&questionType=ESSAY&re
 变更：题目列表只接受两个 `sortMode`：
 
 - `UPDATED_TIME_DESC`：按题目 `updated_time DESC, id DESC`。
-- `MANUAL_ORDER_ASC`：按题目 `sort_order ASC, id ASC`。
+- `QUESTION_NO_ASC`（值为 `3`）：按题目 `question_no ASC, id ASC`。
 
 ### 8.4 题目详情
 
@@ -602,7 +602,7 @@ GET /api/admin/question-banks/101/questions?keyword=事务&questionType=ESSAY&re
   ],
   "correctAnswers": ["A"],
   "released": true,
-  "sortOrder": 20,
+  "questionNo": 2,
   "version": 3
 }
 ```
@@ -658,8 +658,8 @@ POST /api/admin/question-banks/101/questions
 - 题型必须与题库 Group 匹配。
 - 同一题库的未删除题目中不能存在相同 `title`；已删除历史记录不参与重复校验。
 - 创建后默认未发布。
-- 题目实体直接保存 `bank_id` 和 `sort_order`，不再创建关系表记录。
-- 新题的 `sort_order` 为当前题库有效题目的最大值加 10。
+- 题目实体直接保存 `bank_id` 和 `question_no`，不再创建关系表记录。
+- 新题的 `question_no` 为当前题库有效题目的最大值加 1。
 
 ### 8.6 编辑题目
 
@@ -698,29 +698,29 @@ POST /api/admin/question-banks/101/questions/10001/actions
 规则：
 
 - 发布只允许未发布题目。
-- 删除时自动下架，并逻辑删除题目实体。
+- 删除时自动下架并逻辑删除题目实体，后续有效题目的 `question_no` 自动减 1。
 - 管理端不提供题目回收站查询和恢复动作，删除记录仅用于保留历史数据。
 - 已开始的认证考试 Session 不受下架和排序变化影响。
 
-### 8.8 题目排序
+### 8.8 修改题目序号
 
 ```http
-PUT /api/admin/question-banks/101/questions/order
+PUT /api/admin/question-banks/101/questions/10003/question-no
 
 {
-  "questionIds": [10003, 10001, 10002],
+  "questionNo": 1,
   "bankQuestionOrderVersion": 8,
-  "reason": "按难度重新排序"
+  "reason": "移动到第一题"
 }
 ```
 
 规则：
 
-- 必须提交题库全部未删除题目 ID。
-- 不能缺失、重复或包含其他题库题目。
-- 数组顺序映射为 `10、20、30...`。
-- 面试题直接更新 `interview_question_info.sort_order`，认证题直接更新 `certificate_question_info.sort_order`。
-- 全部题目顺序在同一事务更新；不建立 `(bank_id, sort_order)` 唯一约束。
+- `questionNo` 必须在 `1～当前有效题目数` 范围内。
+- 题目从旧序号移动到新序号时，中间区间内的题目自动加 1 或减 1。
+- 面试题更新 `interview_question_info.question_no`，认证题更新 `certificate_question_info.question_no`。
+- 全部序号变化在同一事务中完成，并通过题库 `version` 防止并发覆盖。
+- 数据库通过有效题目生成列唯一索引保证同一题库内 `question_no` 唯一。
 - 认证考试仍在创建 Session 时随机题序。
 
 响应：
@@ -728,7 +728,9 @@ PUT /api/admin/question-banks/101/questions/order
 ```json
 {
   "bankId": 101,
-  "questionCount": 3,
+  "questionId": 10003,
+  "previousQuestionNo": 3,
+  "questionNo": 1,
   "bankQuestionOrderVersion": 9,
   "updatedTime": "2026-07-26T16:00:00"
 }
@@ -1200,7 +1202,7 @@ GET /api/admin/audit-logs?operatorAdminId=2&module=QUESTION&action=UPDATE&target
 | `1302` | `ADMIN_QUESTION_TYPE_INVALID` | 题型与题库不匹配 |
 | `1303` | `ADMIN_QUESTION_OPTION_INVALID` | 选项或正确答案不合法 |
 | `1304` | `ADMIN_QUESTION_STATE_INVALID` | 题目状态不允许当前操作 |
-| `1306` | `ADMIN_QUESTION_ORDER_INVALID` | 题目排序数据不合法 |
+| `1306` | `ADMIN_QUESTION_ORDER_INVALID` | 题目序号不合法 |
 | `1307` | `ADMIN_QUESTION_TITLE_CONFLICT` | 同一题库中已存在相同题目 |
 | `1310` | `ADMIN_IMPORT_FILE_INVALID` | 导入文件不合法 |
 | `1311` | `ADMIN_IMPORT_ROW_INVALID` | 导入文件存在错误行 |
@@ -1216,7 +1218,7 @@ GET /api/admin/audit-logs?operatorAdminId=2&module=QUESTION&action=UPDATE&target
 
 - 变更：删除 `question_bank_question` 多对多关系表。
 - `interview_question_info` 和 `certificate_question_info` 直接保存非空 `bank_id`。
-- 两张题目表直接保存非空 `sort_order`，默认 10。
+- 两张题目表直接保存非空 `question_no`，有效题目在同一题库内连续且唯一。
 - 同一内容需要出现在另一个题库时，创建一条新的题目记录并获得新的题目 ID。
 - 管理端不提供“引用已有题目”入口，题目的编辑和删除只影响其所属题库中的该条记录。
 
@@ -1229,7 +1231,7 @@ GET /api/admin/audit-logs?operatorAdminId=2&module=QUESTION&action=UPDATE&target
 | 题库业务状态和版本 | 发布、下架和并发控制 |
 | 题库与题目的 `create_admin_id` | 后台创建人，不复用带 App 用户外键的 `create_user_id` |
 | 面试题 `image_object_key` | 保存私有 COS 对象 Key，用于图文题目 |
-| 题库 `version` + 题目表 `sort_order` | 原子拖拽排序与并发控制 |
+| 题库 `version` + 题目表 `question_no` | 原子序号移动与并发控制 |
 | 题目导入任务和错误明细 | 两阶段 Excel 导入 |
 | Comment 业务状态 | 隐藏、删除和恢复 |
 | 用户社区限制 | 控制发帖和评论 |

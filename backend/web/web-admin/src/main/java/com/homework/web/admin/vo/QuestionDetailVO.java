@@ -41,7 +41,7 @@ public class QuestionDetailVO {
     private Boolean released;
 
     /** 变更：一题只属于一个题库，手动顺序直接来自题目实体。 */
-    private Integer sortOrder;
+    private Integer questionNo;
 
     /** 乐观锁版本。 */
     private Integer version;

@@ -14,6 +14,7 @@ import com.homework.model.entity.CertificateQuestionInfo;
 import com.homework.model.entity.InterviewQuestionInfo;
 import com.homework.model.entity.QuestionBank;
 import com.homework.model.enums.AdminRole;
+import com.homework.model.enums.AdminSortMode;
 import com.homework.model.enums.BankDataScope;
 import com.homework.model.enums.GroupType;
 import com.homework.model.enums.QuestionBankStatus;
@@ -39,7 +40,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Locale;
 
 /** 后台题库查询、创建、编辑和状态管理。 */
 @Service
@@ -66,7 +66,7 @@ public class AdminQuestionBankService {
             QuestionBankStatus status,
             Integer pageNum,
             Integer pageSize,
-            String sortMode
+            AdminSortMode sortMode
     ) {
         // 前端没传，默认页码为1。
         int selectPage = 1;
@@ -80,12 +80,11 @@ public class AdminQuestionBankService {
             defaultSize = Math.min(Math.max(pageSize, 1), 100); //pageSize是前端传回来的，具体是否开放权限给用户选择，还是前端写死，要看你自己的业务逻辑
         }
 
-        // 前端没传，默认值是：按更新时间降序
-        String selectSortMode = "UPDATED_TIME_DESC";
-        if (sortMode != null && !sortMode.isBlank()) {
-            selectSortMode = sortMode.trim().toUpperCase(Locale.ROOT); //如果前端更新了，那么就按照前端传入的
-        }
-        if (!"UPDATED_TIME_DESC".equals(selectSortMode) && !"SORT_ORDER_DESC".equals(selectSortMode)) {
+        // 前端未传排序模式时，默认按更新时间降序。
+        AdminSortMode selectedSortMode = sortMode == null ? AdminSortMode.UPDATED_TIME_DESC : sortMode;
+        // 题库列表不支持题目专用的手动排序模式。
+        if (selectedSortMode != AdminSortMode.UPDATED_TIME_DESC
+                && selectedSortMode != AdminSortMode.SORT_ORDER_DESC) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
         List<Long> allowedBankIds = accessService.listAssignedBankIds(AdminContext.getAdminId());
@@ -175,7 +174,7 @@ public class AdminQuestionBankService {
                 .in(categorySubModuleIds != null, QuestionBank::getSubModuleId, categorySubModuleIds);
 
         //查 是否传了 题库排序方式
-        if ("SORT_ORDER_DESC".equals(selectSortMode)) {
+        if (selectedSortMode == AdminSortMode.SORT_ORDER_DESC) {
             query.orderByDesc(QuestionBank::getSortOrder);
         } else {
             query.orderByDesc(QuestionBank::getUpdatedTime);

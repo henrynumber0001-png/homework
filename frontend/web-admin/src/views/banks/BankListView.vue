@@ -9,7 +9,9 @@ import { createQuestionBank, getCategoryTree, listQuestionBanks } from '@/api/ad
 import { showApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 import {
+  AdminSortMode,
   QuestionBankStatus,
+  type AdminSortMode as AdminSortModeValue,
   type CategoryGroup,
   type QuestionBank,
   type QuestionBankStatus as QuestionBankStatusValue,
@@ -30,7 +32,7 @@ const query = reactive({
   groupId: undefined as number | undefined,
   moduleId: undefined as number | undefined,
   subModuleId: undefined as number | undefined,
-  sortMode: 'UPDATED_TIME_DESC',
+  sortMode: AdminSortMode.UPDATED_TIME_DESC as AdminSortModeValue,
   status: '' as QuestionBankStatusValue | '',
   pageNum: 1,
   pageSize: 12,
@@ -118,7 +120,7 @@ function resetFilters(): void {
     groupId: undefined,
     moduleId: undefined,
     subModuleId: undefined,
-    sortMode: 'UPDATED_TIME_DESC',
+    sortMode: AdminSortMode.UPDATED_TIME_DESC,
     status: '',
     pageNum: 1,
   })
@@ -227,8 +229,8 @@ async function submitCreate(): Promise<void> {
         </el-select>
         <!-- 变更：排序模式是请求参数，不是新增数据库字段。 -->
         <el-select class="filter-sort" v-model="query.sortMode" placeholder="排序方式" @change="search">
-          <el-option label="按更新时间降序" value="UPDATED_TIME_DESC" />
-          <el-option label="按题库权重降序" value="SORT_ORDER_DESC" />
+          <el-option label="按更新时间降序" :value="AdminSortMode.UPDATED_TIME_DESC" />
+          <el-option label="按题库权重降序" :value="AdminSortMode.SORT_ORDER_DESC" />
         </el-select>
         <el-button type="primary" plain @click="search">查询</el-button>
         <el-button @click="resetFilters">重置</el-button>

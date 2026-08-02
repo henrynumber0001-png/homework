@@ -2,19 +2,20 @@ package com.homework.web.admin.controller;
 
 import com.homework.common.result.PageResult;
 import com.homework.common.result.Result;
+import com.homework.model.enums.AdminSortMode;
 import com.homework.model.enums.QuestionInfoQuestionType;
 import com.homework.web.admin.auth.AdminAccessService;
 import com.homework.web.admin.auth.AdminPermission;
 import com.homework.web.admin.dto.QuestionCreateDTO;
 import com.homework.web.admin.dto.QuestionActionDTO;
-import com.homework.web.admin.dto.QuestionOrderDTO;
+import com.homework.web.admin.dto.QuestionNoUpdateDTO;
 import com.homework.web.admin.dto.QuestionUpdateDTO;
 import com.homework.web.admin.service.AdminQuestionService;
 import com.homework.web.admin.service.QuestionImageService;
 import com.homework.web.admin.vo.ActionResultVO;
 import com.homework.web.admin.vo.QuestionDetailVO;
 import com.homework.web.admin.vo.QuestionImageUploadVO;
-import com.homework.web.admin.vo.QuestionOrderResultVO;
+import com.homework.web.admin.vo.QuestionNoUpdateResultVO;
 import com.homework.web.admin.vo.QuestionRowVO;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -51,8 +52,8 @@ public class AdminQuestionController {
             @RequestParam(required = false) Boolean released,
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize,
-            // 变更：原 sortBy + sortDirection 合并为一个可读的排序模式参数。
-            @RequestParam(required = false) String sortMode
+            // 数字 1 表示更新时间降序，数字 3 表示题目序号升序。
+            @RequestParam(required = false) AdminSortMode sortMode
     ) {
         return Result.success(questionService.list(
                 bankId, keyword, questionType, released,
@@ -105,15 +106,16 @@ public class AdminQuestionController {
         return Result.success(questionService.action(bankId, questionId, dto));
     }
 
-    /** 原子保存指定题库内全部有效题目的顺序。 */
-    @Operation(summary = "保存题目顺序")
+    /** 修改一道题的题库内序号，中间题目自动顺移。 */
+    @Operation(summary = "修改题目序号")
     @AdminPermission("question:sort")
-    @PutMapping("/question-banks/{bankId}/questions/order")
-    public Result<QuestionOrderResultVO> updateOrder(
+    @PutMapping("/question-banks/{bankId}/questions/{questionId}/question-no")
+    public Result<QuestionNoUpdateResultVO> updateQuestionNo(
             @PathVariable Long bankId,
-            @Valid @RequestBody QuestionOrderDTO dto
+            @PathVariable Long questionId,
+            @Valid @RequestBody QuestionNoUpdateDTO dto
     ) {
-        return Result.success(questionService.updateOrder(bankId, dto));
+        return Result.success(questionService.updateQuestionNo(bankId, questionId, dto));
     }
 
     /** 上传 JPG、PNG 或 WebP 题目图片到腾讯云 COS。 */

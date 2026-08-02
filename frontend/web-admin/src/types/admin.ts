@@ -25,6 +25,14 @@ export type AdminStatus = (typeof AdminStatus)[keyof typeof AdminStatus]
 export const BankDataScope = { ALL_BANKS: 1, ASSIGNED_BANKS: 2 } as const
 export type BankDataScope = (typeof BankDataScope)[keyof typeof BankDataScope]
 
+/** 管理端题库和题目列表共用的排序模式。 */
+export const AdminSortMode = {
+  UPDATED_TIME_DESC: 1,
+  SORT_ORDER_DESC: 2,
+  QUESTION_NO_ASC: 3,
+} as const
+export type AdminSortMode = (typeof AdminSortMode)[keyof typeof AdminSortMode]
+
 export const GroupType = { INTERVIEW: 1, CERTIFICATION: 2 } as const
 export type GroupType = (typeof GroupType)[keyof typeof GroupType]
 
@@ -186,8 +194,8 @@ export interface Question {
   title: string
   imageUrl?: string
   released: boolean
-  /** 变更：关系表已删除，题目手动顺序直接来自题目实体。 */
-  sortOrder: number
+  /** 同一题库内从 1 开始的连续题目序号。 */
+  questionNo: number
   createdTime: string
   updatedTime: string
   version: number

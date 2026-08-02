@@ -40,6 +40,10 @@ public interface QuestionBankMapper extends BaseMapper<QuestionBank> {
     @Select("SELECT * FROM question_bank WHERE id = #{bankId}")
     QuestionBank selectIncludingDeleted(@Param("bankId") Long bankId);
 
+    /** 串行化同一题库内的题目创建、删除和序号调整。 */
+    @Select("SELECT * FROM question_bank WHERE id = #{bankId} AND is_deleted = 0 FOR UPDATE")
+    QuestionBank selectForUpdate(@Param("bankId") Long bankId);
+
     /** 按版本逻辑删除已下架题库。 */
     @Update("""
             UPDATE question_bank

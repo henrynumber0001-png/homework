@@ -20,7 +20,7 @@ public class QuestionAssembler {
 
     private final CosReadUrlSigner readUrlSigner;
 
-    /** 变更：原来需要关系实体提供 bankId 和顺序，现在全部直接取自面试题实体。 */
+    /** 题库归属和序号都直接取自面试题实体。 */
     public QuestionRowVO toRow(InterviewQuestionInfo question) {
         QuestionRowVO vo = new QuestionRowVO();
         vo.setId(question.getId());
@@ -29,14 +29,14 @@ public class QuestionAssembler {
         vo.setTitle(question.getTitle());
         vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setReleased(question.getIsReleased());
-        vo.setSortOrder(question.getSortOrder());
+        vo.setQuestionNo(question.getQuestionNo());
         vo.setCreatedTime(question.getCreatedTime());
         vo.setUpdatedTime(question.getUpdatedTime());
         vo.setVersion(question.getVersion());
         return vo;
     }
 
-    /** 变更：原来需要关系实体提供 bankId 和顺序，现在全部直接取自认证题实体。 */
+    /** 题库归属和序号都直接取自认证题实体。 */
     public QuestionRowVO toRow(CertificateQuestionInfo question) {
         QuestionRowVO vo = new QuestionRowVO();
         vo.setId(question.getId());
@@ -45,7 +45,7 @@ public class QuestionAssembler {
         vo.setTitle(question.getTitle());
         vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setReleased(question.getIsReleased());
-        vo.setSortOrder(question.getSortOrder());
+        vo.setQuestionNo(question.getQuestionNo());
         vo.setCreatedTime(question.getCreatedTime());
         vo.setUpdatedTime(question.getUpdatedTime());
         vo.setVersion(question.getVersion());
@@ -65,12 +65,12 @@ public class QuestionAssembler {
         vo.setOptions(List.of());
         vo.setCorrectAnswers(List.of());
         vo.setReleased(question.getIsReleased());
-        vo.setSortOrder(question.getSortOrder());
+        vo.setQuestionNo(question.getQuestionNo());
         vo.setVersion(question.getVersion());
         return vo;
     }
 
-    /** 变更：认证题详情直接使用实体中的 bankId 和 sortOrder，不再查询关系表。 */
+    /** 认证题详情直接使用实体中的 bankId 和 questionNo。 */
     public QuestionDetailVO toDetail(GroupType groupType, CertificateQuestionInfo question) {
         QuestionDetailVO vo = new QuestionDetailVO();
         vo.setId(question.getId());
@@ -96,7 +96,7 @@ public class QuestionAssembler {
         vo.setOptions(optionVos);
         vo.setCorrectAnswers(correctKeys);
         vo.setReleased(question.getIsReleased());
-        vo.setSortOrder(question.getSortOrder());
+        vo.setQuestionNo(question.getQuestionNo());
         vo.setVersion(question.getVersion());
         return vo;
     }

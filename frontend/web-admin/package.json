@@ -16,13 +16,11 @@
     "dayjs": "^1.11.18",
     "element-plus": "^2.14.3",
     "pinia": "^3.0.3",
-    "sortablejs": "^1.15.7",
     "vue": "^3.5.40",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
-    "@types/sortablejs": "^1.15.8",
     "@vitejs/plugin-vue": "^5.2.4",
     "@vue/test-utils": "^2.4.6",
     "jsdom": "^25.0.1",

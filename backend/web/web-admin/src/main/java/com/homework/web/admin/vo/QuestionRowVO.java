@@ -28,7 +28,7 @@ public class QuestionRowVO {
     private Boolean released;
 
     /** 变更：关系表已删除，题库内手动顺序直接来自题目实体。 */
-    private Integer sortOrder;
+    private Integer questionNo;
 
     /** 创建时间。 */
     private LocalDateTime createdTime;

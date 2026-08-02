@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Back, Delete, Edit, Plus, Rank, UploadFilled } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import Sortable from 'sortablejs'
+import { Back, Delete, Edit, Plus, UploadFilled } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import PageHeader from '@/components/PageHeader.vue'
 import ReasonDialog from '@/components/ReasonDialog.vue'
 import StatusTag from '@/components/StatusTag.vue'
@@ -14,17 +13,19 @@ import {
   getQuestionBank,
   listQuestions,
   updateQuestionBank,
-  updateQuestionOrder,
+  updateQuestionNo,
 } from '@/api/admin'
 import { showApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 import {
+  AdminSortMode,
   GroupType,
   QuestionAction,
   QuestionBankAction,
   QuestionBankStatus,
   QuestionType,
   type CategoryGroup,
+  type AdminSortMode as AdminSortModeValue,
   type Question,
   type QuestionBank,
   type QuestionType as QuestionTypeValue,
@@ -59,12 +60,15 @@ const batchDialogVisible = ref(false)
 const batchCompleted = ref(0)
 const batchTotal = ref(0)
 const batchFailures = ref<Array<BatchActionFailure<Question>>>([])
-const sortVisible = ref(false)
-const sortLoading = ref(false)
-const sortSaving = ref(false)
-const sortQuestions = ref<Question[]>([])
-const sortList = ref<HTMLElement>()
-let sortable: Sortable | null = null
+const questionNoDialogVisible = ref(false)
+const questionNoSaving = ref(false)
+const questionNoForm = reactive({
+  questionId: 0,
+  title: '',
+  currentQuestionNo: 0,
+  targetQuestionNo: 1,
+  reason: '',
+})
 
 const query = reactive({
   keyword: '',
@@ -72,8 +76,8 @@ const query = reactive({
   released: (route.query.released === 'false' || route.query.released === 'true'
     ? route.query.released
     : '') as '' | 'true' | 'false',
-  // 变更：题目列表支持按更新时间或管理员手动顺序查看。
-  sortMode: 'UPDATED_TIME_DESC',
+  // 题目列表支持按更新时间或题目序号查看。
+  sortMode: AdminSortMode.UPDATED_TIME_DESC as AdminSortModeValue,
   pageNum: 1,
   pageSize: 20,
 })
@@ -119,8 +123,6 @@ onMounted(async () => {
   }
   await Promise.all([loadBank(), loadQuestions(), loadCategories()])
 })
-
-onUnmounted(() => sortable?.destroy())
 
 async function loadBank(): Promise<void> {
   loadingBank.value = true
@@ -180,7 +182,7 @@ function resetQuestionFilters(): void {
     keyword: '',
     questionType: '',
     released: '',
-    sortMode: 'UPDATED_TIME_DESC',
+    sortMode: AdminSortMode.UPDATED_TIME_DESC,
     pageNum: 1,
   })
   void loadQuestions()
@@ -304,85 +306,49 @@ function selectSettingCategory(path: Array<string | number> | null): void {
   settings.subModuleId = path?.length ? Number(path.at(-1)) : undefined
 }
 
-async function loadAllActiveQuestions(): Promise<Question[]> {
-  const first = await listQuestions(bankId, {
-    pageNum: 1,
-    pageSize: 100,
-    // 变更：拖拽弹窗必须按当前手动顺序加载全部有效题目。
-    sortMode: 'MANUAL_ORDER_ASC',
+function openQuestionNoDialog(question: Question): void {
+  Object.assign(questionNoForm, {
+    questionId: question.id,
+    title: question.title,
+    currentQuestionNo: question.questionNo,
+    targetQuestionNo: question.questionNo,
+    reason: '',
   })
-  const rows = [...first.records]
-  const pageCount = Math.ceil(first.total / 100)
-  for (let pageNum = 2; pageNum <= pageCount; pageNum += 1) {
-    const page = await listQuestions(bankId, {
-      pageNum,
-      pageSize: 100,
-      sortMode: 'MANUAL_ORDER_ASC',
-    })
-    rows.push(...page.records)
-  }
-  return rows
+  questionNoDialogVisible.value = true
 }
 
-async function openSort(): Promise<void> {
-  sortVisible.value = true
-  sortLoading.value = true
-  try {
-    sortQuestions.value = await loadAllActiveQuestions()
-    await nextTick()
-    sortable?.destroy()
-    if (sortList.value) {
-      sortable = Sortable.create(sortList.value, {
-        animation: 160,
-        handle: '.drag-handle',
-        onEnd(event) {
-          if (event.oldIndex === undefined || event.newIndex === undefined) return
-          const [moved] = sortQuestions.value.splice(event.oldIndex, 1)
-          sortQuestions.value.splice(event.newIndex, 0, moved)
-        },
-      })
-    }
-  } catch (error) {
-    showApiError(error)
-  } finally {
-    sortLoading.value = false
-  }
-}
-
-async function saveSort(): Promise<void> {
+async function saveQuestionNo(): Promise<void> {
   if (!bank.value) return
-  const { value: reason } = await ElMessageBox.prompt('请填写调整顺序的原因', '保存题目顺序', {
-    confirmButtonText: '保存',
-    cancelButtonText: '取消',
-    inputPattern: /\S+/,
-    inputErrorMessage: '请填写操作原因',
-  }).catch(() => ({ value: '' }))
-  if (!reason) return
+  const targetQuestionNo = questionNoForm.targetQuestionNo
+  if (!Number.isInteger(targetQuestionNo)
+    || targetQuestionNo < 1
+    || targetQuestionNo > bank.value.questionCount) {
+    ElMessage.warning(`题目序号必须在 1～${bank.value.questionCount} 之间`)
+    return
+  }
+  if (!questionNoForm.reason.trim()) return
+  if (targetQuestionNo === questionNoForm.currentQuestionNo) {
+    questionNoDialogVisible.value = false
+    return
+  }
 
-  sortSaving.value = true
+  questionNoSaving.value = true
   try {
-    const result = await updateQuestionOrder(bankId, {
-      questionIds: sortQuestions.value.map((item) => item.id),
+    const result = await updateQuestionNo(bankId, questionNoForm.questionId, {
+      questionNo: targetQuestionNo,
       bankQuestionOrderVersion: bank.value.version,
-      reason,
+      reason: questionNoForm.reason.trim(),
     })
     bank.value.version = result.bankQuestionOrderVersion
-    sortVisible.value = false
-    ElMessage.success('题目顺序已保存')
+    bank.value.updatedTime = result.updatedTime
+    questionNoDialogVisible.value = false
+    ElMessage.success(`题目已移动到第 ${result.questionNo} 题`)
     await loadQuestions()
   } catch (error) {
     showApiError(error)
   } finally {
-    sortSaving.value = false
+    questionNoSaving.value = false
   }
-}
-
-function moveQuestion(fromIndex: number, targetPosition?: number): void {
-  if (!targetPosition || targetPosition < 1 || targetPosition > sortQuestions.value.length) return
-  const targetIndex = targetPosition - 1
-  if (targetIndex === fromIndex) return
-  const [moved] = sortQuestions.value.splice(fromIndex, 1)
-  sortQuestions.value.splice(targetIndex, 0, moved)
 }
 </script>
 
@@ -472,21 +438,14 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
                 <el-option label="未发布" value="false" />
                 <el-option label="已发布" value="true" />
               </el-select>
-              <!-- 变更：更新时间与手动题序是两种明确的排序模式。 -->
+              <!-- 更新时间与题目序号是两种明确的排序模式。 -->
               <el-select v-model="query.sortMode" placeholder="排序方式" @change="search">
-                <el-option label="按更新时间降序" value="UPDATED_TIME_DESC" />
-                <el-option label="按手动顺序" value="MANUAL_ORDER_ASC" />
+                <el-option label="按更新时间降序" :value="AdminSortMode.UPDATED_TIME_DESC" />
+                <el-option label="按题目序号升序" :value="AdminSortMode.QUESTION_NO_ASC" />
               </el-select>
               <el-button type="primary" plain @click="search">查询</el-button>
               <el-button @click="resetQuestionFilters">重置</el-button>
             </div>
-            <el-button
-              v-if="auth.hasPermission('question:sort')"
-              :icon="Rank"
-              @click="openSort"
-            >
-              调整顺序
-            </el-button>
           </div>
 
           <div v-if="selectedQuestions.length" class="batch-bar">
@@ -524,8 +483,19 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
             @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="46" />
-            <!-- 变更：关系表已删除，顺序字段直接来自题目实体。 -->
-            <el-table-column label="顺序" prop="sortOrder" width="72" align="center" />
+            <el-table-column label="题目序号" prop="questionNo" width="120" align="center">
+              <template #default="{ row }">
+                <div class="question-no-cell">
+                  <strong>{{ row.questionNo }}</strong>
+                  <el-button
+                    v-if="auth.hasPermission('question:sort')"
+                    link
+                    type="primary"
+                    @click="openQuestionNoDialog(row)"
+                  >修改</el-button>
+                </div>
+              </template>
+            </el-table-column>
             <el-table-column label="题目" min-width="390">
               <template #default="{ row }">
                 <div class="question-cell">
@@ -670,6 +640,42 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
 
     <ReasonDialog ref="reasonDialog" @confirm="confirmOperation" />
 
+    <el-dialog v-model="questionNoDialogVisible" title="修改题目序号" width="480px">
+      <p class="dialog-description">{{ questionNoForm.title }}</p>
+      <el-form label-position="top" @submit.prevent="saveQuestionNo">
+        <el-form-item label="目标序号" required>
+          <el-input-number
+            v-model="questionNoForm.targetQuestionNo"
+            :min="1"
+            :max="bank?.questionCount || 1"
+            controls-position="right"
+          />
+          <div class="form-tip">
+            当前为第 {{ questionNoForm.currentQuestionNo }} 题；中间题目将自动顺移。
+          </div>
+        </el-form-item>
+        <el-form-item label="调整原因" required>
+          <el-input
+            v-model="questionNoForm.reason"
+            type="textarea"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+            placeholder="本次修改会记录到操作日志"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="questionNoDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="questionNoSaving"
+          :disabled="!questionNoForm.reason.trim()"
+          @click="saveQuestionNo"
+        >保存</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog
       v-model="batchDialogVisible"
       title="批量操作进度"
@@ -706,38 +712,6 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
       </template>
     </el-dialog>
 
-    <el-drawer v-model="sortVisible" title="调整题目顺序" size="620px" @closed="sortable?.destroy()">
-      <el-alert
-        title="拖动题目调整 App 端展示顺序，保存时会校验题库版本。"
-        type="info"
-        :closable="false"
-      />
-      <div v-loading="sortLoading" ref="sortList" class="sort-list">
-        <div v-for="(question, index) in sortQuestions" :key="question.id" class="sort-row">
-          <button class="drag-handle" title="拖动排序"><Rank /></button>
-          <span class="sort-number">{{ index + 1 }}</span>
-          <div>
-            <strong>{{ question.title }}</strong>
-            <span>#{{ question.id }} · {{ questionTypeLabels[question.questionType] }}</span>
-          </div>
-          <el-input-number
-            :model-value="index + 1"
-            :min="1"
-            :max="sortQuestions.length"
-            size="small"
-            controls-position="right"
-            aria-label="移动到序号"
-            @change="moveQuestion(index, $event)"
-          />
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="sortVisible = false">取消</el-button>
-        <el-button type="primary" :loading="sortSaving" :disabled="sortLoading" @click="saveSort">
-          保存顺序
-        </el-button>
-      </template>
-    </el-drawer>
   </div>
 </template>
 
@@ -857,6 +831,19 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
   font-size: 11px;
 }
 
+.question-no-cell {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog-description {
+  margin: 0 0 18px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
 .settings-form {
   max-width: 680px;
   padding: 18px 6px 28px;
@@ -898,61 +885,4 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
   font-size: 13px;
 }
 
-.sort-list {
-  min-height: 200px;
-  margin-top: 18px;
-}
-
-.sort-row {
-  display: grid;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 8px;
-  padding: 12px;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  grid-template-columns: 24px 28px 1fr 94px;
-}
-
-.sort-row:hover {
-  border-color: #bac7f6;
-}
-
-.drag-handle {
-  display: grid;
-  padding: 2px;
-  color: #8b96aa;
-  background: transparent;
-  border: 0;
-  cursor: grab;
-  place-items: center;
-}
-
-.sort-number {
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.sort-row div {
-  min-width: 0;
-}
-
-.sort-row strong,
-.sort-row div span {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sort-row strong {
-  font-size: 13px;
-}
-
-.sort-row div span {
-  margin-top: 4px;
-  color: var(--text-secondary);
-  font-size: 11px;
-}
 </style>

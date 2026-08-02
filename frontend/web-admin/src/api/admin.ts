@@ -4,6 +4,7 @@ import type {
   AdminAccountActionPayload,
   AdminLoginResult,
   AdminRow,
+  AdminSortMode,
   AuditLog,
   BankDataScope,
   BillingType,
@@ -39,6 +40,7 @@ import type {
 
 type QueryValue = string | number | boolean | undefined | null
 type Query = Record<string, QueryValue>
+type SortedQuery = Query & { sortMode?: AdminSortMode }
 
 /** 使用管理员邮箱和密码登录。 */
 export function login(payload: { email: string; password: string; turnstileToken?: string }) {
@@ -94,7 +96,7 @@ export function getDashboard() {
 }
 
 /** 分页查询当前管理员可见的题库。 */
-export function listQuestionBanks(params: Query) {
+export function listQuestionBanks(params: SortedQuery) {
   return request<PageResult<QuestionBank>>({ method: 'GET', url: '/question-banks', params })
 }
 
@@ -140,7 +142,7 @@ export function actOnQuestionBank(bankId: number, payload: QuestionBankActionPay
 }
 
 /** 分页查询指定题库中的题目。 */
-export function listQuestions(bankId: number, params: Query) {
+export function listQuestions(bankId: number, params: SortedQuery) {
   return request<PageResult<Question>>({
     method: 'GET',
     url: `/question-banks/${bankId}/questions`,
@@ -183,14 +185,22 @@ export function actOnQuestion(bankId: number, questionId: number, payload: Quest
   })
 }
 
-/** 原子保存题库内全部有效题目的顺序。 */
-export function updateQuestionOrder(
+/** 把一道题移动到题库内指定序号，中间题目自动顺移。 */
+export function updateQuestionNo(
   bankId: number,
-  payload: { questionIds: number[]; bankQuestionOrderVersion: number; reason: string },
+  questionId: number,
+  payload: { questionNo: number; bankQuestionOrderVersion: number; reason: string },
 ) {
-  return request<{ bankId: number; questionCount: number; bankQuestionOrderVersion: number }>({
+  return request<{
+    bankId: number
+    questionId: number
+    previousQuestionNo: number
+    questionNo: number
+    bankQuestionOrderVersion: number
+    updatedTime: string
+  }>({
     method: 'PUT',
-    url: `/question-banks/${bankId}/questions/order`,
+    url: `/question-banks/${bankId}/questions/${questionId}/question-no`,
     data: payload,
   })
 }

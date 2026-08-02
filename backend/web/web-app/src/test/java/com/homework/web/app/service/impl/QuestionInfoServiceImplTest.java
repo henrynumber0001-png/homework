@@ -152,7 +152,7 @@ class QuestionInfoServiceImplTest {
         InterviewQuestionInfo question = new InterviewQuestionInfo();
         question.setId(22L);
         question.setBankId(11L);
-        question.setSortOrder(10);
+        question.setQuestionNo(1);
         question.setTitle("Java 并发");
         question.setImageObjectKey("questions/java-concurrency.png");
         question.setQuestionType(QuestionInfoQuestionType.ESSAY);
@@ -164,7 +164,7 @@ class QuestionInfoServiceImplTest {
         when(readUrlSigner.sign("questions/java-concurrency.png"))
                 .thenReturn("https://cos.example.com/questions/java-concurrency.png?signed=true");
 
-        List<InterviewQuestionPageVO> result = service.getQuestionsByBankId(11L);
+        List<InterviewQuestionPageVO> result = service.getInterviewByBankId(11L);
 
         assertTrue(result.get(0).getIsFavorite());
         assertEquals(

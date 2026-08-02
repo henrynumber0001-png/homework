@@ -48,7 +48,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     private final CosReadUrlSigner readUrlSigner;
 
     @Override
-    public List<InterviewQuestionPageVO> getQuestionsByBankId(Long bankId) {
+    public List<InterviewQuestionPageVO> getInterviewByBankId(Long bankId) {
         membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
 
         if (bankId == null) {
@@ -61,7 +61,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         questionInfoQueryWrapper.eq(InterviewQuestionInfo::getBankId, bankId)
                 .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
                 .eq(InterviewQuestionInfo::getIsReleased, true)
-                .orderByAsc(InterviewQuestionInfo::getSortOrder)
+                .orderByAsc(InterviewQuestionInfo::getQuestionNo)
                 .orderByAsc(InterviewQuestionInfo::getId);
 
         List<InterviewQuestionInfo> questionInfos = interviewQuestionInfoMapper.selectList(questionInfoQueryWrapper);
@@ -186,12 +186,12 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         }
         publishedQuestionBankAccessService.requirePublished(bankId);
 
-        // 变更：回顾页直接按题目实体 bank_id 查询，sort_order 是唯一手动顺序来源。
+        // 回顾页直接按题目实体 bank_id 查询，question_no 是题库内序号来源。
         LambdaQueryWrapper<InterviewQuestionInfo> interviewQueryWrapper = new LambdaQueryWrapper<>();
         interviewQueryWrapper.eq(InterviewQuestionInfo::getBankId, bankId)
                 .eq(InterviewQuestionInfo::getIsReleased, true)
                 .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
-                .orderByAsc(InterviewQuestionInfo::getSortOrder)
+                .orderByAsc(InterviewQuestionInfo::getQuestionNo)
                 .orderByAsc(InterviewQuestionInfo::getId);
 
         List<InterviewQuestionInfo> interviewQuestionInfos = interviewQuestionInfoMapper.selectList(interviewQueryWrapper);
@@ -321,12 +321,12 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
         publishedQuestionBankAccessService.requirePublished(bankId);
-        // 变更：认证题列表直接按 bank_id 查询，并使用题目表 sort_order 的升序手动顺序。
+        // 认证题列表直接按 bank_id 查询，并使用题目表 question_no 升序。
         LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
         certificateQueryWrapper.eq(CertificateQuestionInfo::getBankId, bankId)
                 .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
                 .eq(CertificateQuestionInfo::getIsReleased, true)
-                .orderByAsc(CertificateQuestionInfo::getSortOrder)
+                .orderByAsc(CertificateQuestionInfo::getQuestionNo)
                 .orderByAsc(CertificateQuestionInfo::getId);
 
         List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(certificateQueryWrapper);
@@ -428,7 +428,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         certificateQueryWrapper.eq(CertificateQuestionInfo::getBankId, bankId)
                 .eq(CertificateQuestionInfo::getIsReleased, true)
                 .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
-                .orderByAsc(CertificateQuestionInfo::getSortOrder)
+                .orderByAsc(CertificateQuestionInfo::getQuestionNo)
                 .orderByAsc(CertificateQuestionInfo::getId);
 
         List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(certificateQueryWrapper);
@@ -511,7 +511,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         interviewQueryWrapper.eq(InterviewQuestionInfo::getBankId, bankId)
                 .eq(InterviewQuestionInfo::getIsReleased, true)
                 .in(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
-                .orderByAsc(InterviewQuestionInfo::getSortOrder)
+                .orderByAsc(InterviewQuestionInfo::getQuestionNo)
                 .orderByAsc(InterviewQuestionInfo::getId);
 
         List<InterviewQuestionInfo> interviewQuestionInfos = interviewQuestionInfoMapper.selectList(interviewQueryWrapper);
@@ -603,7 +603,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             certificateQueryWrapper.eq(CertificateQuestionInfo::getBankId, bankId)
                     .eq(CertificateQuestionInfo::getIsReleased, true)
                     .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
-                    .orderByAsc(CertificateQuestionInfo::getSortOrder)
+                    .orderByAsc(CertificateQuestionInfo::getQuestionNo)
                     .orderByAsc(CertificateQuestionInfo::getId);
 
             List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(certificateQueryWrapper);
@@ -627,7 +627,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             interviewQueryWrapper.eq(InterviewQuestionInfo::getBankId, bankId)
                     .eq(InterviewQuestionInfo::getIsReleased, true)
                     .in(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
-                    .orderByAsc(InterviewQuestionInfo::getSortOrder)
+                    .orderByAsc(InterviewQuestionInfo::getQuestionNo)
                     .orderByAsc(InterviewQuestionInfo::getId);
 
             List<InterviewQuestionInfo> interviewQuestionInfos = interviewQuestionInfoMapper.selectList(interviewQueryWrapper);
@@ -725,7 +725,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         certificateQueryWrapper.eq(CertificateQuestionInfo::getBankId, bankId)
                 .eq(CertificateQuestionInfo::getIsReleased, true)
                 .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
-                .orderByAsc(CertificateQuestionInfo::getSortOrder)
+                .orderByAsc(CertificateQuestionInfo::getQuestionNo)
                 .orderByAsc(CertificateQuestionInfo::getId);
 
         List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(certificateQueryWrapper);

@@ -12,7 +12,7 @@ import com.homework.web.app.vo.*;
 import java.util.List;
 
 public interface QuestionInfoService {
-    List<InterviewQuestionPageVO> getQuestionsByBankId(Long bankId);
+    List<InterviewQuestionPageVO> getInterviewByBankId(Long bankId);
 
     InterViewAnswerPageVO getInterviewAnswer(InterviewQuestionSubmitDTO submitDTO);
 

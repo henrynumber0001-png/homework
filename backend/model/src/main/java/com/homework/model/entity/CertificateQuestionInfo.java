@@ -42,8 +42,8 @@ public class CertificateQuestionInfo extends BaseEntity {
     /** 创建该题目的后台管理员 ID；历史 App 数据可为空。 */
     private Long createAdminId;
 
-    /** 变更：排序值现在属于题目本身，数值越小，在题库中的手动顺序越靠前。 */
-    private Integer sortOrder;
+    /** 题库内连续且唯一的题目序号，从 1 开始。 */
+    private Integer questionNo;
 
     @Schema(description = "题目图片在私有对象存储中的对象 Key")
     private String imageObjectKey;

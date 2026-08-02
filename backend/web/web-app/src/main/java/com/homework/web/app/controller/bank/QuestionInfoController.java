@@ -24,7 +24,7 @@ public class QuestionInfoController {
     //用于返回问题给前端
     @GetMapping("/interview/question")
     public Result<List<InterviewQuestionPageVO>> getQuestionsByBankId(@RequestParam Long bankId) {
-       List<InterviewQuestionPageVO> questions = questionInfoService.getQuestionsByBankId(bankId);
+       List<InterviewQuestionPageVO> questions = questionInfoService.getInterviewByBankId(bankId);
        return Result.success(questions);
     }
 
