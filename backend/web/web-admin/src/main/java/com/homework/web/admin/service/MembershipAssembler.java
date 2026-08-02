@@ -8,6 +8,7 @@ import com.homework.model.entity.MembershipAccessSuspension;
 import com.homework.model.entity.MembershipChangeRecord;
 import com.homework.model.entity.SvipRecord;
 import com.homework.model.entity.UserInfo;
+import com.homework.model.enums.MembershipStatus;
 import com.homework.web.admin.mapper.BaseVipRecordMapper;
 import com.homework.web.admin.mapper.MembershipAccessSuspensionMapper;
 import com.homework.web.admin.mapper.MembershipChangeRecordMapper;
@@ -49,14 +50,16 @@ public class MembershipAssembler {
         vo.setPremiumExpireTime(baseVip == null ? null : baseVip.getExpireTime());
         vo.setPremiumPlusExpireTime(svip == null ? null : svip.getExpireTime());
         if (svip != null && svip.getExpireTime() != null && svip.getExpireTime().isAfter(now)) {
-            vo.setCurrentType("PREMIUM_PLUS");
+            vo.setCurrentType(MembershipStatus.PREMIUM_PLUS);
         } else if (baseVip != null && baseVip.getExpireTime() != null && baseVip.getExpireTime().isAfter(now)) {
-            vo.setCurrentType("PREMIUM");
+            vo.setCurrentType(MembershipStatus.PREMIUM);
+        } else {
+            vo.setCurrentType(MembershipStatus.FREE);
         }
         vo.setSuspended(suspension != null);
         if (suspension != null) {
             vo.setAccessStatus("SUSPENDED");
-        } else if (vo.getCurrentType() != null) {
+        } else if (vo.getCurrentType() != MembershipStatus.FREE) {
             vo.setAccessStatus("ACTIVE");
         } else {
             vo.setAccessStatus("EXPIRED");
@@ -71,9 +74,8 @@ public class MembershipAssembler {
                 .stream()
                 .map(change -> {
                     MembershipChangeVO changeVO = new MembershipChangeVO();
-                    changeVO.setChangeType(change.getChangeType().name());
-                    changeVO.setMembershipType(
-                            change.getMembershipType() == null ? null : change.getMembershipType().name());
+                    changeVO.setChangeType(change.getChangeType());
+                    changeVO.setMembershipType(change.getMembershipType());
                     changeVO.setDurationMonths(change.getDurationMonths());
                     changeVO.setReason(change.getReason());
                     changeVO.setAdminId(change.getAdminId());

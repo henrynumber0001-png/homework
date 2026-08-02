@@ -15,8 +15,9 @@ public enum ItemType implements BaseEnum {
 
     @EnumValue
     @JsonValue
-    private Integer value;
-    private String label;
+    private final Integer value;
+    private final String label;
+
     ItemType(Integer value, String label) {
         this.value = value;
         this.label = label;

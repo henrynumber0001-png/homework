@@ -11,8 +11,16 @@ import {
   listCommunityPosts,
 } from '@/api/admin'
 import { showApiError } from '@/api/http'
-import type { CommunityComment, CommunityPost } from '@/types/admin'
+import {
+  CommunityContentAction,
+  HitPostStatus,
+  type CommunityComment,
+  type CommunityContentAction as CommunityContentActionValue,
+  type CommunityPost,
+  type HitPostStatus as HitPostStatusValue,
+} from '@/types/admin'
 import { formatDateTime } from '@/utils/format'
+import { communityStatusNames } from '@/utils/dictionaries'
 
 const activeTab = ref('posts')
 const loading = ref(false)
@@ -20,11 +28,16 @@ const posts = ref<CommunityPost[]>([])
 const comments = ref<CommunityComment[]>([])
 const total = ref(0)
 const reasonDialog = ref<InstanceType<typeof ReasonDialog>>()
-const pending = ref<{ type: 'post' | 'comment'; id: number; action: string; version: number } | null>(null)
+const pending = ref<{
+  type: 'post' | 'comment'
+  id: number
+  action: CommunityContentActionValue
+  version: number
+} | null>(null)
 const query = reactive({
   keyword: '',
   userId: '',
-  status: '',
+  status: '' as HitPostStatusValue | '',
   pageNum: 1,
   pageSize: 20,
 })
@@ -71,7 +84,7 @@ function search(): void {
 function openAction(
   type: 'post' | 'comment',
   row: CommunityPost | CommunityComment,
-  action: string,
+  action: CommunityContentAction,
   title: string,
 ): void {
   pending.value = { type, id: row.id, action, version: row.version }
@@ -113,9 +126,9 @@ async function confirmAction(reason: string): Promise<void> {
         <el-input v-model="query.keyword" clearable placeholder="搜索正文" @keyup.enter="search" />
         <el-input v-model="query.userId" clearable placeholder="用户 ID" @keyup.enter="search" />
         <el-select v-model="query.status" clearable placeholder="内容状态">
-          <el-option label="正常" value="PUBLISHED" />
-          <el-option label="隐藏" value="HIDDEN" />
-          <el-option label="删除" value="DELETED" />
+          <el-option label="正常" :value="HitPostStatus.PUBLISHED" />
+          <el-option label="隐藏" :value="HitPostStatus.HIDDEN" />
+          <el-option label="删除" :value="HitPostStatus.DELETED" />
         </el-select>
         <el-button type="primary" plain @click="search">查询</el-button>
       </div>
@@ -130,7 +143,7 @@ async function confirmAction(reason: string): Promise<void> {
           <template #default="{ row }">{{ row.likeCount }} 赞 · {{ row.commentCount }} 评论</template>
         </el-table-column>
         <el-table-column label="状态" width="100">
-          <template #default="{ row }"><StatusTag :value="row.status" /></template>
+          <template #default="{ row }"><StatusTag :value="communityStatusNames[row.status]" /></template>
         </el-table-column>
         <el-table-column label="发布时间" width="160">
           <template #default="{ row }">{{ formatDateTime(row.createdTime) }}</template>
@@ -141,9 +154,9 @@ async function confirmAction(reason: string): Promise<void> {
               <el-button link type="primary">治理操作</el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item v-if="row.status !== 'HIDDEN'" @click="openAction('post', row, 'HIDE', '隐藏动态')">隐藏</el-dropdown-item>
-                  <el-dropdown-item v-if="row.status === 'HIDDEN'" @click="openAction('post', row, 'RESTORE', '恢复动态')">恢复</el-dropdown-item>
-                  <el-dropdown-item divided @click="openAction('post', row, 'DELETE', '删除动态')">删除</el-dropdown-item>
+                  <el-dropdown-item v-if="row.status !== HitPostStatus.HIDDEN" @click="openAction('post', row, CommunityContentAction.HIDE, '隐藏动态')">隐藏</el-dropdown-item>
+                  <el-dropdown-item v-if="row.status === HitPostStatus.HIDDEN" @click="openAction('post', row, CommunityContentAction.RESTORE, '恢复动态')">恢复</el-dropdown-item>
+                  <el-dropdown-item divided @click="openAction('post', row, CommunityContentAction.DELETE, '删除动态')">删除</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -159,7 +172,7 @@ async function confirmAction(reason: string): Promise<void> {
         </el-table-column>
         <el-table-column prop="content" label="评论正文" min-width="420" show-overflow-tooltip />
         <el-table-column label="状态" width="100">
-          <template #default="{ row }"><StatusTag :value="row.status" /></template>
+          <template #default="{ row }"><StatusTag :value="communityStatusNames[row.status]" /></template>
         </el-table-column>
         <el-table-column label="发布时间" width="160">
           <template #default="{ row }">{{ formatDateTime(row.createdTime) }}</template>
@@ -170,9 +183,9 @@ async function confirmAction(reason: string): Promise<void> {
               <el-button link type="primary">治理操作</el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item v-if="row.status !== 'HIDDEN'" @click="openAction('comment', row, 'HIDE', '隐藏评论')">隐藏</el-dropdown-item>
-                  <el-dropdown-item v-if="row.status === 'HIDDEN'" @click="openAction('comment', row, 'RESTORE', '恢复评论')">恢复</el-dropdown-item>
-                  <el-dropdown-item divided @click="openAction('comment', row, 'DELETE', '删除评论')">删除</el-dropdown-item>
+                  <el-dropdown-item v-if="row.status !== HitPostStatus.HIDDEN" @click="openAction('comment', row, CommunityContentAction.HIDE, '隐藏评论')">隐藏</el-dropdown-item>
+                  <el-dropdown-item v-if="row.status === HitPostStatus.HIDDEN" @click="openAction('comment', row, CommunityContentAction.RESTORE, '恢复评论')">恢复</el-dropdown-item>
+                  <el-dropdown-item divided @click="openAction('comment', row, CommunityContentAction.DELETE, '删除评论')">删除</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>

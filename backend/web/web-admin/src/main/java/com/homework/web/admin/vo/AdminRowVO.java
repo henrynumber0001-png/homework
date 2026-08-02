@@ -1,5 +1,8 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.AdminRole;
+import com.homework.model.enums.AdminStatus;
+import com.homework.model.enums.BankDataScope;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -19,16 +22,16 @@ public class AdminRowVO {
     private String displayName;
 
     /** 角色名称。 */
-    private String role;
+    private AdminRole role;
 
     /** 账号状态名称。 */
-    private String status;
+    private AdminStatus status;
 
     /** 功能权限码。 */
     private List<String> permissions;
 
     /** 题库范围名称。 */
-    private String bankDataScope;
+    private BankDataScope bankDataScope;
 
     /** 明确分配的题库 ID。 */
     private List<Long> assignedBankIds;

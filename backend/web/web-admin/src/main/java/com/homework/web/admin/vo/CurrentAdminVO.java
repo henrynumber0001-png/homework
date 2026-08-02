@@ -1,5 +1,6 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.BankDataScope;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -16,7 +17,7 @@ public class CurrentAdminVO {
     private List<String> permissions;
 
     /** 题库数据范围。 */
-    private String bankDataScope;
+    private BankDataScope bankDataScope;
 
     /** 被明确分配的题库 ID。 */
     private List<Long> assignedBankIds;

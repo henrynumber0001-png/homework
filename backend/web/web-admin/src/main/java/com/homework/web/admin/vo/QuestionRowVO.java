@@ -1,5 +1,6 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.QuestionInfoQuestionType;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -15,7 +16,7 @@ public class QuestionRowVO {
     private Long bankId;
 
     /** 题型名称。 */
-    private String questionType;
+    private QuestionInfoQuestionType questionType;
 
     /** 题干。 */
     private String title;

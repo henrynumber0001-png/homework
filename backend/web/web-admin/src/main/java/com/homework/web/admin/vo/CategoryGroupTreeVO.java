@@ -1,5 +1,6 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.GroupType;
 import lombok.Data;
 
 import java.util.List;
@@ -15,7 +16,7 @@ public class CategoryGroupTreeVO {
     private String groupName;
 
     /** 面试或认证类型。 */
-    private String groupType;
+    private GroupType groupType;
 
     /** 该一级分类下的二级分类。 */
     private List<CategoryModuleTreeVO> modules;

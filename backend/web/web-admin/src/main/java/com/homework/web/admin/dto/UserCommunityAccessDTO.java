@@ -1,5 +1,6 @@
 package com.homework.web.admin.dto;
 
+import com.homework.model.enums.CommunityRestrictionScope;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -13,7 +14,7 @@ public class UserCommunityAccessDTO {
     @NotNull
     private Boolean restricted;
 
-    private String scope;
+    private CommunityRestrictionScope scope;
 
     private LocalDateTime endTime;
 

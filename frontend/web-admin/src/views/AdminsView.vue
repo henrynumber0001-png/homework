@@ -12,9 +12,19 @@ import {
   updateAdminAccess,
 } from '@/api/admin'
 import { showApiError } from '@/api/http'
-import type { AdminRow, QuestionBank } from '@/types/admin'
+import {
+  AdminAccountAction,
+  AdminRole,
+  AdminStatus,
+  BankDataScope,
+  type AdminAccountAction as AdminAccountActionValue,
+  type AdminRow,
+  type AdminStatus as AdminStatusValue,
+  type BankDataScope as BankDataScopeValue,
+  type QuestionBank,
+} from '@/types/admin'
 import { formatDateTime } from '@/utils/format'
-import { permissionOptions } from '@/utils/dictionaries'
+import { adminAccountActionLabels, adminStatusNames, permissionOptions } from '@/utils/dictionaries'
 
 type RiskOperation = 'invite' | 'access' | 'status'
 
@@ -27,12 +37,17 @@ const accessVisible = ref(false)
 const statusVisible = ref(false)
 const reauthDialog = ref<InstanceType<typeof ReauthDialog>>()
 const pendingRiskOperation = ref<RiskOperation>()
-const query = reactive({ keyword: '', status: '', pageNum: 1, pageSize: 20 })
+const query = reactive({
+  keyword: '',
+  status: '' as AdminStatusValue | '',
+  pageNum: 1,
+  pageSize: 20,
+})
 const inviteForm = reactive({
   email: '',
   displayName: '',
   permissions: ['bank:view', 'question:view'] as string[],
-  bankDataScope: 'ASSIGNED_BANKS',
+  bankDataScope: BankDataScope.ASSIGNED_BANKS as BankDataScopeValue,
   assignedBankIds: [] as number[],
   reason: '',
 })
@@ -40,15 +55,21 @@ const accessForm = reactive({
   adminId: 0,
   displayName: '',
   permissions: [] as string[],
-  bankDataScope: 'ASSIGNED_BANKS',
+  bankDataScope: BankDataScope.ASSIGNED_BANKS as BankDataScopeValue,
   assignedBankIds: [] as number[],
   reason: '',
   version: 0,
 })
-const statusForm = reactive({
+const statusForm = reactive<{
+  adminId: number
+  displayName: string
+  action: AdminAccountActionValue
+  reason: string
+  version: number
+}>({
   adminId: 0,
   displayName: '',
-  action: 'DISABLE',
+  action: AdminAccountAction.DISABLE,
   reason: '',
   version: 0,
 })
@@ -94,7 +115,7 @@ function openInvite(): void {
     email: '',
     displayName: '',
     permissions: ['bank:view', 'question:view'],
-    bankDataScope: 'ASSIGNED_BANKS',
+    bankDataScope: BankDataScope.ASSIGNED_BANKS,
     assignedBankIds: [],
     reason: '',
   })
@@ -114,7 +135,7 @@ function openAccess(row: AdminRow): void {
   accessVisible.value = true
 }
 
-function openStatus(row: AdminRow, action: string): void {
+function openStatus(row: AdminRow, action: AdminAccountAction): void {
   Object.assign(statusForm, {
     adminId: row.id,
     displayName: row.displayName,
@@ -137,7 +158,7 @@ async function executeRiskOperation(reauthToken: string): Promise<void> {
         {
           ...inviteForm,
           assignedBankIds:
-            inviteForm.bankDataScope === 'ALL_BANKS' ? [] : inviteForm.assignedBankIds,
+            inviteForm.bankDataScope === BankDataScope.ALL_BANKS ? [] : inviteForm.assignedBankIds,
         },
         reauthToken,
       )
@@ -155,7 +176,7 @@ async function executeRiskOperation(reauthToken: string): Promise<void> {
           permissions: accessForm.permissions,
           bankDataScope: accessForm.bankDataScope,
           assignedBankIds:
-            accessForm.bankDataScope === 'ALL_BANKS' ? [] : accessForm.assignedBankIds,
+            accessForm.bankDataScope === BankDataScope.ALL_BANKS ? [] : accessForm.assignedBankIds,
           reason: accessForm.reason.trim(),
           version: accessForm.version,
         },
@@ -192,9 +213,9 @@ async function executeRiskOperation(reauthToken: string): Promise<void> {
       <div class="filter-bar">
         <el-input v-model="query.keyword" clearable placeholder="邮箱或姓名" @keyup.enter="search" />
         <el-select v-model="query.status" clearable placeholder="账号状态">
-          <el-option label="正常" value="ACTIVE" />
-          <el-option label="禁用" value="DISABLED" />
-          <el-option label="已归档" value="ARCHIVED" />
+          <el-option label="正常" :value="AdminStatus.ACTIVE" />
+          <el-option label="禁用" :value="AdminStatus.DISABLED" />
+          <el-option label="已归档" :value="AdminStatus.ARCHIVED" />
         </el-select>
         <el-button type="primary" plain @click="search">查询</el-button>
       </div>
@@ -202,16 +223,18 @@ async function executeRiskOperation(reauthToken: string): Promise<void> {
         <el-table-column label="管理员" min-width="220">
           <template #default="{ row }"><strong>{{ row.displayName }}</strong><br /><small>{{ row.email }}</small></template>
         </el-table-column>
-        <el-table-column prop="role" label="角色" width="130" />
+        <el-table-column label="角色" width="130">
+          <template #default="{ row }">{{ row.role === AdminRole.SUPER_ADMIN ? '超级管理员' : '管理员' }}</template>
+        </el-table-column>
         <el-table-column label="状态" width="110">
-          <template #default="{ row }"><StatusTag :value="row.status" /></template>
+          <template #default="{ row }"><StatusTag :value="adminStatusNames[row.status]" /></template>
         </el-table-column>
         <el-table-column label="权限数" width="90" align="center">
           <template #default="{ row }">{{ row.permissions.length }}</template>
         </el-table-column>
         <el-table-column label="题库范围" min-width="180">
           <template #default="{ row }">
-            {{ row.bankDataScope === 'ALL_BANKS' ? '全部题库' : `指定 ${row.assignedBankIds.length} 个题库` }}
+            {{ row.bankDataScope === BankDataScope.ALL_BANKS ? '全部题库' : `指定 ${row.assignedBankIds.length} 个题库` }}
           </template>
         </el-table-column>
         <el-table-column label="最近登录" width="170">
@@ -219,15 +242,15 @@ async function executeRiskOperation(reauthToken: string): Promise<void> {
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <template v-if="row.role !== 'SUPER_ADMIN'">
+            <template v-if="row.role !== AdminRole.SUPER_ADMIN">
               <el-button link type="primary" @click="openAccess(row)">权限</el-button>
               <el-dropdown trigger="click">
                 <el-button link>状态</el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item v-if="row.status === 'ACTIVE'" @click="openStatus(row, 'DISABLE')">禁用</el-dropdown-item>
-                    <el-dropdown-item v-if="row.status === 'DISABLED'" @click="openStatus(row, 'ACTIVATE')">激活</el-dropdown-item>
-                    <el-dropdown-item divided @click="openStatus(row, 'ARCHIVE')">归档</el-dropdown-item>
+                    <el-dropdown-item v-if="row.status === AdminStatus.ACTIVE" @click="openStatus(row, AdminAccountAction.DISABLE)">禁用</el-dropdown-item>
+                    <el-dropdown-item v-if="row.status === AdminStatus.DISABLED" @click="openStatus(row, AdminAccountAction.ACTIVATE)">激活</el-dropdown-item>
+                    <el-dropdown-item divided @click="openStatus(row, AdminAccountAction.ARCHIVE)">归档</el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -258,11 +281,11 @@ async function executeRiskOperation(reauthToken: string): Promise<void> {
         </el-form-item>
         <el-form-item label="题库范围" required>
           <el-radio-group v-model="inviteForm.bankDataScope">
-            <el-radio value="ALL_BANKS">全部题库</el-radio>
-            <el-radio value="ASSIGNED_BANKS">指定题库</el-radio>
+            <el-radio :value="BankDataScope.ALL_BANKS">全部题库</el-radio>
+            <el-radio :value="BankDataScope.ASSIGNED_BANKS">指定题库</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item v-if="inviteForm.bankDataScope === 'ASSIGNED_BANKS'" label="可访问题库" required>
+        <el-form-item v-if="inviteForm.bankDataScope === BankDataScope.ASSIGNED_BANKS" label="可访问题库" required>
           <el-select v-model="inviteForm.assignedBankIds" multiple filterable>
             <el-option v-for="bank in banks" :key="bank.id" :label="bank.bankName" :value="bank.id" />
           </el-select>
@@ -280,7 +303,7 @@ async function executeRiskOperation(reauthToken: string): Promise<void> {
             !inviteForm.displayName ||
             !inviteForm.permissions.length ||
             !inviteForm.reason.trim() ||
-            (inviteForm.bankDataScope === 'ASSIGNED_BANKS' && !inviteForm.assignedBankIds.length)
+            (inviteForm.bankDataScope === BankDataScope.ASSIGNED_BANKS && !inviteForm.assignedBankIds.length)
           "
           @click="requireReauth('invite')"
         >
@@ -298,11 +321,11 @@ async function executeRiskOperation(reauthToken: string): Promise<void> {
         </el-form-item>
         <el-form-item label="题库范围">
           <el-radio-group v-model="accessForm.bankDataScope">
-            <el-radio value="ALL_BANKS">全部题库</el-radio>
-            <el-radio value="ASSIGNED_BANKS">指定题库</el-radio>
+            <el-radio :value="BankDataScope.ALL_BANKS">全部题库</el-radio>
+            <el-radio :value="BankDataScope.ASSIGNED_BANKS">指定题库</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item v-if="accessForm.bankDataScope === 'ASSIGNED_BANKS'" label="可访问题库">
+        <el-form-item v-if="accessForm.bankDataScope === BankDataScope.ASSIGNED_BANKS" label="可访问题库">
           <el-select v-model="accessForm.assignedBankIds" multiple filterable>
             <el-option v-for="bank in banks" :key="bank.id" :label="bank.bankName" :value="bank.id" />
           </el-select>
@@ -318,7 +341,7 @@ async function executeRiskOperation(reauthToken: string): Promise<void> {
           :disabled="
             !accessForm.permissions.length ||
             !accessForm.reason.trim() ||
-            (accessForm.bankDataScope === 'ASSIGNED_BANKS' && !accessForm.assignedBankIds.length)
+            (accessForm.bankDataScope === BankDataScope.ASSIGNED_BANKS && !accessForm.assignedBankIds.length)
           "
           @click="requireReauth('access')"
         >
@@ -328,7 +351,7 @@ async function executeRiskOperation(reauthToken: string): Promise<void> {
     </el-drawer>
 
     <el-dialog v-model="statusVisible" title="修改管理员状态" width="480px">
-      <p>{{ statusForm.displayName }} · {{ statusForm.action }}</p>
+      <p>{{ statusForm.displayName }} · {{ adminAccountActionLabels[statusForm.action] }}</p>
       <el-input
         v-model="statusForm.reason"
         type="textarea"

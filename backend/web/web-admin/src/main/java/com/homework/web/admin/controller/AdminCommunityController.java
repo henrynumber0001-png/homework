@@ -2,8 +2,9 @@ package com.homework.web.admin.controller;
 
 import com.homework.common.result.PageResult;
 import com.homework.common.result.Result;
+import com.homework.model.enums.HitPostStatus;
 import com.homework.web.admin.auth.AdminPermission;
-import com.homework.web.admin.dto.ResourceActionDTO;
+import com.homework.web.admin.dto.CommunityContentActionDTO;
 import com.homework.web.admin.service.AdminCommunityService;
 import com.homework.web.admin.vo.ActionResultVO;
 import com.homework.web.admin.vo.CommunityCommentVO;
@@ -34,7 +35,7 @@ public class AdminCommunityController {
     public Result<PageResult<CommunityPostVO>> listPosts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false) HitPostStatus status,
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize
     ) {
@@ -46,7 +47,7 @@ public class AdminCommunityController {
     @PostMapping("/posts/{postId}/actions")
     public Result<ActionResultVO> actionPost(
             @PathVariable Long postId,
-            @Valid @RequestBody ResourceActionDTO dto
+            @Valid @RequestBody CommunityContentActionDTO dto
     ) {
         return Result.success(communityService.actionPost(postId, dto));
     }
@@ -57,7 +58,7 @@ public class AdminCommunityController {
     public Result<PageResult<CommunityCommentVO>> listComments(
             @RequestParam(required = false) Long postId,
             @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false) HitPostStatus status,
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize
     ) {
@@ -69,7 +70,7 @@ public class AdminCommunityController {
     @PostMapping("/comments/{commentId}/actions")
     public Result<ActionResultVO> actionComment(
             @PathVariable Long commentId,
-            @Valid @RequestBody ResourceActionDTO dto
+            @Valid @RequestBody CommunityContentActionDTO dto
     ) {
         return Result.success(communityService.actionComment(commentId, dto));
     }

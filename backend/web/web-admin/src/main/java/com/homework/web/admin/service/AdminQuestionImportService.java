@@ -221,7 +221,7 @@ public class AdminQuestionImportService {
         vo.setTaskId(task.getTaskNo());
         vo.setBankId(task.getBankId());
         vo.setFileName(task.getFileName());
-        vo.setStatus(task.getStatus().name());
+        vo.setStatus(task.getStatus());
         vo.setTotalRows(task.getTotalRows());
         vo.setValidRows(task.getValidRows());
         vo.setErrorRows(task.getErrorRows());

@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import * as adminApi from '@/api/admin'
 import { TOKEN_STORAGE_KEY } from '@/api/http'
-import type { CurrentAdmin } from '@/types/admin'
+import { AdminRole, type CurrentAdmin } from '@/types/admin'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem(TOKEN_STORAGE_KEY) || '')
@@ -11,7 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const admin = computed(() => current.value?.admin ?? null)
   const permissions = computed(() => current.value?.permissions ?? [])
-  const isSuperAdmin = computed(() => admin.value?.role === 'SUPER_ADMIN')
+  const isSuperAdmin = computed(() => admin.value?.role === AdminRole.SUPER_ADMIN)
 
   function hasPermission(permission?: string): boolean {
     if (!permission) return true

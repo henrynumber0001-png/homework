@@ -2,7 +2,7 @@
 -- Execute once before starting web-admin.
 
 ALTER TABLE question_bank
-    ADD COLUMN status TINYINT NOT NULL DEFAULT 2 COMMENT '1 draft, 2 published, 3 offline' AFTER published_time,
+    ADD COLUMN status TINYINT NOT NULL DEFAULT 2 COMMENT '1 draft, 2 published, 3 offline, 4 deleted' AFTER published_time,
     ADD COLUMN delete_reason VARCHAR(500) NULL AFTER status,
     ADD COLUMN version INT NOT NULL DEFAULT 0 AFTER delete_reason,
     ADD COLUMN create_admin_id BIGINT NULL AFTER create_user_id;

@@ -35,5 +35,5 @@ public class QuestionBankUpdateDTO {
     private String reason;
 
     @NotNull
-    private Integer version;
+    private Integer version; //修改时，前端传回保存的乐观锁版本号
 }

@@ -1,28 +1,38 @@
 import { download, request } from './http'
 import type {
   ActionResult,
+  AdminAccountActionPayload,
   AdminLoginResult,
   AdminRow,
   AuditLog,
+  BankDataScope,
+  BillingType,
   CategoryGroup,
   CommunityComment,
+  CommunityContentActionPayload,
   CommunityPost,
+  CommunityRestrictionScope,
   CurrentAdmin,
   Dashboard,
   InvitationPreview,
   MembershipDetail,
+  MembershipActionPayload,
   MembershipOrder,
   MembershipPlan,
+  MembershipPurchaseType,
   MembershipRow,
+  MembershipType,
   PageResult,
   Question,
+  QuestionActionPayload,
   QuestionBank,
+  QuestionBankActionPayload,
   QuestionDetail,
   QuestionImageUpload,
   QuestionImportError,
   QuestionImportTask,
   QuestionPayload,
-  ResourceActionPayload,
+  UserAccountActionPayload,
   UserDetail,
   UserRow,
 } from '@/types/admin'
@@ -121,7 +131,7 @@ export function updateQuestionBank(
 }
 
 /** 发布、下架或删除题库。 */
-export function actOnQuestionBank(bankId: number, payload: ResourceActionPayload) {
+export function actOnQuestionBank(bankId: number, payload: QuestionBankActionPayload) {
   return request<ActionResult>({
     method: 'POST',
     url: `/question-banks/${bankId}/actions`,
@@ -165,7 +175,7 @@ export function updateQuestion(bankId: number, questionId: number, payload: Ques
 }
 
 /** 发布、下架或删除单条题目。 */
-export function actOnQuestion(bankId: number, questionId: number, payload: ResourceActionPayload) {
+export function actOnQuestion(bankId: number, questionId: number, payload: QuestionActionPayload) {
   return request<ActionResult>({
     method: 'POST',
     url: `/question-banks/${bankId}/questions/${questionId}/actions`,
@@ -253,7 +263,7 @@ export function getUser(userId: number) {
 /** 执行 App 用户状态动作。 */
 export function actOnUser(
   userId: number,
-  payload: ResourceActionPayload,
+  payload: UserAccountActionPayload,
   reauthToken?: string,
 ) {
   return request<ActionResult>({
@@ -269,7 +279,7 @@ export function updateUserCommunityAccess(
   userId: number,
   payload: {
     restricted: boolean
-    scope?: string
+    scope?: CommunityRestrictionScope
     endTime?: string
     reason?: string
     version: number
@@ -288,7 +298,7 @@ export function listCommunityPosts(params: Query) {
 }
 
 /** 隐藏、恢复或删除社区帖子。 */
-export function actOnCommunityPost(postId: number, payload: ResourceActionPayload) {
+export function actOnCommunityPost(postId: number, payload: CommunityContentActionPayload) {
   return request<ActionResult>({
     method: 'POST',
     url: `/community/posts/${postId}/actions`,
@@ -302,7 +312,7 @@ export function listCommunityComments(params: Query) {
 }
 
 /** 隐藏、恢复或删除社区评论。 */
-export function actOnCommunityComment(commentId: number, payload: ResourceActionPayload) {
+export function actOnCommunityComment(commentId: number, payload: CommunityContentActionPayload) {
   return request<ActionResult>({
     method: 'POST',
     url: `/community/comments/${commentId}/actions`,
@@ -323,13 +333,7 @@ export function getMembership(userId: number) {
 /** 执行发放、暂停、恢复或回收会员动作。 */
 export function actOnMembership(
   userId: number,
-  payload: {
-    action: string
-    membershipType?: string
-    durationMonths?: number
-    reason: string
-    ledgerVersion: number
-  },
+  payload: MembershipActionPayload,
   reauthToken?: string,
 ) {
   return request<MembershipRow>({
@@ -353,10 +357,10 @@ export function listMembershipPlans() {
 /** 创建会员套餐配置。 */
 export function createMembershipPlan(
   payload: {
-    membershipType: string
-    purchaseType: string
+    membershipType: MembershipType
+    purchaseType: MembershipPurchaseType
     durationMonths: number
-    billingType?: string
+    billingType?: BillingType
     price: number
     currency: string
     enabled: boolean
@@ -397,7 +401,7 @@ export function createAdminInvitation(
     email: string
     displayName: string
     permissions: string[]
-    bankDataScope: string
+    bankDataScope: BankDataScope
     assignedBankIds: number[]
     reason: string
   },
@@ -416,7 +420,7 @@ export function updateAdminAccess(
   adminId: number,
   payload: {
     permissions: string[]
-    bankDataScope: string
+    bankDataScope: BankDataScope
     assignedBankIds: number[]
     reason: string
     version: number
@@ -434,7 +438,7 @@ export function updateAdminAccess(
 /** 禁用、激活或归档普通管理员账号。 */
 export function actOnAdmin(
   adminId: number,
-  payload: ResourceActionPayload,
+  payload: AdminAccountActionPayload,
   reauthToken: string,
 ) {
   return request<ActionResult>({

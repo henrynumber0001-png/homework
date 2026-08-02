@@ -16,9 +16,11 @@ import com.homework.model.enums.BillingType;
 import com.homework.model.enums.MembershipChangeType;
 import com.homework.model.enums.MembershipOrderStatus;
 import com.homework.model.enums.MembershipPurchaseType;
+import com.homework.model.enums.MembershipStatus;
 import com.homework.model.enums.MembershipType;
 import com.homework.web.admin.context.AdminContext;
 import com.homework.web.admin.dto.MembershipActionDTO;
+import com.homework.model.enums.MembershipAction;
 import com.homework.web.admin.dto.MembershipPlanCreateDTO;
 import com.homework.web.admin.dto.MembershipPlanUpdateDTO;
 import com.homework.web.admin.mapper.BaseVipRecordMapper;
@@ -60,7 +62,7 @@ public class AdminMembershipService {
 
     public PageResult<MembershipRowVO> list(
             String keyword,
-            String membershipType,
+            MembershipStatus membershipType,
             Integer pageNum,
             Integer pageSize
     ) {
@@ -73,8 +75,7 @@ public class AdminMembershipService {
                         .contains(keyword.trim().toLowerCase(Locale.ROOT))
                         || row.getDisplayName().toLowerCase(Locale.ROOT)
                         .contains(keyword.trim().toLowerCase(Locale.ROOT)))
-                .filter(row -> membershipType == null || membershipType.isBlank()
-                        || membershipType.trim().equalsIgnoreCase(row.getCurrentType()))
+                .filter(row -> membershipType == null || membershipType == row.getCurrentType())
                 .sorted(Comparator.comparing(MembershipRowVO::getUserId).reversed())
                 .toList();
         int normalizedPage = pageNum == null || pageNum < 1 ? 1 : pageNum;
@@ -107,17 +108,16 @@ public class AdminMembershipService {
             throw new HomeworkException(ResultCodeEnum.ADMIN_MEMBERSHIP_LEDGER_CONFLICT);
         }
         String beforeSnapshot = snapshotService.create(baseVip, svip, suspension != null);
-        String action = dto.getAction().trim().toUpperCase(Locale.ROOT);
+        MembershipAction action = dto.getAction();
         MembershipChangeType changeType;
         MembershipType membershipType = null;
         Integer durationMonths = null;
         LocalDateTime now = LocalDateTime.now();
 
-        if ("GRANT".equals(action)) {
-            try {
-                membershipType = MembershipType.valueOf(dto.getMembershipType().trim().toUpperCase(Locale.ROOT));
-            } catch (RuntimeException exception) {
-                throw new HomeworkException(ResultCodeEnum.PARAM_ERROR, exception);
+        if (action == MembershipAction.GRANT) {
+            membershipType = dto.getMembershipType();
+            if (membershipType == null) {
+                throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
             }
             if (dto.getDurationMonths() == null
                     || dto.getDurationMonths() < 1 || dto.getDurationMonths() > 120) {
@@ -175,7 +175,7 @@ public class AdminMembershipService {
                 }
             }
             changeType = MembershipChangeType.ADMIN_GRANT;
-        } else if ("SUSPEND".equals(action)) {
+        } else if (action == MembershipAction.SUSPEND) {
             boolean hasActiveMembership = svip != null && svip.getExpireTime() != null && svip.getExpireTime().isAfter(now)
                     || baseVip != null && baseVip.getExpireTime() != null && baseVip.getExpireTime().isAfter(now);
             if (!hasActiveMembership || suspension != null) {
@@ -188,7 +188,7 @@ public class AdminMembershipService {
             suspension.setSuspendedTime(now);
             suspensionMapper.insert(suspension);
             changeType = MembershipChangeType.ADMIN_SUSPEND;
-        } else if ("RESUME".equals(action)) {
+        } else if (action == MembershipAction.RESUME) {
             if (suspension == null) {
                 throw new HomeworkException(ResultCodeEnum.ADMIN_MEMBERSHIP_STATE_INVALID);
             }
@@ -196,7 +196,7 @@ public class AdminMembershipService {
             suspension.setResumedByAdminId(AdminContext.getAdminId());
             suspensionMapper.updateById(suspension);
             changeType = MembershipChangeType.ADMIN_RESUME;
-        } else if ("REVOKE".equals(action)) {
+        } else if (action == MembershipAction.REVOKE) {
             boolean changed = false;
             if (baseVip != null && baseVip.getExpireTime() != null && baseVip.getExpireTime().isAfter(now)) {
                 baseVip.setExpireTime(now);
@@ -236,14 +236,14 @@ public class AdminMembershipService {
         change.setReason(dto.getReason().trim());
         change.setAdminId(AdminContext.getAdminId());
         changeMapper.insert(change);
-        auditService.record("MEMBERSHIP", action, "USER_MEMBERSHIP", userId, dto.getReason(), beforeSnapshot, change);
+        auditService.record("MEMBERSHIP", action.name(), "USER_MEMBERSHIP", userId, dto.getReason(), beforeSnapshot, change);
         return assembler.toDetail(userId);
     }
 
     public PageResult<MembershipOrderVO> listOrders(
             String keyword,
             Long userId,
-            String orderStatus,
+            MembershipOrderStatus orderStatus,
             Integer pageNum,
             Integer pageSize
     ) {
@@ -254,14 +254,7 @@ public class AdminMembershipService {
                         MembershipOrder::getOrderNo,
                         keyword == null ? null : keyword.trim())
                 .eq(userId != null, MembershipOrder::getUserId, userId);
-        if (orderStatus != null && !orderStatus.isBlank()) {
-            try {
-                query.eq(MembershipOrder::getOrderStatus,
-                        MembershipOrderStatus.valueOf(orderStatus.trim().toUpperCase(Locale.ROOT)));
-            } catch (IllegalArgumentException exception) {
-                throw new HomeworkException(ResultCodeEnum.PARAM_ERROR, exception);
-            }
-        }
+        query.eq(orderStatus != null, MembershipOrder::getOrderStatus, orderStatus);
         query.orderByDesc(MembershipOrder::getCreatedTime).orderByDesc(MembershipOrder::getId);
         Page<MembershipOrder> page = orderMapper.selectPage(new Page<>(normalizedPage, normalizedSize), query);
         PageResult<MembershipOrderVO> result = new PageResult<>();
@@ -269,11 +262,11 @@ public class AdminMembershipService {
             MembershipOrderVO vo = new MembershipOrderVO();
             vo.setOrderNo(order.getOrderNo());
             vo.setUserId(order.getUserId());
-            vo.setMembershipType(order.getMembershipType().name());
+            vo.setMembershipType(order.getMembershipType());
             vo.setDurationMonths(order.getDurationMonths());
             vo.setPayAmount(order.getPayAmount());
             vo.setCurrency(order.getCurrency());
-            vo.setOrderStatus(order.getOrderStatus().name());
+            vo.setOrderStatus(order.getOrderStatus());
             vo.setPayTime(order.getPayTime());
             vo.setRefundable(false);
             return vo;
@@ -296,18 +289,9 @@ public class AdminMembershipService {
 
     @Transactional
     public MembershipPlanVO createPlan(MembershipPlanCreateDTO dto) {
-        MembershipType membershipType;
-        MembershipPurchaseType purchaseType;
-        BillingType billingType = null;
-        try {
-            membershipType = MembershipType.valueOf(dto.getMembershipType().trim().toUpperCase(Locale.ROOT));
-            purchaseType = MembershipPurchaseType.valueOf(dto.getPurchaseType().trim().toUpperCase(Locale.ROOT));
-            if (dto.getBillingType() != null && !dto.getBillingType().isBlank()) {
-                billingType = BillingType.valueOf(dto.getBillingType().trim().toUpperCase(Locale.ROOT));
-            }
-        } catch (RuntimeException exception) {
-            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR, exception);
-        }
+        MembershipType membershipType = dto.getMembershipType();
+        MembershipPurchaseType purchaseType = dto.getPurchaseType();
+        BillingType billingType = dto.getBillingType();
         if (dto.getDurationMonths() < 1 || dto.getDurationMonths() > 12
                 || purchaseType == MembershipPurchaseType.FULL && billingType == null
                 || purchaseType == MembershipPurchaseType.DIFF && billingType != null) {
@@ -351,10 +335,10 @@ public class AdminMembershipService {
     public MembershipPlanVO toPlanVO(MembershipPlan plan) {
         MembershipPlanVO vo = new MembershipPlanVO();
         vo.setId(plan.getId());
-        vo.setMembershipType(plan.getMembershipType().name());
-        vo.setPurchaseType(plan.getPurchaseType().name());
+        vo.setMembershipType(plan.getMembershipType());
+        vo.setPurchaseType(plan.getPurchaseType());
         vo.setDurationMonths(plan.getDurationMonths());
-        vo.setBillingType(plan.getBillingType() == null ? null : plan.getBillingType().name());
+        vo.setBillingType(plan.getBillingType());
         vo.setPrice(plan.getPrice());
         vo.setCurrency(plan.getCurrency());
         vo.setEnabled(plan.getEnabled());

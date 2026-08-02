@@ -1,5 +1,8 @@
 package com.homework.web.admin.dto;
 
+import com.homework.model.enums.BillingType;
+import com.homework.model.enums.MembershipPurchaseType;
+import com.homework.model.enums.MembershipType;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,16 +15,16 @@ import java.math.BigDecimal;
 @Data
 public class MembershipPlanCreateDTO {
 
-    @NotBlank
-    private String membershipType;
+    @NotNull
+    private MembershipType membershipType;
 
-    @NotBlank
-    private String purchaseType;
+    @NotNull
+    private MembershipPurchaseType purchaseType;
 
     @NotNull
     private Integer durationMonths;
 
-    private String billingType;
+    private BillingType billingType;
 
     @NotNull
     @DecimalMin("0.01")

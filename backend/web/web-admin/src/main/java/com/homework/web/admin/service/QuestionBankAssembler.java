@@ -76,7 +76,7 @@ public class QuestionBankAssembler {
         QuestionBankRowVO vo = new QuestionBankRowVO();
         vo.setId(bank.getId());
         vo.setBankName(bank.getBankName());
-        vo.setGroupType(group.getGroupType().getLabel());
+        vo.setGroupType(group.getGroupType());
         NamedIdVO groupVO = new NamedIdVO();
         groupVO.setId(group.getId());
         groupVO.setName(group.getGroupName());
@@ -89,7 +89,7 @@ public class QuestionBankAssembler {
         subModuleVO.setId(subModule.getId());
         subModuleVO.setName(subModule.getSubModuleName());
         vo.setSubModule(subModuleVO);
-        vo.setStatus(bank.getStatus().name());
+        vo.setStatus(bank.getStatus());
         vo.setTags(bankTagMapper.selectList(new LambdaQueryWrapper<BankTag>()
                         .eq(BankTag::getBankId, bank.getId())
                         .orderByAsc(BankTag::getId))

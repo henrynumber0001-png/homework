@@ -18,15 +18,12 @@ public class QuestionContentService {
 
     public QuestionInfoQuestionType parseAndValidate(
             GroupType groupType,
-            String questionTypeValue,
+            QuestionInfoQuestionType questionType,
             List<QuestionOptionDTO> options,
             List<String> correctAnswers
     ) {
-        QuestionInfoQuestionType questionType;
-        try {
-            questionType = QuestionInfoQuestionType.valueOf(questionTypeValue.trim().toUpperCase(Locale.ROOT));
-        } catch (RuntimeException exception) {
-            throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_TYPE_INVALID, exception);
+        if (questionType == null) {
+            throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_TYPE_INVALID);
         }
         if (groupType == GroupType.INTERVIEW && questionType != QuestionInfoQuestionType.ESSAY) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_TYPE_INVALID);

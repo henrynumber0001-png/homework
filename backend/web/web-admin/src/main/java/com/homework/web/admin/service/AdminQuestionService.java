@@ -9,12 +9,14 @@ import com.homework.model.entity.InterviewQuestionInfo;
 import com.homework.model.entity.QuestionBank;
 import com.homework.model.enums.GroupType;
 import com.homework.model.enums.QuestionInfoQuestionType;
+import com.homework.model.enums.QuestionBankStatus;
 import com.homework.web.admin.auth.AdminAccessService;
 import com.homework.web.admin.context.AdminContext;
+import com.homework.web.admin.dto.QuestionActionDTO;
 import com.homework.web.admin.dto.QuestionCreateDTO;
 import com.homework.web.admin.dto.QuestionOrderDTO;
 import com.homework.web.admin.dto.QuestionUpdateDTO;
-import com.homework.web.admin.dto.ResourceActionDTO;
+import com.homework.model.enums.QuestionAction;
 import com.homework.web.admin.mapper.CertificateQuestionMapper;
 import com.homework.web.admin.mapper.InterviewQuestionMapper;
 import com.homework.web.admin.mapper.QuestionBankMapper;
@@ -54,7 +56,7 @@ public class AdminQuestionService {
     public PageResult<QuestionRowVO> list(
             Long bankId,
             String keyword,
-            String questionType,
+            QuestionInfoQuestionType questionType,
             Boolean released,
             Integer pageNum,
             Integer pageSize,
@@ -67,21 +69,11 @@ public class AdminQuestionService {
             throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_NOT_FOUND);
         }
 
-        QuestionInfoQuestionType typeFilter = null;
-        if (questionType != null && !questionType.isBlank()) {
-            try {
-                typeFilter = QuestionInfoQuestionType.valueOf(questionType.trim().toUpperCase(Locale.ROOT));
-            } catch (IllegalArgumentException exception) {
-                throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_TYPE_INVALID, exception);
-            }
-        }
+        QuestionInfoQuestionType typeFilter = questionType;
 
         String normalizedKeyword = keyword == null ? null : keyword.trim();
-        String normalizedSortMode = sortMode == null || sortMode.isBlank()
-                ? "UPDATED_TIME_DESC"
-                : sortMode.trim().toUpperCase(Locale.ROOT);
-        if (!"UPDATED_TIME_DESC".equals(normalizedSortMode)
-                && !"MANUAL_ORDER_ASC".equals(normalizedSortMode)) {
+        String normalizedSortMode = sortMode == null || sortMode.isBlank() ? "UPDATED_TIME_DESC" : sortMode.trim().toUpperCase(Locale.ROOT);
+        if (!"UPDATED_TIME_DESC".equals(normalizedSortMode) && !"MANUAL_ORDER_ASC".equals(normalizedSortMode)) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
@@ -391,14 +383,14 @@ public class AdminQuestionService {
      * 变更：删除共享引用限制；管理端不再提供题目恢复能力。
      */
     @Transactional
-    public ActionResultVO action(Long bankId, Long questionId, ResourceActionDTO dto) {
+    public ActionResultVO action(Long bankId, Long questionId, QuestionActionDTO dto) {
         accessService.requireBank(bankId);
         GroupType groupType = bankMapper.selectGroupType(bankId);
         if (groupType == null) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_NOT_FOUND);
         }
 
-        String action = dto.getAction().trim().toUpperCase(Locale.ROOT);
+        QuestionAction action = dto.getAction();
         Object before;
         Object updated;
 
@@ -417,7 +409,7 @@ public class AdminQuestionService {
             org.springframework.beans.BeanUtils.copyProperties(question, beforeQuestion);
             before = beforeQuestion;
 
-            if ("PUBLISH".equals(action)) {
+            if (action == QuestionAction.PUBLISH) {
                 accessService.requirePermission("question:publish");
                 if (Boolean.TRUE.equals(question.getIsReleased())) {
                     throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_STATE_INVALID);
@@ -426,7 +418,7 @@ public class AdminQuestionService {
                 if (interviewQuestionMapper.updateById(question) == 0) {
                     throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
                 }
-            } else if ("OFFLINE".equals(action)) {
+            } else if (action == QuestionAction.OFFLINE) {
                 accessService.requirePermission("question:publish");
                 if (!Boolean.TRUE.equals(question.getIsReleased())) {
                     throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_STATE_INVALID);
@@ -435,7 +427,7 @@ public class AdminQuestionService {
                 if (interviewQuestionMapper.updateById(question) == 0) {
                     throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
                 }
-            } else if ("DELETE".equals(action)) {
+            } else if (action == QuestionAction.DELETE) {
                 accessService.requirePermission("question:delete");
                 if (interviewQuestionMapper.logicalDelete(bankId, questionId, dto.getVersion()) == 0) {
                     throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
@@ -459,7 +451,7 @@ public class AdminQuestionService {
             org.springframework.beans.BeanUtils.copyProperties(question, beforeQuestion);
             before = beforeQuestion;
 
-            if ("PUBLISH".equals(action)) {
+            if (action == QuestionAction.PUBLISH) {
                 accessService.requirePermission("question:publish");
                 if (Boolean.TRUE.equals(question.getIsReleased())) {
                     throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_STATE_INVALID);
@@ -468,7 +460,7 @@ public class AdminQuestionService {
                 if (certificateQuestionMapper.updateById(question) == 0) {
                     throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
                 }
-            } else if ("OFFLINE".equals(action)) {
+            } else if (action == QuestionAction.OFFLINE) {
                 accessService.requirePermission("question:publish");
                 if (!Boolean.TRUE.equals(question.getIsReleased())) {
                     throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_STATE_INVALID);
@@ -477,7 +469,7 @@ public class AdminQuestionService {
                 if (certificateQuestionMapper.updateById(question) == 0) {
                     throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
                 }
-            } else if ("DELETE".equals(action)) {
+            } else if (action == QuestionAction.DELETE) {
                 accessService.requirePermission("question:delete");
                 if (certificateQuestionMapper.logicalDelete(bankId, questionId, dto.getVersion()) == 0) {
                     throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
@@ -488,20 +480,24 @@ public class AdminQuestionService {
             updated = certificateQuestionMapper.selectIncludingDeleted(bankId, questionId);
         }
 
-        auditService.record("QUESTION", action, "QUESTION", questionId, dto.getReason(), before, updated);
+        auditService.record("QUESTION", action.name(), "QUESTION", questionId, dto.getReason(), before, updated);
         ActionResultVO result = new ActionResultVO();
         result.setTargetId(questionId);
-        result.setAction(action);
+        result.setAction(action.getValue());
         if (updated instanceof InterviewQuestionInfo question) {
             result.setStatus(Boolean.TRUE.equals(question.getDeleted())
-                    ? "DELETED"
-                    : Boolean.TRUE.equals(question.getIsReleased()) ? "PUBLISHED" : "OFFLINE");
+                    ? QuestionBankStatus.DELETED.getValue()
+                    : Boolean.TRUE.equals(question.getIsReleased())
+                    ? QuestionBankStatus.PUBLISHED.getValue()
+                    : QuestionBankStatus.OFFLINE.getValue());
             result.setVersion(question.getVersion());
             result.setUpdatedTime(question.getUpdatedTime());
         } else if (updated instanceof CertificateQuestionInfo question) {
             result.setStatus(Boolean.TRUE.equals(question.getDeleted())
-                    ? "DELETED"
-                    : Boolean.TRUE.equals(question.getIsReleased()) ? "PUBLISHED" : "OFFLINE");
+                    ? QuestionBankStatus.DELETED.getValue()
+                    : Boolean.TRUE.equals(question.getIsReleased())
+                    ? QuestionBankStatus.PUBLISHED.getValue()
+                    : QuestionBankStatus.OFFLINE.getValue());
             result.setVersion(question.getVersion());
             result.setUpdatedTime(question.getUpdatedTime());
         }

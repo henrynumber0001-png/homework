@@ -10,7 +10,8 @@ public enum QuestionBankStatus implements BaseEnum {
 
     DRAFT(1, "draft"),
     PUBLISHED(2, "published"),
-    OFFLINE(3, "offline");
+    OFFLINE(3, "offline"),
+    DELETED(4, "deleted");
 
     @EnumValue
     @JsonValue

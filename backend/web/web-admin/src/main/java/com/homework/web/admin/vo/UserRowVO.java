@@ -1,5 +1,7 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.MembershipStatus;
+import com.homework.model.enums.UserInfoStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -21,10 +23,10 @@ public class UserRowVO {
     private String avatar;
 
     /** 账号状态名称。 */
-    private String status;
+    private UserInfoStatus status;
 
     /** 当前最高有效会员等级。 */
-    private String membershipType;
+    private MembershipStatus membershipType;
 
     /** 注册时间。 */
     private LocalDateTime registeredTime;

@@ -37,8 +37,8 @@ export const HitActionType = {
 } as const
 
 export const ActionStatus = {
-  ACTIVATE: 'ACTIVATE',
-  DEACTIVATE: 'DEACTIVATE',
+  ACTIVATE: 1,
+  DEACTIVATE: 2,
 } as const
 
 export const ExamSessionStatus = {

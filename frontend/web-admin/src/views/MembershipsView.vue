@@ -15,9 +15,32 @@ import {
 } from '@/api/admin'
 import { showApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
-import type { MembershipDetail, MembershipOrder, MembershipPlan, MembershipRow } from '@/types/admin'
+import {
+  BillingType,
+  MembershipAction,
+  MembershipOrderStatus,
+  MembershipPurchaseType,
+  MembershipStatus,
+  MembershipType,
+  type BillingType as BillingTypeValue,
+  type MembershipAction as MembershipActionValue,
+  type MembershipDetail,
+  type MembershipOrder,
+  type MembershipOrderStatus as MembershipOrderStatusValue,
+  type MembershipPlan,
+  type MembershipPurchaseType as MembershipPurchaseTypeValue,
+  type MembershipRow,
+  type MembershipStatus as MembershipStatusValue,
+  type MembershipType as MembershipTypeValue,
+} from '@/types/admin'
 import { formatDateTime } from '@/utils/format'
-import { membershipTypeLabels } from '@/utils/dictionaries'
+import {
+  billingTypeLabels,
+  membershipChangeTypeLabels,
+  membershipOrderStatusNames,
+  membershipPurchaseTypeLabels,
+  membershipTypeLabels,
+} from '@/utils/dictionaries'
 
 const auth = useAuthStore()
 const activeTab = ref('members')
@@ -36,26 +59,45 @@ const reauthDialog = ref<InstanceType<typeof ReauthDialog>>()
 const planMode = ref<'create' | 'edit'>('create')
 const query = reactive({
   keyword: '',
-  membershipType: '',
-  orderStatus: '',
+  membershipType: '' as MembershipStatusValue | '',
+  orderStatus: '' as MembershipOrderStatusValue | '',
   pageNum: 1,
   pageSize: 20,
 })
-const actionForm = reactive({
+const actionForm = reactive<{
+  userId: number
+  displayName: string
+  action: MembershipActionValue
+  membershipType: MembershipTypeValue
+  durationMonths: number
+  reason: string
+  ledgerVersion: number
+}>({
   userId: 0,
   displayName: '',
-  action: 'GRANT',
-  membershipType: 'PREMIUM',
+  action: MembershipAction.GRANT,
+  membershipType: MembershipType.PREMIUM,
   durationMonths: 1,
   reason: '',
   ledgerVersion: 0,
 })
-const planForm = reactive({
+const planForm = reactive<{
+  id: number
+  membershipType: MembershipTypeValue
+  purchaseType: MembershipPurchaseTypeValue
+  durationMonths: number
+  billingType: BillingTypeValue | ''
+  price: number
+  currency: string
+  enabled: boolean
+  reason: string
+  version: number
+}>({
   id: 0,
-  membershipType: 'PREMIUM',
-  purchaseType: 'FULL',
+  membershipType: MembershipType.PREMIUM,
+  purchaseType: MembershipPurchaseType.FULL,
   durationMonths: 1,
-  billingType: 'MONTHLY',
+  billingType: BillingType.MONTHLY,
   price: 0,
   currency: 'CNY',
   enabled: false,
@@ -107,12 +149,12 @@ function search(): void {
   void load()
 }
 
-function openAction(row: MembershipRow, action: string): void {
+function openAction(row: MembershipRow, action: MembershipAction): void {
   Object.assign(actionForm, {
     userId: row.userId,
     displayName: row.displayName,
     action,
-    membershipType: 'PREMIUM',
+    membershipType: MembershipType.PREMIUM,
     durationMonths: 1,
     reason: '',
     ledgerVersion: row.ledgerVersion,
@@ -138,8 +180,8 @@ async function saveAction(): Promise<void> {
   try {
     await actOnMembership(actionForm.userId, {
       action: actionForm.action,
-      membershipType: actionForm.action === 'GRANT' ? actionForm.membershipType : undefined,
-      durationMonths: actionForm.action === 'GRANT' ? actionForm.durationMonths : undefined,
+      membershipType: actionForm.action === MembershipAction.GRANT ? actionForm.membershipType : undefined,
+      durationMonths: actionForm.action === MembershipAction.GRANT ? actionForm.durationMonths : undefined,
       reason: actionForm.reason.trim(),
       ledgerVersion: actionForm.ledgerVersion,
     })
@@ -157,10 +199,10 @@ function openPlanCreate(): void {
   planMode.value = 'create'
   Object.assign(planForm, {
     id: 0,
-    membershipType: 'PREMIUM',
-    purchaseType: 'FULL',
+    membershipType: MembershipType.PREMIUM,
+    purchaseType: MembershipPurchaseType.FULL,
     durationMonths: 1,
-    billingType: 'MONTHLY',
+    billingType: BillingType.MONTHLY,
     price: 0,
     currency: 'CNY',
     enabled: false,
@@ -200,7 +242,10 @@ async function savePlan(reauthToken: string): Promise<void> {
           membershipType: planForm.membershipType,
           purchaseType: planForm.purchaseType,
           durationMonths: planForm.durationMonths,
-          billingType: planForm.purchaseType === 'FULL' ? planForm.billingType || undefined : undefined,
+          billingType:
+            planForm.purchaseType === MembershipPurchaseType.FULL
+              ? planForm.billingType || undefined
+              : undefined,
           price: planForm.price,
           currency: planForm.currency,
           enabled: planForm.enabled,
@@ -251,13 +296,14 @@ async function savePlan(reauthToken: string): Promise<void> {
           @keyup.enter="search"
         />
         <el-select v-if="activeTab === 'members'" v-model="query.membershipType" clearable placeholder="会员等级">
-          <el-option label="Premium" value="PREMIUM" />
-          <el-option label="Premium Plus" value="PREMIUM_PLUS" />
+          <el-option label="Premium" :value="MembershipStatus.PREMIUM" />
+          <el-option label="Premium Plus" :value="MembershipStatus.PREMIUM_PLUS" />
         </el-select>
         <el-select v-else v-model="query.orderStatus" clearable placeholder="订单状态">
-          <el-option label="已支付" value="PAID" />
-          <el-option label="待支付" value="PENDING" />
-          <el-option label="已关闭" value="CLOSED" />
+          <el-option label="已支付" :value="MembershipOrderStatus.PAID" />
+          <el-option label="待支付" :value="MembershipOrderStatus.PENDING" />
+          <el-option label="已过期" :value="MembershipOrderStatus.EXPIRED" />
+          <el-option label="支付失败" :value="MembershipOrderStatus.PAY_FAILED" />
         </el-select>
         <el-button type="primary" plain @click="search">查询</el-button>
       </div>
@@ -283,9 +329,9 @@ async function savePlan(reauthToken: string): Promise<void> {
           <template #default="{ row }">
             <el-button link type="primary" @click="openDetail(row)">详情</el-button>
             <template v-if="auth.hasPermission('membership:manage')">
-              <el-button link type="primary" @click="openAction(row, 'GRANT')">发放</el-button>
-              <el-button v-if="!row.suspended" link @click="openAction(row, 'SUSPEND')">暂停</el-button>
-              <el-button v-else link @click="openAction(row, 'RESUME')">恢复</el-button>
+              <el-button link type="primary" @click="openAction(row, MembershipAction.GRANT)">发放</el-button>
+              <el-button v-if="!row.suspended" link @click="openAction(row, MembershipAction.SUSPEND)">暂停</el-button>
+              <el-button v-else link @click="openAction(row, MembershipAction.RESUME)">恢复</el-button>
             </template>
           </template>
         </el-table-column>
@@ -301,7 +347,7 @@ async function savePlan(reauthToken: string): Promise<void> {
           <template #default="{ row }">{{ row.currency }} {{ Number(row.payAmount).toFixed(2) }}</template>
         </el-table-column>
         <el-table-column label="状态" width="110">
-          <template #default="{ row }"><StatusTag :value="row.orderStatus" /></template>
+          <template #default="{ row }"><StatusTag :value="membershipOrderStatusNames[row.orderStatus]" /></template>
         </el-table-column>
         <el-table-column label="支付时间" width="180">
           <template #default="{ row }">{{ formatDateTime(row.payTime) }}</template>
@@ -316,9 +362,13 @@ async function savePlan(reauthToken: string): Promise<void> {
         <el-table-column label="会员等级" min-width="160">
           <template #default="{ row }">{{ membershipTypeLabels[row.membershipType] || row.membershipType }}</template>
         </el-table-column>
-        <el-table-column prop="purchaseType" label="购买类型" width="120" />
+        <el-table-column label="购买类型" width="120">
+          <template #default="{ row }">{{ membershipPurchaseTypeLabels[row.purchaseType] }}</template>
+        </el-table-column>
         <el-table-column prop="durationMonths" label="月数" width="90" />
-        <el-table-column prop="billingType" label="计费类型" width="120" />
+        <el-table-column label="计费类型" width="120">
+          <template #default="{ row }">{{ row.billingType ? billingTypeLabels[row.billingType] : '—' }}</template>
+        </el-table-column>
         <el-table-column label="价格" width="130">
           <template #default="{ row }">{{ row.currency }} {{ Number(row.price).toFixed(2) }}</template>
         </el-table-column>
@@ -344,16 +394,16 @@ async function savePlan(reauthToken: string): Promise<void> {
 
     <el-dialog
       v-model="actionVisible"
-      :title="actionForm.action === 'GRANT' ? '发放会员' : actionForm.action === 'SUSPEND' ? '暂停会员' : '恢复会员'"
+      :title="actionForm.action === MembershipAction.GRANT ? '发放会员' : actionForm.action === MembershipAction.SUSPEND ? '暂停会员' : '恢复会员'"
       width="500px"
     >
       <p class="dialog-user">{{ actionForm.displayName }} · 用户 ID {{ actionForm.userId }}</p>
       <el-form label-position="top">
-        <template v-if="actionForm.action === 'GRANT'">
+        <template v-if="actionForm.action === MembershipAction.GRANT">
           <el-form-item label="会员等级" required>
             <el-radio-group v-model="actionForm.membershipType">
-              <el-radio-button value="PREMIUM">Premium</el-radio-button>
-              <el-radio-button value="PREMIUM_PLUS">Premium Plus</el-radio-button>
+              <el-radio-button :value="MembershipType.PREMIUM">Premium</el-radio-button>
+              <el-radio-button :value="MembershipType.PREMIUM_PLUS">Premium Plus</el-radio-button>
             </el-radio-group>
           </el-form-item>
           <el-form-item label="发放月数" required>
@@ -392,8 +442,12 @@ async function savePlan(reauthToken: string): Promise<void> {
           </el-descriptions>
           <h3>最近变更</h3>
           <el-table :data="detail.recentChanges" max-height="360">
-            <el-table-column prop="changeType" label="变更" width="110" />
-            <el-table-column prop="membershipType" label="等级" width="130" />
+            <el-table-column label="变更" width="110">
+              <template #default="{ row }">{{ membershipChangeTypeLabels[row.changeType] }}</template>
+            </el-table-column>
+            <el-table-column label="等级" width="130">
+              <template #default="{ row }">{{ row.membershipType ? membershipTypeLabels[row.membershipType] : '—' }}</template>
+            </el-table-column>
             <el-table-column prop="reason" label="原因" min-width="180" show-overflow-tooltip />
             <el-table-column label="时间" width="160">
               <template #default="{ row }">{{ formatDateTime(row.createdTime) }}</template>
@@ -407,15 +461,15 @@ async function savePlan(reauthToken: string): Promise<void> {
       <el-form label-position="top">
         <el-form-item label="会员等级" required>
           <el-select v-model="planForm.membershipType" :disabled="planMode === 'edit'">
-            <el-option label="Premium" value="PREMIUM" />
-            <el-option label="Premium Plus" value="PREMIUM_PLUS" />
+            <el-option label="Premium" :value="MembershipType.PREMIUM" />
+            <el-option label="Premium Plus" :value="MembershipType.PREMIUM_PLUS" />
           </el-select>
         </el-form-item>
         <div class="form-row">
           <el-form-item label="购买类型" required>
             <el-select v-model="planForm.purchaseType" :disabled="planMode === 'edit'">
-              <el-option label="完整购买" value="FULL" />
-              <el-option label="补差升级" value="DIFF" />
+              <el-option label="完整购买" :value="MembershipPurchaseType.FULL" />
+              <el-option label="补差升级" :value="MembershipPurchaseType.DIFF" />
             </el-select>
           </el-form-item>
           <el-form-item label="时长（月）" required>
@@ -426,11 +480,11 @@ async function savePlan(reauthToken: string): Promise<void> {
           <el-form-item label="计费类型">
             <el-select
               v-model="planForm.billingType"
-              :disabled="planMode === 'edit' || planForm.purchaseType === 'DIFF'"
+              :disabled="planMode === 'edit' || planForm.purchaseType === MembershipPurchaseType.DIFF"
             >
-              <el-option label="按月" value="MONTHLY" />
-              <el-option label="按季" value="QUARTERLY" />
-              <el-option label="按年" value="YEARLY" />
+              <el-option label="按月" :value="BillingType.MONTHLY" />
+              <el-option label="按季" :value="BillingType.QUARTERLY" />
+              <el-option label="按年" :value="BillingType.YEARLY" />
             </el-select>
           </el-form-item>
           <el-form-item label="币种" required>

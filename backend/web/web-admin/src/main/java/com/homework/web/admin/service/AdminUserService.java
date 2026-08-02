@@ -13,10 +13,12 @@ import com.homework.model.entity.UserAuthIdentity;
 import com.homework.model.entity.UserCommunityRestriction;
 import com.homework.model.entity.UserInfo;
 import com.homework.model.enums.CommunityRestrictionScope;
+import com.homework.model.enums.MembershipStatus;
 import com.homework.model.enums.UserInfoStatus;
 import com.homework.web.admin.context.AdminContext;
-import com.homework.web.admin.dto.ResourceActionDTO;
+import com.homework.web.admin.dto.UserAccountActionDTO;
 import com.homework.web.admin.dto.UserCommunityAccessDTO;
+import com.homework.model.enums.UserAccountAction;
 import com.homework.web.admin.mapper.BaseVipRecordMapper;
 import com.homework.web.admin.mapper.HitCommentMapper;
 import com.homework.web.admin.mapper.HitPostMapper;
@@ -36,7 +38,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 /** 后台 App 用户查询、状态和社区访问权限管理。 */
 @Service
@@ -54,7 +55,7 @@ public class AdminUserService {
 
     public PageResult<UserRowVO> list(
             String keyword,
-            String status,
+            UserInfoStatus status,
             Integer pageNum,
             Integer pageSize
     ) {
@@ -65,13 +66,7 @@ public class AdminUserService {
             query.and(wrapper -> wrapper.like(UserInfo::getAccountNo, keyword.trim())
                     .or().like(UserInfo::getDisplayName, keyword.trim()));
         }
-        if (status != null && !status.isBlank()) {
-            try {
-                query.eq(UserInfo::getStatus, UserInfoStatus.valueOf(status.trim().toUpperCase(Locale.ROOT)));
-            } catch (IllegalArgumentException exception) {
-                throw new HomeworkException(ResultCodeEnum.PARAM_ERROR, exception);
-            }
-        }
+        query.eq(status != null, UserInfo::getStatus, status);
         query.orderByDesc(UserInfo::getCreatedTime).orderByDesc(UserInfo::getId);
         Page<UserInfo> page = userMapper.selectPage(new Page<>(normalizedPage, normalizedSize), query);
         PageResult<UserRowVO> result = new PageResult<>();
@@ -95,7 +90,7 @@ public class AdminUserService {
                 new LambdaQueryWrapper<UserAuthIdentity>()
                         .eq(UserAuthIdentity::getUserId, userId))) {
             UserIdentityVO identityVO = new UserIdentityVO();
-            identityVO.setProvider(identity.getProvider().name());
+            identityVO.setProvider(identity.getProvider());
             String identifier = identity.getIdentifier();
             if (identifier == null || identifier.length() <= 4) {
                 identityVO.setMaskedIdentifier("****");
@@ -106,7 +101,7 @@ public class AdminUserService {
                 identityVO.setMaskedIdentifier(identifier.substring(0, 2)
                         + "***" + identifier.substring(identifier.length() - 2));
             }
-            identityVO.setStatus(identity.getStatus().name());
+            identityVO.setStatus(identity.getStatus());
             identityVO.setLastUsedTime(identity.getLastUsedTime());
             identities.add(identityVO);
         }
@@ -121,7 +116,7 @@ public class AdminUserService {
                         .last("LIMIT 1"));
         if (restriction != null) {
             UserCommunityRestrictionVO restrictionVO = new UserCommunityRestrictionVO();
-            restrictionVO.setScope(restriction.getScope().name());
+            restrictionVO.setScope(restriction.getScope());
             restrictionVO.setStartTime(restriction.getStartTime());
             restrictionVO.setEndTime(restriction.getEndTime());
             restrictionVO.setReason(restriction.getReason());
@@ -135,7 +130,7 @@ public class AdminUserService {
     }
 
     @Transactional
-    public ActionResultVO action(Long userId, ResourceActionDTO dto) {
+    public ActionResultVO action(Long userId, UserAccountActionDTO dto) {
         UserInfo user = userMapper.selectById(userId);
         if (user == null) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_USER_STATE_INVALID);
@@ -143,16 +138,16 @@ public class AdminUserService {
         if (!user.getVersion().equals(dto.getVersion())) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
         }
-        String action = dto.getAction().trim().toUpperCase(Locale.ROOT);
+        UserAccountAction action = dto.getAction();
         UserInfoStatus targetStatus;
-        if ("DISABLE".equals(action) && user.getStatus() == UserInfoStatus.ACTIVE) {
+        if (action == UserAccountAction.DISABLE && user.getStatus() == UserInfoStatus.ACTIVE) {
             targetStatus = UserInfoStatus.DISABLED;
-        } else if ("ACTIVATE".equals(action) && user.getStatus() == UserInfoStatus.DISABLED) {
+        } else if (action == UserAccountAction.ACTIVATE && user.getStatus() == UserInfoStatus.DISABLED) {
             targetStatus = UserInfoStatus.ACTIVE;
-        } else if ("BAN".equals(action)
+        } else if (action == UserAccountAction.BAN
                 && (user.getStatus() == UserInfoStatus.ACTIVE || user.getStatus() == UserInfoStatus.DISABLED)) {
             targetStatus = UserInfoStatus.BANNED;
-        } else if ("UNBAN".equals(action) && user.getStatus() == UserInfoStatus.BANNED) {
+        } else if (action == UserAccountAction.UNBAN && user.getStatus() == UserInfoStatus.BANNED) {
             targetStatus = UserInfoStatus.ACTIVE;
         } else {
             throw new HomeworkException(ResultCodeEnum.ADMIN_USER_STATE_INVALID);
@@ -164,11 +159,11 @@ public class AdminUserService {
             throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
         }
         UserInfo updated = userMapper.selectById(userId);
-        auditService.record("USER", action, "USER", userId, dto.getReason(), before, updated);
+        auditService.record("USER", action.name(), "USER", userId, dto.getReason(), before, updated);
         ActionResultVO result = new ActionResultVO();
         result.setTargetId(userId);
-        result.setAction(action);
-        result.setStatus(updated.getStatus().name());
+        result.setAction(action.getValue());
+        result.setStatus(updated.getStatus().getValue());
         result.setVersion(updated.getVersion());
         result.setUpdatedTime(updated.getUpdatedTime());
         return result;
@@ -193,11 +188,9 @@ public class AdminUserService {
             restrictionMapper.updateById(restriction);
         }
         if (Boolean.TRUE.equals(dto.getRestricted())) {
-            CommunityRestrictionScope scope;
-            try {
-                scope = CommunityRestrictionScope.valueOf(dto.getScope().trim().toUpperCase(Locale.ROOT));
-            } catch (RuntimeException exception) {
-                throw new HomeworkException(ResultCodeEnum.PARAM_ERROR, exception);
+            CommunityRestrictionScope scope = dto.getScope();
+            if (scope == null) {
+                throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
             }
             if (dto.getReason() == null || dto.getReason().isBlank()
                     || dto.getEndTime() != null && !dto.getEndTime().isAfter(LocalDateTime.now())) {
@@ -232,7 +225,7 @@ public class AdminUserService {
         vo.setAccountNo(user.getAccountNo());
         vo.setDisplayName(user.getDisplayName());
         vo.setAvatar(user.getAvatar());
-        vo.setStatus(user.getStatus().name());
+        vo.setStatus(user.getStatus());
         LocalDateTime now = LocalDateTime.now();
         SvipRecord svip = svipMapper.selectOne(new LambdaQueryWrapper<SvipRecord>()
                 .eq(SvipRecord::getUserId, user.getId())
@@ -243,9 +236,11 @@ public class AdminUserService {
                 .orderByDesc(BaseVipRecord::getExpireTime)
                 .last("LIMIT 1"));
         if (svip != null && svip.getExpireTime() != null && svip.getExpireTime().isAfter(now)) {
-            vo.setMembershipType("PREMIUM_PLUS");
+            vo.setMembershipType(MembershipStatus.PREMIUM_PLUS);
         } else if (baseVip != null && baseVip.getExpireTime() != null && baseVip.getExpireTime().isAfter(now)) {
-            vo.setMembershipType("PREMIUM");
+            vo.setMembershipType(MembershipStatus.PREMIUM);
+        } else {
+            vo.setMembershipType(MembershipStatus.FREE);
         }
         vo.setRegisteredTime(user.getCreatedTime());
         vo.setVersion(user.getVersion());

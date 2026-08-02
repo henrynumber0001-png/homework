@@ -1,5 +1,7 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.AdminRole;
+import com.homework.model.enums.AdminStatus;
 import lombok.Data;
 
 /** 管理员基础信息。 */
@@ -16,8 +18,8 @@ public class AdminSummaryVO {
     private String displayName;
 
     /** 管理员角色。 */
-    private String role;
+    private AdminRole role;
 
     /** 管理员状态。 */
-    private String status;
+    private AdminStatus status;
 }

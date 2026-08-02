@@ -1,8 +1,10 @@
 package com.homework.web.admin.dto;
 
+import com.homework.model.enums.BankDataScope;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -23,8 +25,8 @@ public class AdminInvitationCreateDTO {
     @NotEmpty
     private List<String> permissions;
 
-    @NotBlank
-    private String bankDataScope;
+    @NotNull
+    private BankDataScope bankDataScope;
 
     private List<Long> assignedBankIds;
 

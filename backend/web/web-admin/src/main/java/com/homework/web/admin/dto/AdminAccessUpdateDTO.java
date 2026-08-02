@@ -1,5 +1,6 @@
 package com.homework.web.admin.dto;
 
+import com.homework.model.enums.BankDataScope;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -15,7 +16,7 @@ public class AdminAccessUpdateDTO {
     private List<String> permissions;
 
     @NotNull
-    private String bankDataScope;
+    private BankDataScope bankDataScope;
 
     private List<Long> assignedBankIds;
 

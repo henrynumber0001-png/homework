@@ -1,5 +1,8 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.BillingType;
+import com.homework.model.enums.MembershipPurchaseType;
+import com.homework.model.enums.MembershipType;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -12,16 +15,16 @@ public class MembershipPlanVO {
     private Long id;
 
     /** 会员等级名称。 */
-    private String membershipType;
+    private MembershipType membershipType;
 
     /** 全款或补差购买类型。 */
-    private String purchaseType;
+    private MembershipPurchaseType purchaseType;
 
     /** 套餐月数。 */
     private Integer durationMonths;
 
     /** 月、季或年计费类型。 */
-    private String billingType;
+    private BillingType billingType;
 
     /** 当前价格。 */
     private BigDecimal price;

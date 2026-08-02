@@ -25,7 +25,7 @@ public class QuestionAssembler {
         QuestionRowVO vo = new QuestionRowVO();
         vo.setId(question.getId());
         vo.setBankId(question.getBankId());
-        vo.setQuestionType(question.getQuestionType().name());
+        vo.setQuestionType(question.getQuestionType());
         vo.setTitle(question.getTitle());
         vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setReleased(question.getIsReleased());
@@ -41,7 +41,7 @@ public class QuestionAssembler {
         QuestionRowVO vo = new QuestionRowVO();
         vo.setId(question.getId());
         vo.setBankId(question.getBankId());
-        vo.setQuestionType(question.getQuestionType().name());
+        vo.setQuestionType(question.getQuestionType());
         vo.setTitle(question.getTitle());
         vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setReleased(question.getIsReleased());
@@ -57,8 +57,8 @@ public class QuestionAssembler {
         QuestionDetailVO vo = new QuestionDetailVO();
         vo.setId(question.getId());
         vo.setBankId(question.getBankId());
-        vo.setGroupType(groupType.name());
-        vo.setQuestionType(question.getQuestionType().name());
+        vo.setGroupType(groupType);
+        vo.setQuestionType(question.getQuestionType());
         vo.setTitle(question.getTitle());
         vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setAnalysis(question.getAnalysis());
@@ -75,8 +75,8 @@ public class QuestionAssembler {
         QuestionDetailVO vo = new QuestionDetailVO();
         vo.setId(question.getId());
         vo.setBankId(question.getBankId());
-        vo.setGroupType(groupType.name());
-        vo.setQuestionType(question.getQuestionType().name());
+        vo.setGroupType(groupType);
+        vo.setQuestionType(question.getQuestionType());
         vo.setTitle(question.getTitle());
         vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setAnalysis(question.getAnalysis());

@@ -1,5 +1,6 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.MembershipStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -18,7 +19,7 @@ public class MembershipRowVO {
     private String displayName;
 
     /** 当前最高有效会员等级。 */
-    private String currentType;
+    private MembershipStatus currentType;
 
     /** ACTIVE、SUSPENDED 或 EXPIRED。 */
     private String accessStatus;

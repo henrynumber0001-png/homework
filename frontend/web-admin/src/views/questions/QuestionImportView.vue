@@ -14,12 +14,14 @@ import {
   listQuestionImportErrors,
 } from '@/api/admin'
 import { showApiError } from '@/api/http'
-import type {
-  QuestionBank,
-  QuestionImportError,
-  QuestionImportTask,
+import {
+  QuestionImportStatus,
+  type QuestionBank,
+  type QuestionImportError,
+  type QuestionImportTask,
 } from '@/types/admin'
 import { formatDateTime, saveBlob } from '@/utils/format'
+import { importStatusNames } from '@/utils/dictionaries'
 
 const route = useRoute()
 const router = useRouter()
@@ -34,12 +36,14 @@ const validating = ref(false)
 const committing = ref(false)
 
 const step = computed(() => {
-  if (task.value?.status === 'COMPLETED') return 3
+  if (task.value?.status === QuestionImportStatus.SUCCEEDED) return 3
   if (task.value) return 2
   return 1
 })
 
-const canCommit = computed(() => task.value?.status === 'READY' && task.value.errorRows === 0)
+const canCommit = computed(() =>
+  task.value?.status === QuestionImportStatus.READY && task.value.errorRows === 0,
+)
 
 onMounted(loadBank)
 
@@ -94,7 +98,7 @@ async function validateFile(): Promise<void> {
   try {
     task.value = await createQuestionImportTask(bankId, selectedFile.value)
     await loadErrorsIfNeeded()
-    if (task.value.status === 'READY') {
+    if (task.value.status === QuestionImportStatus.READY) {
       ElMessage.success('预检通过，可以确认导入')
     }
   } catch (error) {
@@ -196,7 +200,7 @@ async function commit(): Promise<void> {
             <strong>{{ selectedFile.name }}</strong>
             <span>{{ (selectedFile.size / 1024).toFixed(1) }} KB</span>
           </div>
-          <el-button v-if="!validating && task?.status !== 'COMPLETED'" link @click="clearFile">重新选择</el-button>
+          <el-button v-if="!validating && task?.status !== QuestionImportStatus.SUCCEEDED" link @click="clearFile">重新选择</el-button>
         </div>
 
         <div v-if="selectedFile && !task" class="primary-action">
@@ -213,7 +217,7 @@ async function commit(): Promise<void> {
               <h2>预检结果</h2>
               <p>任务 {{ task.taskId }} · 有效期至 {{ formatDateTime(task.expiresTime) }}</p>
             </div>
-            <StatusTag :value="task.status" />
+            <StatusTag :value="importStatusNames[task.status]" />
           </div>
 
           <div class="result-metrics">
@@ -254,12 +258,15 @@ async function commit(): Promise<void> {
             </el-button>
           </div>
 
-          <div v-if="['VALIDATING', 'IMPORTING'].includes(task.status)" class="primary-action">
+          <div
+            v-if="task.status === QuestionImportStatus.VALIDATING || task.status === QuestionImportStatus.IMPORTING"
+            class="primary-action"
+          >
             <el-button type="primary" plain @click="refreshTask">刷新任务状态</el-button>
           </div>
 
           <el-result
-            v-if="task.status === 'COMPLETED'"
+            v-if="task.status === QuestionImportStatus.SUCCEEDED"
             icon="success"
             title="题目导入完成"
             :sub-title="`${task.importedRows} 道题已进入题库，当前全部未发布`"

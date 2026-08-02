@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.model.entity.QuestionBank;
 import com.homework.model.enums.GroupType;
+import com.homework.model.enums.QuestionBankStatus;
 import com.homework.web.admin.vo.QuestionBankRowVO;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -21,9 +22,19 @@ public interface QuestionBankMapper extends BaseMapper<QuestionBank> {
             JOIN category_sub_module csm ON csm.id = qb.sub_module_id AND csm.is_deleted = 0
             JOIN category_module cm ON cm.id = csm.module_id AND cm.is_deleted = 0
             JOIN category_group cg ON cg.id = cm.group_id AND cg.is_deleted = 0
-            WHERE qb.id = #{bankId}
+            WHERE qb.id = #{bankId} AND qb.is_deleted = 0
             """)
     GroupType selectGroupType(@Param("bankId") Long bankId);
+
+    /** 根据目标子模块读取其所属的一级分类类型。 */
+    @Select("""
+            SELECT cg.group_type
+            FROM category_sub_module csm
+            JOIN category_module cm ON cm.id = csm.module_id AND cm.is_deleted = 0
+            JOIN category_group cg ON cg.id = cm.group_id AND cg.is_deleted = 0
+            WHERE csm.id = #{subModuleId} AND csm.is_deleted = 0
+            """)
+    GroupType selectGroupTypeBySubModuleId(@Param("subModuleId") Long subModuleId);
 
     /** 查询包含逻辑删除记录的题库。 */
     @Select("SELECT * FROM question_bank WHERE id = #{bankId}")
@@ -32,12 +43,13 @@ public interface QuestionBankMapper extends BaseMapper<QuestionBank> {
     /** 按版本逻辑删除已下架题库。 */
     @Update("""
             UPDATE question_bank
-            SET is_deleted = 1, delete_reason = #{reason}, version = version + 1,
+            SET is_deleted = 1, status = #{status}, delete_reason = #{reason}, version = version + 1,
                 updated_time = CURRENT_TIMESTAMP(3)
             WHERE id = #{bankId} AND is_deleted = 0 AND version = #{version}
             """)
     int logicalDelete(
             @Param("bankId") Long bankId,
+            @Param("status") QuestionBankStatus status,
             @Param("reason") String reason,
             @Param("version") Integer version
     );
@@ -48,9 +60,6 @@ public interface QuestionBankMapper extends BaseMapper<QuestionBank> {
             SET version = version + 1, updated_time = CURRENT_TIMESTAMP(3)
             WHERE id = #{bankId} AND is_deleted = 0 AND version = #{version}
             """)
-    int bumpVersion(
-            @Param("bankId") Long bankId,
-            @Param("version") Integer version
-    );
+    int bumpVersion(@Param("bankId") Long bankId, @Param("version") Integer version);
 
 }

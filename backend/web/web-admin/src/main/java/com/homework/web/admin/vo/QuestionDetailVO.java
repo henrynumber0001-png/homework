@@ -1,5 +1,7 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.GroupType;
+import com.homework.model.enums.QuestionInfoQuestionType;
 import lombok.Data;
 
 import java.util.List;
@@ -15,10 +17,10 @@ public class QuestionDetailVO {
     private Long bankId;
 
     /** 题库所属一级类型。 */
-    private String groupType;
+    private GroupType groupType;
 
     /** 题型名称。 */
-    private String questionType;
+    private QuestionInfoQuestionType questionType;
 
     /** 题干。 */
     private String title;

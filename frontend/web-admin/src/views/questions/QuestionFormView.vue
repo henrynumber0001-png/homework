@@ -12,7 +12,13 @@ import {
   uploadQuestionImage,
 } from '@/api/admin'
 import { showApiError } from '@/api/http'
-import type { QuestionBank, QuestionDetail, QuestionOption, QuestionType } from '@/types/admin'
+import {
+  GroupType,
+  QuestionType,
+  type QuestionBank,
+  type QuestionDetail,
+  type QuestionOption,
+} from '@/types/admin'
 
 const route = useRoute()
 const router = useRouter()
@@ -36,7 +42,7 @@ const form = reactive<{
   correctAnswers: string[]
   reason: string
 }>({
-  questionType: 'ESSAY',
+  questionType: QuestionType.ESSAY,
   title: '',
   analysis: '',
   options: [],
@@ -44,7 +50,7 @@ const form = reactive<{
   reason: '',
 })
 
-const isChoice = computed(() => form.questionType !== 'ESSAY')
+const isChoice = computed(() => form.questionType !== QuestionType.ESSAY)
 const pageTitle = computed(() => (editing.value ? '编辑题目' : '创建题目'))
 
 onMounted(load)
@@ -52,7 +58,7 @@ onMounted(load)
 watch(
   () => form.questionType,
   (type) => {
-    if (type === 'ESSAY') {
+    if (type === QuestionType.ESSAY) {
       form.options = []
       form.correctAnswers = []
       return
@@ -63,7 +69,7 @@ watch(
         { key: 'B', content: '' },
       ]
     }
-    if (type === 'SINGLE_CHOICE' && form.correctAnswers.length > 1) {
+    if (type === QuestionType.SINGLE_CHOICE && form.correctAnswers.length > 1) {
       form.correctAnswers = form.correctAnswers.slice(0, 1)
     }
   },
@@ -74,7 +80,9 @@ async function load(): Promise<void> {
   try {
     bank.value = await getQuestionBank(bankId)
     if (!editing.value) {
-      form.questionType = bank.value.groupType === 'INTERVIEW' ? 'ESSAY' : 'SINGLE_CHOICE'
+      form.questionType = bank.value.groupType === GroupType.INTERVIEW
+        ? QuestionType.ESSAY
+        : QuestionType.SINGLE_CHOICE
       return
     }
     original.value = await getQuestion(bankId, questionId!)
@@ -160,10 +168,10 @@ function validateForm(): string | null {
   }
   const uniqueContents = new Set(form.options.map((option) => option.content.trim()))
   if (uniqueContents.size !== form.options.length) return '选项内容不能重复'
-  if (form.questionType === 'SINGLE_CHOICE' && form.correctAnswers.length !== 1) {
+  if (form.questionType === QuestionType.SINGLE_CHOICE && form.correctAnswers.length !== 1) {
     return '单选题需要选择一个正确答案'
   }
-  if (form.questionType === 'MULTIPLE' && form.correctAnswers.length < 2) {
+  if (form.questionType === QuestionType.MULTIPLE && form.correctAnswers.length < 2) {
     return '多选题需要选择至少两个正确答案'
   }
   return null
@@ -228,12 +236,12 @@ async function submit(): Promise<void> {
         <el-form label-position="top" @submit.prevent="submit">
           <el-form-item label="题型" required>
             <el-radio-group v-model="form.questionType">
-              <template v-if="bank?.groupType === 'INTERVIEW'">
-                <el-radio-button value="ESSAY">简答题</el-radio-button>
+              <template v-if="bank?.groupType === GroupType.INTERVIEW">
+                <el-radio-button :value="QuestionType.ESSAY">简答题</el-radio-button>
               </template>
               <template v-else>
-                <el-radio-button value="SINGLE_CHOICE">单选题</el-radio-button>
-                <el-radio-button value="MULTIPLE">多选题</el-radio-button>
+                <el-radio-button :value="QuestionType.SINGLE_CHOICE">单选题</el-radio-button>
+                <el-radio-button :value="QuestionType.MULTIPLE">多选题</el-radio-button>
               </template>
             </el-radio-group>
           </el-form-item>
@@ -292,7 +300,7 @@ async function submit(): Promise<void> {
         <div class="option-list">
           <div v-for="(option, index) in form.options" :key="option.key" class="option-row">
             <el-radio
-              v-if="form.questionType === 'SINGLE_CHOICE'"
+              v-if="form.questionType === QuestionType.SINGLE_CHOICE"
               :model-value="form.correctAnswers[0]"
               :value="option.key"
               @change="chooseSingleAnswer"
@@ -332,7 +340,7 @@ async function submit(): Promise<void> {
           :rows="8"
           maxlength="20000"
           show-word-limit
-          :placeholder="form.questionType === 'ESSAY' ? '填写参考答案、关键点或评分说明' : '解释正确答案及其他选项'"
+          :placeholder="form.questionType === QuestionType.ESSAY ? '填写参考答案、关键点或评分说明' : '解释正确答案及其他选项'"
         />
       </section>
 

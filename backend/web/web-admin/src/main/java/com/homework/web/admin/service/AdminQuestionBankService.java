@@ -1,7 +1,6 @@
 package com.homework.web.admin.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.PageResult;
@@ -20,9 +19,10 @@ import com.homework.model.enums.GroupType;
 import com.homework.model.enums.QuestionBankStatus;
 import com.homework.web.admin.auth.AdminAccessService;
 import com.homework.web.admin.context.AdminContext;
+import com.homework.web.admin.dto.QuestionBankActionDTO;
 import com.homework.web.admin.dto.QuestionBankCreateDTO;
 import com.homework.web.admin.dto.QuestionBankUpdateDTO;
-import com.homework.web.admin.dto.ResourceActionDTO;
+import com.homework.model.enums.QuestionBankAction;
 import com.homework.web.admin.mapper.AdminBankScopeMapper;
 import com.homework.web.admin.mapper.BankTagMapper;
 import com.homework.web.admin.mapper.CategoryGroupMapper;
@@ -38,7 +38,6 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 
@@ -215,7 +214,7 @@ public class AdminQuestionBankService {
         return assembler.toRow(bank);
     }
 
-    /** 创建一个草稿题库，并保存标签、管理员数据范围和审计记录。 */
+    // 创建题库的构成要件：1.subModuleId;2. bankName;3. tagNames;4. sortOrder;
     @Transactional
     public QuestionBankRowVO create(QuestionBankCreateDTO dto) {
 
@@ -289,7 +288,7 @@ public class AdminQuestionBankService {
         // 记录题库创建审计日志；before 为 null，after 为新题库实体。
         auditService.record("BANK", "CREATE", "QUESTION_BANK", bank.getId(), "创建题库", null, bank);
         // 重新读取新题库并组装题库 VO 后返回。
-        return assembler.toRow(bankMapper.selectById(bank.getId()));
+        return assembler.toRow(bank);
     }
 
     /** 修改题库名称、分类、标签和人工排序权重。 */
@@ -304,87 +303,60 @@ public class AdminQuestionBankService {
 
         // 比较客户端版本号和数据库当前版本号，避免覆盖其他管理员的并发修改。
         if (!bank.getVersion().equals(dto.getVersion())) {
-            // 版本不一致时要求前端刷新数据后重试。
             throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
         }
 
-        // 查询更新后准备归属的目标子模块。
-        CategorySubModule targetSubModule = subModuleMapper.selectById(dto.getSubModuleId());
-        // 目标子模块不存在时拒绝更新分类。
-        if (targetSubModule == null) {
-            // 返回题库分类不合法业务异常。
+        //查看当前 bank 所属的 groupType
+        GroupType currentGroupType = bankMapper.selectGroupType(bankId);
+        //根据 前端传入的，拟要修改的 subModuleId 查看所属的 groupType
+        GroupType targetGroupType = bankMapper.selectGroupTypeBySubModuleId(dto.getSubModuleId());
+        if (currentGroupType == null || targetGroupType == null) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_CATEGORY_INVALID);
         }
 
-        // 查询题库修改前所属的一级分类类型。
-        GroupType currentGroup = bankMapper.selectGroupType(bankId);
-        // 根据目标子模块查询其所属模块。
-        CategoryModule targetModule = moduleMapper.selectById(targetSubModule.getModuleId());
-        // 预设目标一级分类为空，只有分类链路完整时才会得到具体值。
-        CategoryGroup targetGroup = null;
-        // 目标模块存在时继续向上查询目标 Group。
-        if (targetModule != null) {
-            // 根据模块的 groupId 查询目标 Group。
-            targetGroup = groupMapper.selectById(targetModule.getGroupId());
-        }
-        // 模块或 Group 不存在说明目标分类链路不完整。
-        if (targetGroup == null) {
-            // 返回题库分类不合法业务异常。
-            throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_CATEGORY_INVALID);
-        }
-
-        // 分别统计两种题目表中属于当前题库的题目数量，再计算总题目数。
-        long questionCount = interviewQuestionMapper.selectCount(
-                // 统计 interview_question_info 中 bank_id 等于当前题库的记录。
-                new LambdaQueryWrapper<InterviewQuestionInfo>()
-                        .eq(InterviewQuestionInfo::getBankId, bankId)
-        ) + certificateQuestionMapper.selectCount(
-                // 统计 certificate_question_info 中 bank_id 等于当前题库的记录。
-                new LambdaQueryWrapper<CertificateQuestionInfo>()
-                        .eq(CertificateQuestionInfo::getBankId, bankId)
-        );
-        // 已有题目时不允许跨 INTERVIEW/CERTIFICATION 一级分类移动题库。
-        if (questionCount > 0 && currentGroup != targetGroup.getGroupType()) {
-            // 跨一级类型会导致题库与题目实体类型不一致，因此拒绝更新。
-            throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_CATEGORY_INVALID);
+        if(targetGroupType != currentGroupType) {
+            if(currentGroupType == GroupType.INTERVIEW) {
+                LambdaQueryWrapper<InterviewQuestionInfo> interviewQuery = new LambdaQueryWrapper<>();
+                interviewQuery.eq(InterviewQuestionInfo::getBankId,bankId);
+                Long count = interviewQuestionMapper.selectCount(interviewQuery);
+                if(count > 0){
+                    throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_CATEGORY_INVALID);
+                }
+            }else if(currentGroupType == GroupType.CERTIFICATION) {
+                LambdaQueryWrapper<CertificateQuestionInfo> certificateQuery = new LambdaQueryWrapper<>();
+                certificateQuery.eq(CertificateQuestionInfo::getBankId,bankId);
+                Long count = certificateQuestionMapper.selectCount(certificateQuery);
+                if(count > 0){
+                    throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_CATEGORY_INVALID);
+                }
+            }
         }
 
         // 查询目标 SubModule 中除当前题库以外是否存在同名且未删除的题库。
         Long sameName = bankMapper.selectCount(new LambdaQueryWrapper<QuestionBank>()
-                // 修改分类时按照更新后的 SubModule 判断名称是否重复。
                 .eq(QuestionBank::getSubModuleId, dto.getSubModuleId())
-                // 使用清理后的新名称做精确匹配。
-                .eq(QuestionBank::getBankName, dto.getBankName().trim())
-                // 排除当前正在修改的题库自身。
-                .ne(QuestionBank::getId, bankId));
-        // 其他题库已经使用相同名称时拒绝更新。
+                .eq(QuestionBank::getBankName, dto.getBankName().trim()));
         if (sameName > 0) {
-            // 返回题库名称冲突业务异常。
             throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_NAME_CONFLICT);
         }
 
         // 创建修改前快照，供审计日志记录字段变化。
         QuestionBank before = new QuestionBank();
-        // 把当前题库属性复制到修改前快照。
+        // 把当前的 bank 信息复值给 before
         BeanUtils.copyProperties(bank, before);
-        // 更新清理后的题库名称。
+
+        // 开始更新 bank
         bank.setBankName(dto.getBankName().trim());
-        // 更新题库所属子模块。
         bank.setSubModuleId(dto.getSubModuleId());
 
-        // 前端未传排序权重时使用默认值 10。
         int sortOrder = 10;
-        // 前端传入排序权重时覆盖默认值。
         if (dto.getSortOrder() != null) {
-            // 使用经过 DTO 范围校验的排序权重。
             sortOrder = dto.getSortOrder();
         }
-        // 保存最终人工排序权重。
         bank.setSortOrder(sortOrder);
 
         // updateById 会携带 @Version 版本条件并自动递增版本号。
         if (bankMapper.updateById(bank) == 0) {
-            // 更新 0 行说明版本已变化或记录已不存在。
             throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
         }
 
@@ -394,22 +366,13 @@ public class AdminQuestionBankService {
         List<String> tags = List.of();
         // 前端传入标签时执行清洗和去重。
         if (dto.getTags() != null) {
-            // 去除标签首尾空白，并按首次出现顺序去重。
-            tags = dto.getTags().stream()
-                    .map(String::strip)
-                    .distinct()
-                    .toList();
+            tags = dto.getTags().stream().map(String::strip).distinct().toList();
         }
 
-        // 为更新后的每个标签重新创建 bank_tag 记录。
         for (String tagName : tags) {
-            // 创建标签关联实体。
             BankTag tag = new BankTag();
-            // 关联当前正在更新的题库 ID。
             tag.setBankId(bankId);
-            // 保存清理后的标签名称。
             tag.setTagName(tagName);
-            // 插入新的标签记录。
             bankTagMapper.insert(tag);
         }
 
@@ -421,39 +384,34 @@ public class AdminQuestionBankService {
 
     /** 发布、下架或删除题库。 */
     @Transactional
-    public ActionResultVO action(Long bankId, ResourceActionDTO dto) {
+    public ActionResultVO action(Long bankId, QuestionBankActionDTO dto) {
         // 校验当前管理员是否拥有目标题库的数据访问范围。
         accessService.requireBank(bankId);
-        // 只查询未删除题库；题库级恢复功能已经取消。
-        QuestionBank bank = bankMapper.selectById(bankId);
-        // 题库不存在或已删除时拒绝执行动作。
+        QuestionBank bank = bankMapper.selectById(bankId); //去掉了 is_deleted = 1
+
         if (bank == null) {
-            // 返回题库不存在业务异常。
             throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_NOT_FOUND);
         }
-
-        // 校验客户端版本，防止在旧数据上执行状态动作。
+        // 如果前端传回的 乐观锁版本号 与 数据库中记录的 不一致，则无法更新
+        //失败后可以轻松重试（例如修改个人资料、编辑文章）→ 乐观锁。
+        //失败后会产生复杂的业务后果或外部副作用（例如资金、库存、支付、审批等），或者希望同一时刻只有一个事务处理关键资源 → 悲观锁。
         if (!bank.getVersion().equals(dto.getVersion())) {
-            // 版本不一致时要求前端刷新后重试。
             throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
         }
 
-        // 清理动作名称首尾空白并统一转成大写，方便后面进行固定字符串匹配。
-        String action = dto.getAction().trim().toUpperCase(Locale.ROOT);
+        // DTO 已把固定请求值转换成题库动作枚举，无需再清理或解析字符串。
+        QuestionBankAction action = dto.getAction();
         // 创建动作执行前的题库快照，供审计日志使用。
         QuestionBank before = new QuestionBank();
         // 复制动作执行前的题库属性。
-        org.springframework.beans.BeanUtils.copyProperties(bank, before);
+        BeanUtils.copyProperties(bank, before);
 
         // PUBLISH 分支负责把草稿或已下架题库发布上线。
-        if ("PUBLISH".equals(action)) {
+        if (action == QuestionBankAction.PUBLISH) {
             // 发布动作要求当前管理员拥有 bank:publish 权限。
             accessService.requirePermission("bank:publish");
-            // 已删除、非草稿且非下架状态的题库都不允许发布。
-            if (Boolean.TRUE.equals(bank.getDeleted())
-                    || (bank.getStatus() != QuestionBankStatus.DRAFT
-                    && bank.getStatus() != QuestionBankStatus.OFFLINE)) {
-                // 当前题库状态不支持发布时返回状态异常。
+            // 已删除、不是（草稿 + 已下架）状态的题库都不允许发布。
+            if (Boolean.TRUE.equals(bank.getDeleted()) || (bank.getStatus() != QuestionBankStatus.DRAFT && bank.getStatus() != QuestionBankStatus.OFFLINE)) {
                 throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_STATE_INVALID);
             }
 
@@ -461,100 +419,89 @@ public class AdminQuestionBankService {
             long released = 0;
             // 沿题库分类链路查询其所属的 INTERVIEW 或 CERTIFICATION 类型。
             GroupType groupType = bankMapper.selectGroupType(bankId);
-            // 面试题库从 interview_question_info 表统计已发布题目。
             if (groupType == GroupType.INTERVIEW) {
-                // 统计当前题库中 isReleased=true 的面试题目数量。
                 released = interviewQuestionMapper.selectCount(
                         new LambdaQueryWrapper<InterviewQuestionInfo>()
-                                // 限定题目必须属于当前题库。
                                 .eq(InterviewQuestionInfo::getBankId, bankId)
-                                // 限定题目已经发布。
                                 .eq(InterviewQuestionInfo::getIsReleased, true));
             }
-            // 认证题库从 certificate_question_info 表统计已发布题目。
             if (groupType == GroupType.CERTIFICATION) {
-                // 统计当前题库中 isReleased=true 的认证题目数量。
                 released = certificateQuestionMapper.selectCount(
                         new LambdaQueryWrapper<CertificateQuestionInfo>()
-                                // 限定题目必须属于当前题库。
                                 .eq(CertificateQuestionInfo::getBankId, bankId)
-                                // 限定题目已经发布。
                                 .eq(CertificateQuestionInfo::getIsReleased, true));
             }
             // 没有任何已发布题目时不允许发布整个题库。
             if (released == 0) {
-                // 返回“题库没有可发布题目”业务异常。
                 throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_NO_RELEASED_QUESTION);
             }
 
             // 把题库状态修改为已发布。
             bank.setStatus(QuestionBankStatus.PUBLISHED);
-            // 题库第一次发布时记录发布时间，重新上线时保留第一次发布时间。
-            if (bank.getPublishedTime() == null) {
-                // 使用当前服务器时间作为首次发布时间。
-                bank.setPublishedTime(LocalDateTime.now());
-            }
-            // 更新题库状态，并通过 @Version 防止并发覆盖。
+
+            //这里应对的是 真正的乐观锁冲突（并发）
+            //管理员A和B几乎同时对同一题库执行 发布 操作，B先完成，那么A的更新是失败的，因为查不到 version = 3的那一条（已经变成4了）
+            //那么返回值就是0，因此这里就要设计为抛出异常，以提醒管理员A刷新页面
             if (bankMapper.updateById(bank) == 0) {
-                // 更新 0 行表示版本冲突或记录状态已经变化。
                 throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
             }
 
         // OFFLINE 分支负责把已发布题库下架。
-        } else if ("OFFLINE".equals(action)) {
-            // 下架动作同样要求 bank:publish 权限。
+        } else if (action == QuestionBankAction.OFFLINE) {
+
             accessService.requirePermission("bank:publish");
-            // 只有未删除且当前为 PUBLISHED 的题库才能下架。
+            // 已下架、不是 已发布 状态 都不能点击 下架功能
             if (Boolean.TRUE.equals(bank.getDeleted()) || bank.getStatus() != QuestionBankStatus.PUBLISHED) {
-                // 当前状态不允许下架时返回状态异常。
                 throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_STATE_INVALID);
             }
-            // 把题库状态修改为已下架。
+
             bank.setStatus(QuestionBankStatus.OFFLINE);
-            // 更新题库状态，并通过 @Version 防止并发覆盖。
+            // 依旧是乐观锁防并发
             if (bankMapper.updateById(bank) == 0) {
-                // 更新 0 行表示版本冲突或记录已变化。
                 throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
             }
 
         // DELETE 分支负责逻辑删除草稿或已下架题库。
-        } else if ("DELETE".equals(action)) {
+        } else if (action == QuestionBankAction.DELETE) {
             // 删除动作要求当前管理员拥有 bank:delete 权限。
             accessService.requirePermission("bank:delete");
             // 已删除题库不能重复删除，已发布题库必须先下架再删除。
             if (Boolean.TRUE.equals(bank.getDeleted()) || bank.getStatus() == QuestionBankStatus.PUBLISHED) {
-                // 当前状态不允许删除时返回状态异常。
                 throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_STATE_INVALID);
             }
-            // 使用自定义 SQL 按版本号执行逻辑删除，并保存删除原因。
-            if (bankMapper.logicalDelete(bankId, dto.getReason(), dto.getVersion()) == 0) {
-                // 删除 0 行表示版本冲突或记录状态已经变化。
+
+            //这里一定要自定义一个删除方法，因为 乐观锁版本的自增，仅限update方法，delete不能实现
+            //而且自定义delete还可以写入 reason和version 字段
+            if (bankMapper.logicalDelete(
+                    bankId,
+                    QuestionBankStatus.DELETED,
+                    dto.getReason(),
+                    dto.getVersion()
+            ) == 0) {
                 throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
             }
 
-        // 不支持的动作名称属于请求参数错误。
         } else {
-            // 返回统一的参数错误业务异常。
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
         // 动作完成后重新读取包含逻辑删除状态的最新题库记录。
-        QuestionBank updated = bankMapper.selectIncludingDeleted(bankId);
+        QuestionBank after = bankMapper.selectIncludingDeleted(bankId);
         // 记录状态动作审计日志，保存动作前后快照和操作原因。
-        auditService.record("BANK", action, "QUESTION_BANK", bankId, dto.getReason(), before, updated);
+        auditService.record("BANK", action.name(), "QUESTION_BANK", bankId, dto.getReason(), before, after);
 
         // 创建返回给前端的状态动作结果对象。
         ActionResultVO result = new ActionResultVO();
         // 返回本次操作的题库 ID。
         result.setTargetId(bankId);
-        // 返回规范化后的动作名称。
-        result.setAction(action);
+        // 返回动作枚举的固定数字 value。
+        result.setAction(action.getValue());
         // 返回动作完成后的题库状态。
-        result.setStatus(updated.getStatus().name());
+        result.setStatus(after.getStatus().getValue());
         // 返回动作完成后的最新版本号，供前端下一次操作使用。
-        result.setVersion(updated.getVersion());
+        result.setVersion(after.getVersion());
         // 返回动作完成后的最后更新时间。
-        result.setUpdatedTime(updated.getUpdatedTime());
+        result.setUpdatedTime(after.getUpdatedTime());
         // 返回完整的动作执行结果。
         return result;
     }

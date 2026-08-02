@@ -5,7 +5,9 @@ import com.homework.common.result.Result;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.web.admin.service.AdminAuditService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -23,7 +25,13 @@ public class AdminExceptionHandler {
         return Result.fail(exception.getResultCodeEnum());
     }
 
-    @ExceptionHandler({IllegalArgumentException.class, MethodArgumentNotValidException.class, BindException.class})
+    @ExceptionHandler({
+            IllegalArgumentException.class,
+            MethodArgumentNotValidException.class,
+            BindException.class,
+            MethodArgumentTypeMismatchException.class,
+            HttpMessageNotReadableException.class
+    })
     public Result<Void> handleParameterException(Exception exception) {
         auditService.recordFailure(exception.getMessage());
         Result<Void> result = Result.fail(ResultCodeEnum.PARAM_ERROR);

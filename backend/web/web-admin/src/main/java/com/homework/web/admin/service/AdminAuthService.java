@@ -94,7 +94,7 @@ public class AdminAuthService {
         vo.setPermissions(admin.getRole() == AdminRole.SUPER_ADMIN
                 ? AdminPermissionCatalog.ALL
                 : accessService.listPermissions(admin.getId()));
-        vo.setBankDataScope(admin.getBankDataScope().name());
+        vo.setBankDataScope(admin.getBankDataScope());
         return vo;
     }
 
@@ -188,7 +188,7 @@ public class AdminAuthService {
         vo.setPermissions(admin.getRole() == AdminRole.SUPER_ADMIN
                 ? AdminPermissionCatalog.ALL
                 : accessService.listPermissions(admin.getId()));
-        vo.setBankDataScope(admin.getBankDataScope().name());
+        vo.setBankDataScope(admin.getBankDataScope());
         vo.setAssignedBankIds(accessService.listAssignedBankIds(admin.getId()));
         vo.setSessionExpiresTime(session.getExpiresTime());
         return vo;
@@ -247,8 +247,8 @@ public class AdminAuthService {
         vo.setId(admin.getId());
         vo.setEmail(admin.getEmail());
         vo.setDisplayName(admin.getDisplayName());
-        vo.setRole(admin.getRole().name());
-        vo.setStatus(admin.getStatus().name());
+        vo.setRole(admin.getRole());
+        vo.setStatus(admin.getStatus());
         return vo;
     }
 }

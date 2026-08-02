@@ -1,5 +1,6 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.HitPostStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -24,7 +25,7 @@ public class CommunityPostVO {
     private String tagsJson;
 
     /** 治理状态名称。 */
-    private String status;
+    private HitPostStatus status;
 
     /** 有效评论数。 */
     private Integer commentCount;

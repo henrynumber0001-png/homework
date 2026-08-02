@@ -18,14 +18,24 @@ import {
 } from '@/api/admin'
 import { showApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
-import type { CategoryGroup, Question, QuestionBank } from '@/types/admin'
+import {
+  GroupType,
+  QuestionAction,
+  QuestionBankAction,
+  QuestionBankStatus,
+  QuestionType,
+  type CategoryGroup,
+  type Question,
+  type QuestionBank,
+  type QuestionType as QuestionTypeValue,
+} from '@/types/admin'
 import { runBatchActions, type BatchActionFailure } from '@/utils/batchActions'
 import { formatDateTime } from '@/utils/format'
-import { groupTypeLabels, questionTypeLabels } from '@/utils/dictionaries'
+import { bankStatusNames, groupTypeLabels, questionTypeLabels } from '@/utils/dictionaries'
 
 type PendingOperation =
-  | { kind: 'bank'; action: string; title: string }
-  | { kind: 'questions'; action: string; title: string; rows: Question[] }
+  | { kind: 'bank'; action: QuestionBankAction; title: string }
+  | { kind: 'questions'; action: QuestionAction; title: string; rows: Question[] }
 
 const route = useRoute()
 const router = useRouter()
@@ -58,7 +68,7 @@ let sortable: Sortable | null = null
 
 const query = reactive({
   keyword: '',
-  questionType: '',
+  questionType: '' as QuestionTypeValue | '',
   released: (route.query.released === 'false' || route.query.released === 'true'
     ? route.query.released
     : '') as '' | 'true' | 'false',
@@ -79,11 +89,11 @@ const settings = reactive({
 const savingSettings = ref(false)
 
 const allowedQuestionTypes = computed(() =>
-  bank.value?.groupType === 'INTERVIEW'
-    ? [{ label: '简答题', value: 'ESSAY' }]
+  bank.value?.groupType === GroupType.INTERVIEW
+    ? [{ label: '简答题', value: QuestionType.ESSAY }]
     : [
-        { label: '单选题', value: 'SINGLE_CHOICE' },
-        { label: '多选题', value: 'MULTIPLE' },
+        { label: '单选题', value: QuestionType.SINGLE_CHOICE },
+        { label: '多选题', value: QuestionType.MULTIPLE },
       ],
 )
 
@@ -180,12 +190,12 @@ function handleSelectionChange(rows: Question[]): void {
   selectedQuestions.value = rows
 }
 
-function openQuestionOperation(action: string, rows: Question[], title: string): void {
+function openQuestionOperation(action: QuestionAction, rows: Question[], title: string): void {
   const allowedRows = rows.filter((row) => {
-    if (action === 'PUBLISH') return !row.released
-    if (action === 'OFFLINE') return row.released
+    if (action === QuestionAction.PUBLISH) return !row.released
+    if (action === QuestionAction.OFFLINE) return row.released
     // 变更：一题只属于当前题库，删除不再受共享引用数量限制。
-    if (action === 'DELETE') return true
+    if (action === QuestionAction.DELETE) return true
     return false
   })
   const excludedCount = rows.length - allowedRows.length
@@ -203,7 +213,7 @@ function openQuestionOperation(action: string, rows: Question[], title: string):
   })
 }
 
-function openBankOperation(action: string, title: string): void {
+function openBankOperation(action: QuestionBankAction, title: string): void {
   pendingOperation.value = { kind: 'bank', action, title }
   reasonDialog.value?.open({ title, description: `题库：${bank.value?.bankName}` })
 }
@@ -221,7 +231,7 @@ async function confirmOperation(reason: string): Promise<void> {
       })
       reasonDialog.value?.close()
       ElMessage.success(`${operation.title}成功`)
-      if (operation.action === 'DELETE') {
+      if (operation.action === QuestionBankAction.DELETE) {
         await router.replace('/question-banks')
         return
       }
@@ -388,21 +398,21 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item
-              v-if="bank.status !== 'PUBLISHED' && auth.hasPermission('bank:publish')"
-              @click="openBankOperation('PUBLISH', '发布题库')"
+              v-if="bank.status !== QuestionBankStatus.PUBLISHED && auth.hasPermission('bank:publish')"
+              @click="openBankOperation(QuestionBankAction.PUBLISH, '发布题库')"
             >
               发布题库
             </el-dropdown-item>
             <el-dropdown-item
-              v-if="bank.status === 'PUBLISHED' && auth.hasPermission('bank:publish')"
-              @click="openBankOperation('OFFLINE', '下架题库')"
+              v-if="bank.status === QuestionBankStatus.PUBLISHED && auth.hasPermission('bank:publish')"
+              @click="openBankOperation(QuestionBankAction.OFFLINE, '下架题库')"
             >
               下架题库
             </el-dropdown-item>
             <el-dropdown-item
               v-if="auth.hasPermission('bank:delete')"
               divided
-              @click="openBankOperation('DELETE', '删除题库')"
+              @click="openBankOperation(QuestionBankAction.DELETE, '删除题库')"
             >
               <span class="danger-text">删除题库</span>
             </el-dropdown-item>
@@ -429,7 +439,7 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
     <section v-if="bank" class="bank-summary">
       <div>
         <span>状态</span>
-        <StatusTag :value="bank.status" />
+        <StatusTag :value="bankStatusNames[bank.status]" />
       </div>
       <div><span>题目总数</span><strong>{{ bank.questionCount }}</strong></div>
       <div><span>已发布</span><strong>{{ bank.releasedQuestionCount }}</strong></div>
@@ -485,13 +495,13 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
               v-if="auth.hasPermission('question:publish')"
               type="primary"
               plain
-              @click="openQuestionOperation('PUBLISH', selectedQuestions, '批量发布题目')"
+              @click="openQuestionOperation(QuestionAction.PUBLISH, selectedQuestions, '批量发布题目')"
             >
               批量发布
             </el-button>
             <el-button
               v-if="auth.hasPermission('question:publish')"
-              @click="openQuestionOperation('OFFLINE', selectedQuestions, '批量下架题目')"
+              @click="openQuestionOperation(QuestionAction.OFFLINE, selectedQuestions, '批量下架题目')"
             >
               批量下架
             </el-button>
@@ -499,7 +509,7 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
               v-if="auth.hasPermission('question:delete')"
               type="danger"
               plain
-              @click="openQuestionOperation('DELETE', selectedQuestions, '批量删除题目')"
+              @click="openQuestionOperation(QuestionAction.DELETE, selectedQuestions, '批量删除题目')"
             >
               批量删除
             </el-button>
@@ -569,20 +579,20 @@ function moveQuestion(fromIndex: number, targetPosition?: number): void {
                     <el-dropdown-menu>
                       <el-dropdown-item
                         v-if="!row.released && auth.hasPermission('question:publish')"
-                        @click="openQuestionOperation('PUBLISH', [row], '发布题目')"
+                        @click="openQuestionOperation(QuestionAction.PUBLISH, [row], '发布题目')"
                       >
                         发布
                       </el-dropdown-item>
                       <el-dropdown-item
                         v-if="row.released && auth.hasPermission('question:publish')"
-                        @click="openQuestionOperation('OFFLINE', [row], '下架题目')"
+                        @click="openQuestionOperation(QuestionAction.OFFLINE, [row], '下架题目')"
                       >
                         下架
                       </el-dropdown-item>
                       <el-dropdown-item
                         v-if="auth.hasPermission('question:delete')"
                         divided
-                        @click="openQuestionOperation('DELETE', [row], '删除题目')"
+                        @click="openQuestionOperation(QuestionAction.DELETE, [row], '删除题目')"
                       >
                         删除
                       </el-dropdown-item>

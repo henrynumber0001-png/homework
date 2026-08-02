@@ -1,3 +1,5 @@
+import type { ActionStatusValue } from '@/shared/constants/domain'
+
 export interface HitPost {
   postId: number
   userId: number
@@ -30,7 +32,7 @@ export interface HitComment {
 
 export interface HitActionResult {
   actionType: number
-  actionStatus: 'ACTIVATE' | 'DEACTIVATE'
+  actionStatus: ActionStatusValue
   likeCount: number
   favoriteCount: number
   repostCount: number

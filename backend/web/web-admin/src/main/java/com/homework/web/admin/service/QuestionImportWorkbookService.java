@@ -3,6 +3,7 @@ package com.homework.web.admin.service;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.model.enums.GroupType;
+import com.homework.model.enums.QuestionInfoQuestionType;
 import com.homework.web.admin.dto.QuestionCreateDTO;
 import com.homework.web.admin.dto.QuestionOptionDTO;
 import com.homework.web.admin.vo.QuestionImportErrorVO;
@@ -88,7 +89,7 @@ public class QuestionImportWorkbookService {
                     throw new HomeworkException(ResultCodeEnum.ADMIN_IMPORT_FILE_INVALID);
                 }
                 QuestionCreateDTO dto = new QuestionCreateDTO();
-                dto.setQuestionType(formatter.formatCellValue(row.getCell(0)).trim());
+                String questionTypeValue = formatter.formatCellValue(row.getCell(0)).trim();
                 dto.setTitle(formatter.formatCellValue(row.getCell(1)).trim());
                 dto.setAnalysis(formatter.formatCellValue(row.getCell(2)).trim());
                 String imageObjectKey = formatter.formatCellValue(row.getCell(3)).trim();
@@ -127,11 +128,14 @@ public class QuestionImportWorkbookService {
                     if (optionGapViolation) {
                         throw new IllegalArgumentException("选项必须从 A 开始连续填写");
                     }
-                    if (dto.getQuestionType().isBlank() || dto.getTitle().isBlank()
+                    if (questionTypeValue.isBlank() || dto.getTitle().isBlank()
                             || dto.getTitle().length() > 5000
                             || dto.getAnalysis() != null && dto.getAnalysis().length() > 20000) {
                         throw new IllegalArgumentException("题型、题干或解析不符合长度要求");
                     }
+                    dto.setQuestionType(QuestionInfoQuestionType.valueOf(
+                            questionTypeValue.toUpperCase(Locale.ROOT)
+                    ));
                     contentService.parseAndValidate(
                             groupType,
                             dto.getQuestionType(),

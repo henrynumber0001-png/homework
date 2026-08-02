@@ -4,9 +4,9 @@ import com.homework.common.result.PageResult;
 import com.homework.common.result.Result;
 import com.homework.model.enums.QuestionBankStatus;
 import com.homework.web.admin.auth.AdminPermission;
+import com.homework.web.admin.dto.QuestionBankActionDTO;
 import com.homework.web.admin.dto.QuestionBankCreateDTO;
 import com.homework.web.admin.dto.QuestionBankUpdateDTO;
-import com.homework.web.admin.dto.ResourceActionDTO;
 import com.homework.web.admin.service.AdminQuestionBankService;
 import com.homework.web.admin.vo.ActionResultVO;
 import com.homework.web.admin.vo.QuestionBankRowVO;
@@ -89,7 +89,7 @@ public class AdminQuestionBankController {
     @PostMapping("/{bankId}/actions")
     public Result<ActionResultVO> action(
             @PathVariable Long bankId,
-            @Valid @RequestBody ResourceActionDTO dto
+            @Valid @RequestBody QuestionBankActionDTO dto
     ) {
         return Result.success(bankService.action(bankId, dto));
     }

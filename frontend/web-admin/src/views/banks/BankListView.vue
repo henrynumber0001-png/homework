@@ -8,9 +8,14 @@ import StatusTag from '@/components/StatusTag.vue'
 import { createQuestionBank, getCategoryTree, listQuestionBanks } from '@/api/admin'
 import { showApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
-import type { CategoryGroup, QuestionBank } from '@/types/admin'
+import {
+  QuestionBankStatus,
+  type CategoryGroup,
+  type QuestionBank,
+  type QuestionBankStatus as QuestionBankStatusValue,
+} from '@/types/admin'
 import { formatDateTime } from '@/utils/format'
-import { groupTypeLabels } from '@/utils/dictionaries'
+import { bankStatusNames, groupTypeLabels } from '@/utils/dictionaries'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -26,7 +31,7 @@ const query = reactive({
   moduleId: undefined as number | undefined,
   subModuleId: undefined as number | undefined,
   sortMode: 'UPDATED_TIME_DESC',
-  status: '',
+  status: '' as QuestionBankStatusValue | '',
   pageNum: 1,
   pageSize: 12,
 })
@@ -216,9 +221,9 @@ async function submitCreate(): Promise<void> {
           />
         </el-select>
         <el-select class="filter-status" v-model="query.status" clearable placeholder="发布状态">
-          <el-option label="草稿" value="DRAFT" />
-          <el-option label="已发布" value="PUBLISHED" />
-          <el-option label="已下架" value="OFFLINE" />
+          <el-option label="草稿" :value="QuestionBankStatus.DRAFT" />
+          <el-option label="已发布" :value="QuestionBankStatus.PUBLISHED" />
+          <el-option label="已下架" :value="QuestionBankStatus.OFFLINE" />
         </el-select>
         <!-- 变更：排序模式是请求参数，不是新增数据库字段。 -->
         <el-select class="filter-sort" v-model="query.sortMode" placeholder="排序方式" @change="search">
@@ -243,7 +248,7 @@ async function submitCreate(): Promise<void> {
         >
           <div class="card-top">
             <div class="bank-icon"><Collection /></div>
-            <StatusTag :value="bank.status" />
+            <StatusTag :value="bankStatusNames[bank.status]" />
           </div>
           <div class="bank-type">{{ groupTypeLabels[bank.groupType] }}</div>
           <h2>{{ bank.bankName }}</h2>

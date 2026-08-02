@@ -6,6 +6,9 @@ import com.homework.web.admin.auth.AdminAccessService;
 import com.homework.web.admin.auth.AdminPermission;
 import com.homework.web.admin.auth.AdminReauthService;
 import com.homework.web.admin.dto.MembershipActionDTO;
+import com.homework.model.enums.MembershipAction;
+import com.homework.model.enums.MembershipOrderStatus;
+import com.homework.model.enums.MembershipStatus;
 import com.homework.web.admin.dto.MembershipPlanCreateDTO;
 import com.homework.web.admin.dto.MembershipPlanUpdateDTO;
 import com.homework.web.admin.service.AdminMembershipService;
@@ -27,8 +30,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Locale;
-
 /** 后台会员、订单和套餐配置接口。 */
 @RestController
 @RequiredArgsConstructor
@@ -45,7 +46,7 @@ public class AdminMembershipController {
     @GetMapping("/memberships")
     public Result<PageResult<MembershipRowVO>> list(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String membershipType,
+            @RequestParam(required = false) MembershipStatus membershipType,
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize
     ) {
@@ -68,8 +69,8 @@ public class AdminMembershipController {
             @RequestHeader(value = "X-Admin-Reauth-Token", required = false) String reauthToken,
             @Valid @RequestBody MembershipActionDTO dto
     ) {
-        String action = dto.getAction().trim().toUpperCase(Locale.ROOT);
-        if ("REVOKE".equals(action)) {
+        MembershipAction action = dto.getAction();
+        if (action == MembershipAction.REVOKE) {
             accessService.requirePermission("membership:revoke");
             reauthService.consume(reauthToken, "membership:revoke");
         } else {
@@ -85,7 +86,7 @@ public class AdminMembershipController {
     public Result<PageResult<MembershipOrderVO>> listOrders(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) String orderStatus,
+            @RequestParam(required = false) MembershipOrderStatus orderStatus,
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize
     ) {

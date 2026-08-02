@@ -8,9 +8,24 @@ import StatusTag from '@/components/StatusTag.vue'
 import { actOnUser, getUser, listUsers, updateUserCommunityAccess } from '@/api/admin'
 import { showApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
-import type { UserDetail, UserRow } from '@/types/admin'
+import {
+  CommunityRestrictionScope,
+  UserAccountAction,
+  UserInfoStatus,
+  type CommunityRestrictionScope as CommunityRestrictionScopeValue,
+  type UserAccountAction as UserAccountActionValue,
+  type UserDetail,
+  type UserInfoStatus as UserInfoStatusValue,
+  type UserRow,
+} from '@/types/admin'
 import { formatDateTime } from '@/utils/format'
-import { membershipTypeLabels } from '@/utils/dictionaries'
+import {
+  communityRestrictionScopeLabels,
+  membershipTypeLabels,
+  userIdentityProviderLabels,
+  userIdentityStatusLabels,
+  userStatusNames,
+} from '@/utils/dictionaries'
 
 const auth = useAuthStore()
 const loading = ref(false)
@@ -21,14 +36,19 @@ const detailLoading = ref(false)
 const detail = ref<UserDetail | null>(null)
 const reasonDialog = ref<InstanceType<typeof ReasonDialog>>()
 const reauthDialog = ref<InstanceType<typeof ReauthDialog>>()
-const pendingAction = ref<{ row: UserRow; action: string; reason?: string } | null>(null)
+const pendingAction = ref<{ row: UserRow; action: UserAccountActionValue; reason?: string } | null>(null)
 const communityVisible = ref(false)
 const communitySaving = ref(false)
-const query = reactive({ keyword: '', status: '', pageNum: 1, pageSize: 20 })
+const query = reactive({
+  keyword: '',
+  status: '' as UserInfoStatusValue | '',
+  pageNum: 1,
+  pageSize: 20,
+})
 const communityForm = reactive({
   userId: 0,
   restricted: true,
-  scope: 'BOTH',
+  scope: CommunityRestrictionScope.BOTH as CommunityRestrictionScopeValue,
   endTime: '',
   reason: '',
   version: 0,
@@ -71,7 +91,7 @@ async function openDetail(user: UserRow): Promise<void> {
   }
 }
 
-function openAction(row: UserRow, action: string, title: string): void {
+function openAction(row: UserRow, action: UserAccountAction, title: string): void {
   pendingAction.value = { row, action }
   reasonDialog.value?.open({ title, description: `${row.displayName}（${row.accountNo}）` })
 }
@@ -80,7 +100,10 @@ async function confirmReason(reason: string): Promise<void> {
   if (!pendingAction.value) return
   pendingAction.value.reason = reason
   reasonDialog.value?.close()
-  if (['BAN', 'UNBAN'].includes(pendingAction.value.action)) {
+  if (
+    pendingAction.value.action === UserAccountAction.BAN ||
+    pendingAction.value.action === UserAccountAction.UNBAN
+  ) {
     reauthDialog.value?.open('user:ban')
     return
   }
@@ -110,7 +133,7 @@ function openCommunity(row: UserRow, restricted: boolean): void {
   Object.assign(communityForm, {
     userId: row.id,
     restricted,
-    scope: 'BOTH',
+    scope: CommunityRestrictionScope.BOTH,
     endTime: '',
     reason: '',
     version: row.version,
@@ -147,9 +170,9 @@ async function saveCommunity(): Promise<void> {
       <div class="filter-bar">
         <el-input v-model="query.keyword" clearable placeholder="账号、昵称或用户 ID" @keyup.enter="search" />
         <el-select v-model="query.status" clearable placeholder="账号状态">
-          <el-option label="正常" value="ACTIVE" />
-          <el-option label="禁用" value="DISABLED" />
-          <el-option label="封禁" value="BANNED" />
+          <el-option label="正常" :value="UserInfoStatus.ACTIVE" />
+          <el-option label="禁用" :value="UserInfoStatus.DISABLED" />
+          <el-option label="封禁" :value="UserInfoStatus.BANNED" />
         </el-select>
         <el-button type="primary" plain @click="search">查询</el-button>
       </div>
@@ -164,7 +187,7 @@ async function saveCommunity(): Promise<void> {
           </template>
         </el-table-column>
         <el-table-column label="状态" width="110">
-          <template #default="{ row }"><StatusTag :value="row.status" /></template>
+          <template #default="{ row }"><StatusTag :value="userStatusNames[row.status]" /></template>
         </el-table-column>
         <el-table-column label="会员" width="130">
           <template #default="{ row }">{{ membershipTypeLabels[row.membershipType] || row.membershipType }}</template>
@@ -180,14 +203,14 @@ async function saveCommunity(): Promise<void> {
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item
-                    v-if="row.status === 'ACTIVE'"
-                    @click="openAction(row, 'DISABLE', '临时禁用用户')"
+                    v-if="row.status === UserInfoStatus.ACTIVE"
+                    @click="openAction(row, UserAccountAction.DISABLE, '临时禁用用户')"
                   >
                     临时禁用
                   </el-dropdown-item>
                   <el-dropdown-item
-                    v-if="row.status === 'DISABLED'"
-                    @click="openAction(row, 'ACTIVATE', '启用用户')"
+                    v-if="row.status === UserInfoStatus.DISABLED"
+                    @click="openAction(row, UserAccountAction.ACTIVATE, '启用用户')"
                   >
                     启用账号
                   </el-dropdown-item>
@@ -195,16 +218,16 @@ async function saveCommunity(): Promise<void> {
                   <el-dropdown-item @click="openCommunity(row, false)">恢复社区发言</el-dropdown-item>
                   <template v-if="auth.isSuperAdmin">
                     <el-dropdown-item
-                      v-if="row.status !== 'BANNED'"
+                      v-if="row.status !== UserInfoStatus.BANNED"
                       divided
-                      @click="openAction(row, 'BAN', '永久封禁用户')"
+                      @click="openAction(row, UserAccountAction.BAN, '永久封禁用户')"
                     >
                       永久封禁
                     </el-dropdown-item>
                     <el-dropdown-item
                       v-else
                       divided
-                      @click="openAction(row, 'UNBAN', '解除永久封禁')"
+                      @click="openAction(row, UserAccountAction.UNBAN, '解除永久封禁')"
                     >
                       解除封禁
                     </el-dropdown-item>
@@ -239,7 +262,7 @@ async function saveCommunity(): Promise<void> {
             </el-descriptions-item>
             <el-descriptions-item label="社区限制">
               <template v-if="detail.communityRestriction">
-                {{ detail.communityRestriction.scope }}，至
+                {{ communityRestrictionScopeLabels[detail.communityRestriction.scope] }}，至
                 {{ formatDateTime(detail.communityRestriction.endTime) }}
               </template>
               <span v-else>无</span>
@@ -247,9 +270,13 @@ async function saveCommunity(): Promise<void> {
           </el-descriptions>
           <h3>登录身份</h3>
           <el-table :data="detail.identities">
-            <el-table-column prop="provider" label="渠道" width="110" />
+            <el-table-column label="渠道" width="110">
+              <template #default="{ row }">{{ userIdentityProviderLabels[row.provider] }}</template>
+            </el-table-column>
             <el-table-column prop="maskedIdentifier" label="脱敏标识" />
-            <el-table-column prop="status" label="状态" width="90" />
+            <el-table-column label="状态" width="90">
+              <template #default="{ row }">{{ userIdentityStatusLabels[row.status] }}</template>
+            </el-table-column>
           </el-table>
         </template>
       </div>
@@ -260,9 +287,9 @@ async function saveCommunity(): Promise<void> {
         <template v-if="communityForm.restricted">
           <el-form-item label="限制范围">
             <el-radio-group v-model="communityForm.scope">
-              <el-radio value="POST">发帖</el-radio>
-              <el-radio value="COMMENT">评论</el-radio>
-              <el-radio value="BOTH">发帖和评论</el-radio>
+              <el-radio :value="CommunityRestrictionScope.POST">发帖</el-radio>
+              <el-radio :value="CommunityRestrictionScope.COMMENT">评论</el-radio>
+              <el-radio :value="CommunityRestrictionScope.BOTH">发帖和评论</el-radio>
             </el-radio-group>
           </el-form-item>
           <el-form-item label="结束时间">

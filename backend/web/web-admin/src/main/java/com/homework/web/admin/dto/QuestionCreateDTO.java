@@ -1,7 +1,9 @@
 package com.homework.web.admin.dto;
 
+import com.homework.model.enums.QuestionInfoQuestionType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -11,8 +13,8 @@ import java.util.List;
 @Data
 public class QuestionCreateDTO {
 
-    @NotBlank
-    private String questionType;
+    @NotNull
+    private QuestionInfoQuestionType questionType;
 
     @NotBlank
     @Size(max = 5000)

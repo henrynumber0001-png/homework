@@ -15,7 +15,7 @@ public abstract class BaseEntity implements Serializable {
     @TableField(value = "created_time",fill = FieldFill.INSERT)
     private LocalDateTime createdTime;
 
-    @TableField(value = "updated_time",fill = FieldFill.UPDATE)
+    @TableField(value = "updated_time",fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedTime;
 
     @TableLogic

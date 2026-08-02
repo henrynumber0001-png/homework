@@ -8,14 +8,14 @@ import java.time.LocalDateTime;
 @Data
 public class ActionResultVO {
 
-    /** 被操作资源 ID。 */
+   //动作是对谁操作的
     private Long targetId;
 
     /** 已执行动作。 */
-    private String action;
+    private Integer action;
 
     /** 动作后的业务状态。 */
-    private String status;
+    private Integer status;
 
     /** 动作后的乐观锁版本。 */
     private Integer version;

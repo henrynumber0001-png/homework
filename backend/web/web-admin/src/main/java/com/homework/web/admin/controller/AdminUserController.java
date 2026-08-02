@@ -2,10 +2,12 @@ package com.homework.web.admin.controller;
 
 import com.homework.common.result.PageResult;
 import com.homework.common.result.Result;
+import com.homework.model.enums.UserInfoStatus;
 import com.homework.web.admin.auth.AdminAccessService;
 import com.homework.web.admin.auth.AdminPermission;
 import com.homework.web.admin.auth.AdminReauthService;
-import com.homework.web.admin.dto.ResourceActionDTO;
+import com.homework.web.admin.dto.UserAccountActionDTO;
+import com.homework.model.enums.UserAccountAction;
 import com.homework.web.admin.dto.UserCommunityAccessDTO;
 import com.homework.web.admin.service.AdminUserService;
 import com.homework.web.admin.vo.ActionResultVO;
@@ -24,8 +26,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Locale;
-
 /** 后台 App 用户管理接口。 */
 @RestController
 @RequiredArgsConstructor
@@ -42,7 +42,7 @@ public class AdminUserController {
     @GetMapping
     public Result<PageResult<UserRowVO>> list(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false) UserInfoStatus status,
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize
     ) {
@@ -63,10 +63,10 @@ public class AdminUserController {
     public Result<ActionResultVO> action(
             @PathVariable Long userId,
             @RequestHeader(value = "X-Admin-Reauth-Token", required = false) String reauthToken,
-            @Valid @RequestBody ResourceActionDTO dto
+            @Valid @RequestBody UserAccountActionDTO dto
     ) {
-        String action = dto.getAction().trim().toUpperCase(Locale.ROOT);
-        if ("BAN".equals(action) || "UNBAN".equals(action)) {
+        UserAccountAction action = dto.getAction();
+        if (action == UserAccountAction.BAN || action == UserAccountAction.UNBAN) {
             accessService.requirePermission("user:ban");
             reauthService.consume(reauthToken, "user:ban");
         } else {

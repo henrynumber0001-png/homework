@@ -19,7 +19,7 @@ class QuestionContentServiceTest {
     void interviewBankOnlyAcceptsEssay() {
         QuestionInfoQuestionType type = service.parseAndValidate(
                 GroupType.INTERVIEW,
-                "ESSAY",
+                QuestionInfoQuestionType.ESSAY,
                 null,
                 null
         );
@@ -27,7 +27,7 @@ class QuestionContentServiceTest {
         assertEquals(QuestionInfoQuestionType.ESSAY, type);
         assertThrows(HomeworkException.class, () -> service.parseAndValidate(
                 GroupType.INTERVIEW,
-                "SINGLE_CHOICE",
+                QuestionInfoQuestionType.SINGLE_CHOICE,
                 options("A", "B"),
                 List.of("A")
         ));
@@ -37,14 +37,14 @@ class QuestionContentServiceTest {
     void multipleChoiceRequiresAtLeastTwoCorrectKeys() {
         assertThrows(HomeworkException.class, () -> service.parseAndValidate(
                 GroupType.CERTIFICATION,
-                "MULTIPLE",
+                QuestionInfoQuestionType.MULTIPLE,
                 options("A", "B"),
                 List.of("A")
         ));
 
         QuestionInfoQuestionType type = service.parseAndValidate(
                 GroupType.CERTIFICATION,
-                "MULTIPLE",
+                QuestionInfoQuestionType.MULTIPLE,
                 options("A", "B"),
                 List.of("A", "B")
         );

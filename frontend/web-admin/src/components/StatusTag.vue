@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-const props = defineProps<{ value: string | boolean }>()
+const props = defineProps<{ value: string | number | boolean }>()
 
 const text = computed(() => {
   const labels: Record<string, string> = {

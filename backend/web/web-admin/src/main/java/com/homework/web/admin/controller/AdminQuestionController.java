@@ -2,12 +2,13 @@ package com.homework.web.admin.controller;
 
 import com.homework.common.result.PageResult;
 import com.homework.common.result.Result;
+import com.homework.model.enums.QuestionInfoQuestionType;
 import com.homework.web.admin.auth.AdminAccessService;
 import com.homework.web.admin.auth.AdminPermission;
 import com.homework.web.admin.dto.QuestionCreateDTO;
+import com.homework.web.admin.dto.QuestionActionDTO;
 import com.homework.web.admin.dto.QuestionOrderDTO;
 import com.homework.web.admin.dto.QuestionUpdateDTO;
-import com.homework.web.admin.dto.ResourceActionDTO;
 import com.homework.web.admin.service.AdminQuestionService;
 import com.homework.web.admin.service.QuestionImageService;
 import com.homework.web.admin.vo.ActionResultVO;
@@ -46,7 +47,7 @@ public class AdminQuestionController {
     public Result<PageResult<QuestionRowVO>> list(
             @PathVariable Long bankId,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String questionType,
+            @RequestParam(required = false) QuestionInfoQuestionType questionType,
             @RequestParam(required = false) Boolean released,
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize,
@@ -99,7 +100,7 @@ public class AdminQuestionController {
     public Result<ActionResultVO> action(
             @PathVariable Long bankId,
             @PathVariable Long questionId,
-            @Valid @RequestBody ResourceActionDTO dto
+            @Valid @RequestBody QuestionActionDTO dto
     ) {
         return Result.success(questionService.action(bankId, questionId, dto));
     }

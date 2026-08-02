@@ -19,9 +19,10 @@ import com.homework.web.admin.auth.AdminAccessService;
 import com.homework.web.admin.auth.TokenDigestService;
 import com.homework.web.admin.config.AdminFeatureProperties;
 import com.homework.web.admin.context.AdminContext;
+import com.homework.web.admin.dto.AdminAccountActionDTO;
 import com.homework.web.admin.dto.AdminAccessUpdateDTO;
 import com.homework.web.admin.dto.AdminInvitationCreateDTO;
-import com.homework.web.admin.dto.ResourceActionDTO;
+import com.homework.model.enums.AdminAccountAction;
 import com.homework.web.admin.mapper.AdminAccountMapper;
 import com.homework.web.admin.mapper.AdminAccountPermissionMapper;
 import com.homework.web.admin.mapper.AdminBankScopeMapper;
@@ -40,7 +41,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.UUID;
 
 /** 超级管理员维护普通管理员邀请、权限、题库范围和状态。 */
@@ -62,7 +62,7 @@ public class AdminManagementService {
 
     public PageResult<AdminRowVO> list(
             String keyword,
-            String status,
+            AdminStatus status,
             Integer pageNum,
             Integer pageSize
     ) {
@@ -73,13 +73,7 @@ public class AdminManagementService {
             query.and(wrapper -> wrapper.like(AdminAccount::getEmail, keyword.trim())
                     .or().like(AdminAccount::getDisplayName, keyword.trim()));
         }
-        if (status != null && !status.isBlank()) {
-            try {
-                query.eq(AdminAccount::getStatus, AdminStatus.valueOf(status.trim().toUpperCase(Locale.ROOT)));
-            } catch (IllegalArgumentException exception) {
-                throw new HomeworkException(ResultCodeEnum.PARAM_ERROR, exception);
-            }
-        }
+        query.eq(status != null, AdminAccount::getStatus, status);
         query.orderByAsc(AdminAccount::getRole).orderByDesc(AdminAccount::getCreatedTime);
         Page<AdminAccount> page = accountMapper.selectPage(new Page<>(normalizedPage, normalizedSize), query);
         PageResult<AdminRowVO> result = new PageResult<>();
@@ -103,12 +97,7 @@ public class AdminManagementService {
                 || permissions.stream().anyMatch(AdminPermissionCatalog.SUPER_ONLY::contains)) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_PERMISSION_DENIED);
         }
-        BankDataScope bankDataScope;
-        try {
-            bankDataScope = BankDataScope.valueOf(dto.getBankDataScope().trim().toUpperCase(Locale.ROOT));
-        } catch (RuntimeException exception) {
-            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR, exception);
-        }
+        BankDataScope bankDataScope = dto.getBankDataScope();
         List<Long> bankIds = dto.getAssignedBankIds() == null
                 ? List.of()
                 : new ArrayList<>(new LinkedHashSet<>(dto.getAssignedBankIds()));
@@ -174,12 +163,7 @@ public class AdminManagementService {
                 || permissions.stream().anyMatch(AdminPermissionCatalog.SUPER_ONLY::contains)) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_PERMISSION_DENIED);
         }
-        BankDataScope scope;
-        try {
-            scope = BankDataScope.valueOf(dto.getBankDataScope().trim().toUpperCase(Locale.ROOT));
-        } catch (RuntimeException exception) {
-            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR, exception);
-        }
+        BankDataScope scope = dto.getBankDataScope();
         List<Long> bankIds = dto.getAssignedBankIds() == null
                 ? List.of()
                 : new ArrayList<>(new LinkedHashSet<>(dto.getAssignedBankIds()));
@@ -228,7 +212,7 @@ public class AdminManagementService {
     }
 
     @Transactional
-    public ActionResultVO action(Long adminId, ResourceActionDTO dto) {
+    public ActionResultVO action(Long adminId, AdminAccountActionDTO dto) {
         AdminAccount target = accountMapper.selectById(adminId);
         if (target == null || target.getRole() == AdminRole.SUPER_ADMIN
                 || !target.getVersion().equals(dto.getVersion())) {
@@ -237,13 +221,13 @@ public class AdminManagementService {
             }
             throw new HomeworkException(ResultCodeEnum.ADMIN_ACCOUNT_NOT_FOUND);
         }
-        String action = dto.getAction().trim().toUpperCase(Locale.ROOT);
+        AdminAccountAction action = dto.getAction();
         AdminStatus targetStatus;
-        if ("DISABLE".equals(action) && target.getStatus() == AdminStatus.ACTIVE) {
+        if (action == AdminAccountAction.DISABLE && target.getStatus() == AdminStatus.ACTIVE) {
             targetStatus = AdminStatus.DISABLED;
-        } else if ("ACTIVATE".equals(action) && target.getStatus() == AdminStatus.DISABLED) {
+        } else if (action == AdminAccountAction.ACTIVATE && target.getStatus() == AdminStatus.DISABLED) {
             targetStatus = AdminStatus.ACTIVE;
-        } else if ("ARCHIVE".equals(action)
+        } else if (action == AdminAccountAction.ARCHIVE
                 && (target.getStatus() == AdminStatus.ACTIVE || target.getStatus() == AdminStatus.DISABLED)) {
             targetStatus = AdminStatus.ARCHIVED;
         } else {
@@ -263,11 +247,11 @@ public class AdminManagementService {
                         .set(AdminSession::getRevokedTime, LocalDateTime.now())
         );
         AdminAccount updated = accountMapper.selectById(adminId);
-        auditService.record("ADMIN", action, "ADMIN_ACCOUNT", adminId, dto.getReason(), before, toRow(updated));
+        auditService.record("ADMIN", action.name(), "ADMIN_ACCOUNT", adminId, dto.getReason(), before, toRow(updated));
         ActionResultVO result = new ActionResultVO();
         result.setTargetId(adminId);
-        result.setAction(action);
-        result.setStatus(updated.getStatus().name());
+        result.setAction(action.getValue());
+        result.setStatus(updated.getStatus().getValue());
         result.setVersion(updated.getVersion());
         result.setUpdatedTime(updated.getUpdatedTime());
         return result;
@@ -278,12 +262,12 @@ public class AdminManagementService {
         vo.setId(account.getId());
         vo.setEmail(account.getEmail());
         vo.setDisplayName(account.getDisplayName());
-        vo.setRole(account.getRole().name());
-        vo.setStatus(account.getStatus().name());
+        vo.setRole(account.getRole());
+        vo.setStatus(account.getStatus());
         vo.setPermissions(account.getRole() == AdminRole.SUPER_ADMIN
                 ? AdminPermissionCatalog.ALL
                 : accessService.listPermissions(account.getId()));
-        vo.setBankDataScope(account.getBankDataScope().name());
+        vo.setBankDataScope(account.getBankDataScope());
         vo.setAssignedBankIds(account.getRole() == AdminRole.SUPER_ADMIN
                 || account.getBankDataScope() == BankDataScope.ALL_BANKS
                 ? List.of()

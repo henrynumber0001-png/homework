@@ -35,7 +35,7 @@ public class AdminCategoryService {
             CategoryGroupTreeVO groupVO = new CategoryGroupTreeVO();
             groupVO.setId(group.getId());
             groupVO.setGroupName(group.getGroupName());
-            groupVO.setGroupType(group.getGroupType().name());
+            groupVO.setGroupType(group.getGroupType());
 
             LambdaQueryWrapper<CategoryModule> moduleQuery = new LambdaQueryWrapper<>();
             moduleQuery.eq(CategoryModule::getGroupId, group.getId());

@@ -2,11 +2,12 @@ package com.homework.web.admin.controller;
 
 import com.homework.common.result.PageResult;
 import com.homework.common.result.Result;
+import com.homework.model.enums.AdminStatus;
 import com.homework.web.admin.auth.AdminPermission;
 import com.homework.web.admin.auth.AdminReauthService;
 import com.homework.web.admin.dto.AdminAccessUpdateDTO;
+import com.homework.web.admin.dto.AdminAccountActionDTO;
 import com.homework.web.admin.dto.AdminInvitationCreateDTO;
-import com.homework.web.admin.dto.ResourceActionDTO;
 import com.homework.web.admin.service.AdminManagementService;
 import com.homework.web.admin.vo.ActionResultVO;
 import com.homework.web.admin.vo.AdminInvitationCreateVO;
@@ -39,7 +40,7 @@ public class AdminManagementController {
     @GetMapping("/admins")
     public Result<PageResult<AdminRowVO>> list(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String status,
+            @RequestParam(required = false) AdminStatus status,
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize
     ) {
@@ -75,7 +76,7 @@ public class AdminManagementController {
     public Result<ActionResultVO> action(
             @PathVariable Long adminId,
             @RequestHeader("X-Admin-Reauth-Token") String reauthToken,
-            @Valid @RequestBody ResourceActionDTO dto
+            @Valid @RequestBody AdminAccountActionDTO dto
     ) {
         reauthService.consume(reauthToken, "admin:manage");
         return Result.success(managementService.action(adminId, dto));

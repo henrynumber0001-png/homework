@@ -14,6 +14,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { showApiError } from '@/api/http'
+import { AdminRole } from '@/types/admin'
 
 const route = useRoute()
 const router = useRouter()
@@ -78,7 +79,7 @@ async function handleLogout(): Promise<void> {
             <span class="avatar">{{ auth.admin?.displayName?.slice(0, 1).toUpperCase() }}</span>
             <span>
               <strong>{{ auth.admin?.displayName }}</strong>
-              <small>{{ auth.admin?.role === 'SUPER_ADMIN' ? '超级管理员' : '管理员' }}</small>
+              <small>{{ auth.admin?.role === AdminRole.SUPER_ADMIN ? '超级管理员' : '管理员' }}</small>
             </span>
           </button>
           <template #dropdown>

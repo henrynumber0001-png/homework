@@ -1,5 +1,6 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.CommunityRestrictionScope;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -9,7 +10,7 @@ import java.time.LocalDateTime;
 public class UserCommunityRestrictionVO {
 
     /** 限制范围名称。 */
-    private String scope;
+    private CommunityRestrictionScope scope;
 
     /** 限制开始时间。 */
     private LocalDateTime startTime;

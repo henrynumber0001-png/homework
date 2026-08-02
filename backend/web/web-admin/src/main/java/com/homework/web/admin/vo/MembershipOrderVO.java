@@ -1,5 +1,7 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.MembershipOrderStatus;
+import com.homework.model.enums.MembershipType;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -16,7 +18,7 @@ public class MembershipOrderVO {
     private Long userId;
 
     /** 会员等级快照。 */
-    private String membershipType;
+    private MembershipType membershipType;
 
     /** 套餐时长快照。 */
     private Integer durationMonths;
@@ -28,7 +30,7 @@ public class MembershipOrderVO {
     private String currency;
 
     /** 订单状态名称。 */
-    private String orderStatus;
+    private MembershipOrderStatus orderStatus;
 
     /** 支付时间。 */
     private LocalDateTime payTime;

@@ -1,5 +1,7 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.MembershipChangeType;
+import com.homework.model.enums.MembershipType;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -9,10 +11,10 @@ import java.time.LocalDateTime;
 public class MembershipChangeVO {
 
     /** 变更类型名称。 */
-    private String changeType;
+    private MembershipChangeType changeType;
 
     /** 涉及的会员等级。 */
-    private String membershipType;
+    private MembershipType membershipType;
 
     /** 发放月数。 */
     private Integer durationMonths;

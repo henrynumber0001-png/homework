@@ -5,6 +5,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import { changePassword } from '@/api/admin'
 import { showApiError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
+import { AdminRole } from '@/types/admin'
 
 const auth = useAuthStore()
 const submitting = ref(false)
@@ -33,7 +34,7 @@ async function submit(): Promise<void> {
         <div class="avatar">{{ auth.admin?.displayName?.slice(0, 1) }}</div>
         <h3>{{ auth.admin?.displayName }}</h3>
         <p>{{ auth.admin?.email }}</p>
-        <el-tag>{{ auth.admin?.role === 'SUPER_ADMIN' ? '超级管理员' : '管理员' }}</el-tag>
+        <el-tag>{{ auth.admin?.role === AdminRole.SUPER_ADMIN ? '超级管理员' : '管理员' }}</el-tag>
       </section>
       <section class="panel password">
         <h3>修改密码</h3>

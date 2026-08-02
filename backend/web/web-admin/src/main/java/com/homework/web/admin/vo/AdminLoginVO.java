@@ -1,5 +1,6 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.BankDataScope;
 import lombok.Data;
 
 import java.util.List;
@@ -24,5 +25,5 @@ public class AdminLoginVO {
     private List<String> permissions;
 
     /** 当前管理员题库数据范围。 */
-    private String bankDataScope;
+    private BankDataScope bankDataScope;
 }

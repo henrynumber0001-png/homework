@@ -1,5 +1,7 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.GroupType;
+import com.homework.model.enums.QuestionBankStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -16,7 +18,7 @@ public class QuestionBankRowVO {
     private String bankName;
 
     /** 题库所属一级类型。 */
-    private String groupType;
+    private GroupType groupType;
 
     /** 一级分类。 */
     private NamedIdVO group;
@@ -28,7 +30,7 @@ public class QuestionBankRowVO {
     private NamedIdVO subModule;
 
     /** 题库业务状态。 */
-    private String status;
+    private QuestionBankStatus status;
 
     /** 题库标签。 */
     private List<String> tags;

@@ -1,5 +1,6 @@
 package com.homework.web.admin.vo;
 
+import com.homework.model.enums.QuestionImportStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -18,7 +19,7 @@ public class QuestionImportTaskVO {
     private String fileName;
 
     /** 当前任务状态名称。 */
-    private String status;
+    private QuestionImportStatus status;
 
     /** Excel 数据总行数。 */
     private Integer totalRows;
