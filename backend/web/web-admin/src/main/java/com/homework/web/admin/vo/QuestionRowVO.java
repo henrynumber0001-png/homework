@@ -1,6 +1,7 @@
 package com.homework.web.admin.vo;
 
 import com.homework.model.enums.QuestionInfoQuestionType;
+import com.homework.model.enums.QuestionInfoStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -24,8 +25,8 @@ public class QuestionRowVO {
     /** 题干图片地址。 */
     private String imageUrl;
 
-    /** 是否已发布。 */
-    private Boolean released;
+    /** 草稿、已发布或已下架状态。 */
+    private QuestionInfoStatus status;
 
     /** 变更：关系表已删除，题库内手动顺序直接来自题目实体。 */
     private Integer questionNo;

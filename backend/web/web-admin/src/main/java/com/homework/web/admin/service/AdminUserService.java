@@ -176,7 +176,7 @@ public class AdminUserService {
             throw new HomeworkException(ResultCodeEnum.ADMIN_USER_STATE_INVALID);
         }
         if (!user.getVersion().equals(dto.getVersion())
-                || userMapper.bumpVersion(userId, dto.getVersion()) == 0) {
+                || userMapper.updateVersion(userId, dto.getVersion()) == 0) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
         }
         List<UserCommunityRestriction> activeRestrictions = restrictionMapper.selectList(

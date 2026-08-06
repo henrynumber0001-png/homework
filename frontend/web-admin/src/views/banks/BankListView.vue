@@ -262,7 +262,7 @@ async function submitCreate(): Promise<void> {
           </div>
           <div class="metrics">
             <div><strong>{{ bank.questionCount }}</strong><span>题目</span></div>
-            <div><strong>{{ bank.releasedQuestionCount }}</strong><span>已发布</span></div>
+            <div><strong>{{ bank.publishedQuestionCount }}</strong><span>已发布</span></div>
             <div><strong>{{ bank.viewCount }}</strong><span>浏览</span></div>
           </div>
           <div class="card-footer">

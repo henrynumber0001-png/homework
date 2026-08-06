@@ -33,20 +33,21 @@ const original = ref<QuestionDetail | null>(null)
 const imagePreview = ref('')
 const uploadedImageObjectKey = ref<string>()
 const removeImage = ref(false)
+const MAX_OPTION_COUNT = 6
 
 const form = reactive<{
   questionType: QuestionType
   title: string
   analysis: string
   options: QuestionOption[]
-  correctAnswers: string[]
+  correctAnswerKeys: string[]
   reason: string
 }>({
   questionType: QuestionType.ESSAY,
   title: '',
   analysis: '',
   options: [],
-  correctAnswers: [],
+  correctAnswerKeys: [],
   reason: '',
 })
 
@@ -60,7 +61,7 @@ watch(
   (type) => {
     if (type === QuestionType.ESSAY) {
       form.options = []
-      form.correctAnswers = []
+      form.correctAnswerKeys = []
       return
     }
     if (form.options.length < 2) {
@@ -69,8 +70,8 @@ watch(
         { key: 'B', content: '' },
       ]
     }
-    if (type === QuestionType.SINGLE_CHOICE && form.correctAnswers.length > 1) {
-      form.correctAnswers = form.correctAnswers.slice(0, 1)
+    if (type === QuestionType.SINGLE_CHOICE && form.correctAnswerKeys.length > 1) {
+      form.correctAnswerKeys = form.correctAnswerKeys.slice(0, 1)
     }
   },
 )
@@ -91,7 +92,7 @@ async function load(): Promise<void> {
       title: original.value.title,
       analysis: original.value.analysis || '',
       options: original.value.options.map((option) => ({ ...option })),
-      correctAnswers: [...original.value.correctAnswers],
+      correctAnswerKeys: [...original.value.correctAnswerKeys],
       reason: '',
     })
     imagePreview.value = original.value.imageUrl || ''
@@ -103,7 +104,7 @@ async function load(): Promise<void> {
 }
 
 function addOption(): void {
-  if (form.options.length >= 26) return
+  if (form.options.length >= MAX_OPTION_COUNT) return
   form.options.push({
     key: String.fromCharCode(65 + form.options.length),
     content: '',
@@ -113,20 +114,20 @@ function addOption(): void {
 function removeOption(index: number): void {
   if (form.options.length <= 2) return
   const removedKey = form.options[index].key
-  const selectedKeys = new Set(form.correctAnswers)
+  const selectedKeys = new Set(form.correctAnswerKeys)
   form.options.splice(index, 1)
-  const nextAnswers: string[] = []
+  const nextAnswerKeys: string[] = []
   form.options.forEach((option, optionIndex) => {
     const oldKey = option.key
     const nextKey = String.fromCharCode(65 + optionIndex)
-    if (selectedKeys.has(oldKey) && oldKey !== removedKey) nextAnswers.push(nextKey)
+    if (selectedKeys.has(oldKey) && oldKey !== removedKey) nextAnswerKeys.push(nextKey)
     option.key = nextKey
   })
-  form.correctAnswers = nextAnswers
+  form.correctAnswerKeys = nextAnswerKeys
 }
 
 function chooseSingleAnswer(value: string | number | boolean | undefined): void {
-  form.correctAnswers = value ? [String(value)] : []
+  form.correctAnswerKeys = value ? [String(value)] : []
 }
 
 async function handleImage(file: UploadFile): Promise<void> {
@@ -163,15 +164,16 @@ function clearImage(): void {
 function validateForm(): string | null {
   if (!form.title.trim()) return '请输入题干'
   if (!isChoice.value) return null
+  if (form.options.length > MAX_OPTION_COUNT) return `选项最多 ${MAX_OPTION_COUNT} 个`
   if (form.options.length < 2 || form.options.some((option) => !option.content.trim())) {
     return '请至少填写两个完整选项'
   }
   const uniqueContents = new Set(form.options.map((option) => option.content.trim()))
   if (uniqueContents.size !== form.options.length) return '选项内容不能重复'
-  if (form.questionType === QuestionType.SINGLE_CHOICE && form.correctAnswers.length !== 1) {
+  if (form.questionType === QuestionType.SINGLE_CHOICE && form.correctAnswerKeys.length !== 1) {
     return '单选题需要选择一个正确答案'
   }
-  if (form.questionType === QuestionType.MULTIPLE && form.correctAnswers.length < 2) {
+  if (form.questionType === QuestionType.MULTIPLE && form.correctAnswerKeys.length < 2) {
     return '多选题需要选择至少两个正确答案'
   }
   return null
@@ -193,7 +195,7 @@ async function submit(): Promise<void> {
     options: isChoice.value
       ? form.options.map((option) => ({ key: option.key, content: option.content.trim() }))
       : [],
-    correctAnswers: isChoice.value ? form.correctAnswers : [],
+    correctAnswerKeys: isChoice.value ? form.correctAnswerKeys : [],
     reason: editing.value ? form.reason.trim() || undefined : undefined,
     version: original.value?.version,
   }
@@ -204,7 +206,7 @@ async function submit(): Promise<void> {
       ElMessage.success('题目已保存')
     } else {
       await createQuestion(bankId, payload)
-      ElMessage.success('题目已创建，当前为未发布状态')
+      ElMessage.success('题目已创建，当前为草稿状态')
     }
     await router.push(`/question-banks/${bankId}`)
   } catch (error) {
@@ -219,7 +221,7 @@ async function submit(): Promise<void> {
   <div v-loading="loading" class="page">
     <PageHeader
       :title="pageTitle"
-      :description="bank ? `${bank.bankName} · 创建后默认未发布` : ''"
+      :description="bank ? `${bank.bankName} · 创建后默认为草稿` : ''"
     >
       <el-button :icon="Back" @click="router.push(`/question-banks/${bankId}`)">返回工作台</el-button>
       <el-button type="primary" :loading="submitting" @click="submit">
@@ -301,13 +303,13 @@ async function submit(): Promise<void> {
           <div v-for="(option, index) in form.options" :key="option.key" class="option-row">
             <el-radio
               v-if="form.questionType === QuestionType.SINGLE_CHOICE"
-              :model-value="form.correctAnswers[0]"
+              :model-value="form.correctAnswerKeys[0]"
               :value="option.key"
-              @change="chooseSingleAnswer"
+              @update:model-value="chooseSingleAnswer"
             />
             <el-checkbox
               v-else
-              v-model="form.correctAnswers"
+              v-model="form.correctAnswerKeys"
               :value="option.key"
             />
             <span class="option-key">{{ option.key }}</span>
@@ -321,10 +323,10 @@ async function submit(): Promise<void> {
             />
           </div>
         </div>
-        <el-button :icon="Plus" :disabled="form.options.length >= 26" @click="addOption">添加选项</el-button>
+        <el-button :icon="Plus" :disabled="form.options.length >= MAX_OPTION_COUNT" @click="addOption">添加选项</el-button>
         <div class="answer-hint">
           <strong>当前正确答案：</strong>
-          <span v-if="form.correctAnswers.length">{{ form.correctAnswers.join('、') }}</span>
+          <span v-if="form.correctAnswerKeys.length">{{ form.correctAnswerKeys.join('、') }}</span>
           <span v-else class="danger-text">尚未选择</span>
         </div>
       </section>
@@ -362,13 +364,13 @@ async function submit(): Promise<void> {
       <aside class="panel side-panel">
         <h3>保存说明</h3>
         <ul>
-          <li>新建题目保存后默认为未发布。</li>
+          <li>新建题目保存后默认为草稿。</li>
           <li>发布操作请回到题库工作台完成。</li>
           <li>题目编辑不会改变其在题库中的顺序。</li>
           <!-- 变更：一题只属于一个题库，因此不再展示共享题目影响提示。 -->
         </ul>
         <el-button type="primary" size="large" :loading="submitting" @click="submit">
-          {{ editing ? '保存修改' : '创建未发布题目' }}
+          {{ editing ? '保存修改' : '创建草稿题目' }}
         </el-button>
       </aside>
     </div>

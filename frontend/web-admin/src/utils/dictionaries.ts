@@ -10,6 +10,7 @@ import {
   MembershipPurchaseType,
   MembershipStatus,
   QuestionBankStatus,
+  QuestionInfoStatus,
   QuestionImportStatus,
   QuestionType,
   UserAuthIdentityProvider,
@@ -35,6 +36,20 @@ export const bankStatusNames: Record<number, string> = {
   [QuestionBankStatus.PUBLISHED]: 'PUBLISHED',
   [QuestionBankStatus.OFFLINE]: 'OFFLINE',
   [QuestionBankStatus.DELETED]: 'DELETED',
+}
+
+export const questionStatusLabels: Record<number, string> = {
+  [QuestionInfoStatus.DRAFT]: '草稿',
+  [QuestionInfoStatus.PUBLISHED]: '已发布',
+  [QuestionInfoStatus.OFFLINE]: '已下架',
+  [QuestionInfoStatus.DELETED]: '已删除',
+}
+
+export const questionStatusNames: Record<number, string> = {
+  [QuestionInfoStatus.DRAFT]: 'DRAFT',
+  [QuestionInfoStatus.PUBLISHED]: 'PUBLISHED',
+  [QuestionInfoStatus.OFFLINE]: 'OFFLINE',
+  [QuestionInfoStatus.DELETED]: 'DELETED',
 }
 
 export const groupTypeLabels: Record<number, string> = {

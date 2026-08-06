@@ -23,16 +23,18 @@ import {
   QuestionAction,
   QuestionBankAction,
   QuestionBankStatus,
+  QuestionInfoStatus,
   QuestionType,
   type CategoryGroup,
   type AdminSortMode as AdminSortModeValue,
   type Question,
   type QuestionBank,
+  type QuestionInfoStatus as QuestionInfoStatusValue,
   type QuestionType as QuestionTypeValue,
 } from '@/types/admin'
 import { runBatchActions, type BatchActionFailure } from '@/utils/batchActions'
 import { formatDateTime } from '@/utils/format'
-import { bankStatusNames, groupTypeLabels, questionTypeLabels } from '@/utils/dictionaries'
+import { bankStatusNames, groupTypeLabels, questionStatusNames, questionTypeLabels } from '@/utils/dictionaries'
 
 type PendingOperation =
   | { kind: 'bank'; action: QuestionBankAction; title: string }
@@ -73,9 +75,9 @@ const questionNoForm = reactive({
 const query = reactive({
   keyword: '',
   questionType: '' as QuestionTypeValue | '',
-  released: (route.query.released === 'false' || route.query.released === 'true'
-    ? route.query.released
-    : '') as '' | 'true' | 'false',
+  status: (route.query.status && Number.isFinite(Number(route.query.status))
+    ? Number(route.query.status)
+    : '') as QuestionInfoStatusValue | '',
   // 题目列表支持按更新时间或题目序号查看。
   sortMode: AdminSortMode.UPDATED_TIME_DESC as AdminSortModeValue,
   pageNum: 1,
@@ -156,7 +158,7 @@ async function loadQuestions(): Promise<void> {
     const result = await listQuestions(bankId, {
       keyword: query.keyword || undefined,
       questionType: query.questionType || undefined,
-      released: query.released === '' ? undefined : query.released === 'true',
+      status: query.status || undefined,
       pageNum: query.pageNum,
       pageSize: query.pageSize,
       // 变更：原 sortBy + sortDirection 合并为题目排序模式。
@@ -181,7 +183,7 @@ function resetQuestionFilters(): void {
   Object.assign(query, {
     keyword: '',
     questionType: '',
-    released: '',
+    status: '',
     sortMode: AdminSortMode.UPDATED_TIME_DESC,
     pageNum: 1,
   })
@@ -194,8 +196,8 @@ function handleSelectionChange(rows: Question[]): void {
 
 function openQuestionOperation(action: QuestionAction, rows: Question[], title: string): void {
   const allowedRows = rows.filter((row) => {
-    if (action === QuestionAction.PUBLISH) return !row.released
-    if (action === QuestionAction.OFFLINE) return row.released
+    if (action === QuestionAction.PUBLISH) return row.status !== QuestionInfoStatus.PUBLISHED
+    if (action === QuestionAction.OFFLINE) return row.status === QuestionInfoStatus.PUBLISHED
     // 变更：一题只属于当前题库，删除不再受共享引用数量限制。
     if (action === QuestionAction.DELETE) return true
     return false
@@ -408,7 +410,7 @@ async function saveQuestionNo(): Promise<void> {
         <StatusTag :value="bankStatusNames[bank.status]" />
       </div>
       <div><span>题目总数</span><strong>{{ bank.questionCount }}</strong></div>
-      <div><span>已发布</span><strong>{{ bank.releasedQuestionCount }}</strong></div>
+      <div><span>已发布</span><strong>{{ bank.publishedQuestionCount }}</strong></div>
       <div><span>浏览次数</span><strong>{{ bank.viewCount }}</strong></div>
       <div><span>完成人次</span><strong>{{ bank.completeCount }}</strong></div>
       <div><span>最后更新</span><strong class="time">{{ formatDateTime(bank.updatedTime) }}</strong></div>
@@ -434,9 +436,10 @@ async function saveQuestionNo(): Promise<void> {
                   :value="type.value"
                 />
               </el-select>
-              <el-select v-model="query.released" clearable placeholder="发布状态">
-                <el-option label="未发布" value="false" />
-                <el-option label="已发布" value="true" />
+              <el-select v-model="query.status" clearable placeholder="题目状态">
+                <el-option label="草稿" :value="QuestionInfoStatus.DRAFT" />
+                <el-option label="已发布" :value="QuestionInfoStatus.PUBLISHED" />
+                <el-option label="已下架" :value="QuestionInfoStatus.OFFLINE" />
               </el-select>
               <!-- 更新时间与题目序号是两种明确的排序模式。 -->
               <el-select v-model="query.sortMode" placeholder="排序方式" @change="search">
@@ -526,7 +529,7 @@ async function saveQuestionNo(): Promise<void> {
             </el-table-column>
             <el-table-column label="状态" width="100">
               <template #default="{ row }">
-                <StatusTag :value="row.released ? 'PUBLISHED' : 'DRAFT'" />
+                <StatusTag :value="questionStatusNames[row.status]" />
               </template>
             </el-table-column>
             <el-table-column label="更新时间" width="156">
@@ -548,13 +551,13 @@ async function saveQuestionNo(): Promise<void> {
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item
-                        v-if="!row.released && auth.hasPermission('question:publish')"
+                        v-if="row.status !== QuestionInfoStatus.PUBLISHED && auth.hasPermission('question:publish')"
                         @click="openQuestionOperation(QuestionAction.PUBLISH, [row], '发布题目')"
                       >
                         发布
                       </el-dropdown-item>
                       <el-dropdown-item
-                        v-if="row.released && auth.hasPermission('question:publish')"
+                        v-if="row.status === QuestionInfoStatus.PUBLISHED && auth.hasPermission('question:publish')"
                         @click="openQuestionOperation(QuestionAction.OFFLINE, [row], '下架题目')"
                       >
                         下架

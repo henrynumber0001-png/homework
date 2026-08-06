@@ -2,6 +2,7 @@ package com.homework.web.admin.vo;
 
 import com.homework.model.enums.GroupType;
 import com.homework.model.enums.QuestionInfoQuestionType;
+import com.homework.model.enums.QuestionInfoStatus;
 import lombok.Data;
 
 import java.util.List;
@@ -35,10 +36,10 @@ public class QuestionDetailVO {
     private List<QuestionOptionVO> options;
 
     /** 正确选项键；面试题为空数组。 */
-    private List<String> correctAnswers;
+    private List<String> correctAnswerKeys;
 
-    /** 是否已发布。 */
-    private Boolean released;
+    /** 草稿、已发布或已下架状态。 */
+    private QuestionInfoStatus status;
 
     /** 变更：一题只属于一个题库，手动顺序直接来自题目实体。 */
     private Integer questionNo;

@@ -38,6 +38,7 @@ public class AdminAccessService {
         if (admin.getRole() == AdminRole.SUPER_ADMIN) {
             return true;
         }
+        //查询 管理员权限表
         Long count = permissionMapper.selectCount(new LambdaQueryWrapper<AdminAccountPermission>()
                 .eq(AdminAccountPermission::getAdminId, admin.getId())
                 .eq(AdminAccountPermission::getPermissionCode, permissionCode));

@@ -64,6 +64,6 @@ public interface QuestionBankMapper extends BaseMapper<QuestionBank> {
             SET version = version + 1, updated_time = CURRENT_TIMESTAMP(3)
             WHERE id = #{bankId} AND is_deleted = 0 AND version = #{version}
             """)
-    int bumpVersion(@Param("bankId") Long bankId, @Param("version") Integer version);
+    int updateVersion(@Param("bankId") Long bankId, @Param("version") Integer version);
 
 }

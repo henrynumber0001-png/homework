@@ -9,9 +9,9 @@ import lombok.Data;
 
 import java.util.List;
 
-/** 后台单条创建题目的请求。 */
+
 @Data
-public class QuestionCreateDTO {
+public class QuestionCreateDTO { //这个是 每一条新创建的题目，需要输入的内容
 
     @NotNull
     private QuestionInfoQuestionType questionType;
@@ -27,9 +27,9 @@ public class QuestionCreateDTO {
     private String imageObjectKey;
 
     @Valid
-    @Size(max = 26)
+    @Size(max = 6)
     private List<QuestionOptionDTO> options;
 
-    @Size(max = 26)
-    private List<String> correctAnswers;
+    @Size(max = 6)
+    private List<@NotBlank String> correctAnswerKeys;
 }

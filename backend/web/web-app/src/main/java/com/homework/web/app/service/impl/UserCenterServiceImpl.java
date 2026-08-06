@@ -233,7 +233,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         if (groupType.equals(GroupType.INTERVIEW)) {
             LambdaQueryWrapper<InterviewQuestionInfo> interviewInfoQueryWrapper = new LambdaQueryWrapper<>();
             interviewInfoQueryWrapper.in(InterviewQuestionInfo::getId, questionIds)
-                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
             List<InterviewQuestionInfo> interviewQuestionInfos = interviewQuestionInfoMapper.selectList(interviewInfoQueryWrapper);
             Map<Long, String> questionIdToTitleMap = interviewQuestionInfos.stream().collect(Collectors.toMap(InterviewQuestionInfo::getId, InterviewQuestionInfo::getTitle));
@@ -252,7 +252,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         if (groupType.equals(GroupType.CERTIFICATION)) {
             LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
             questionInfoQueryWrapper.in(CertificateQuestionInfo::getId, questionIds)
-                    .eq(CertificateQuestionInfo::getIsReleased, true)
+                    .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
             List<CertificateQuestionInfo> questionInfos = certificateQuestionInfoMapper.selectList(questionInfoQueryWrapper);
             Map<Long, String> questionIdToTitleMap = questionInfos.stream().collect(Collectors.toMap(CertificateQuestionInfo::getId, CertificateQuestionInfo::getTitle));
@@ -302,7 +302,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         if (groupType.equals(GroupType.INTERVIEW)) {
             LambdaQueryWrapper<InterviewQuestionInfo> interviewInfoQueryWrapper = new LambdaQueryWrapper<>();
             interviewInfoQueryWrapper.eq(InterviewQuestionInfo::getId, questionId)
-                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
             InterviewQuestionInfo interviewInfo = interviewQuestionInfoMapper.selectOne(interviewInfoQueryWrapper);
             if (interviewInfo == null) {
@@ -330,7 +330,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         if (groupType.equals(GroupType.CERTIFICATION)) {
             LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
             questionInfoQueryWrapper.in(CertificateQuestionInfo::getId, questionId)
-                    .eq(CertificateQuestionInfo::getIsReleased, true)
+                    .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
             CertificateQuestionInfo certificateInfo = certificateQuestionInfoMapper.selectOne(questionInfoQueryWrapper);
             if (certificateInfo == null) {
@@ -433,7 +433,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         if (groupType.equals(GroupType.INTERVIEW)) {
             LambdaQueryWrapper<InterviewQuestionInfo> interviewInfoQueryWrapper = new LambdaQueryWrapper<>();
             interviewInfoQueryWrapper.in(InterviewQuestionInfo::getId, questionIds)
-                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
             List<InterviewQuestionInfo> interviewQuestionInfos = interviewQuestionInfoMapper.selectList(interviewInfoQueryWrapper);
             Map<Long, String> questionIdToTitleMap = interviewQuestionInfos.stream().collect(Collectors.toMap(InterviewQuestionInfo::getId, InterviewQuestionInfo::getTitle));
@@ -457,7 +457,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         if (groupType.equals(GroupType.CERTIFICATION)) {
             LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
             questionInfoQueryWrapper.in(CertificateQuestionInfo::getId, questionIds)
-                    .eq(CertificateQuestionInfo::getIsReleased, true)
+                    .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
             List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(questionInfoQueryWrapper);
             Map<Long, String> questionIdToTitleMap = certificateQuestionInfos.stream().collect(Collectors.toMap(CertificateQuestionInfo::getId, CertificateQuestionInfo::getTitle));
@@ -510,7 +510,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         if (groupType.equals(GroupType.INTERVIEW)) {
             LambdaQueryWrapper<InterviewQuestionInfo> interviewInfoQueryWrapper = new LambdaQueryWrapper<>();
             interviewInfoQueryWrapper.eq(InterviewQuestionInfo::getId, questionId)
-                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
             InterviewQuestionInfo interviewInfo = interviewQuestionInfoMapper.selectOne(interviewInfoQueryWrapper);
             if (interviewInfo == null) {
@@ -526,7 +526,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         if (groupType.equals(GroupType.CERTIFICATION)) {
             LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
             questionInfoQueryWrapper.eq(CertificateQuestionInfo::getId, questionId)
-                    .eq(CertificateQuestionInfo::getIsReleased, true)
+                    .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
             CertificateQuestionInfo certificateInfo = certificateQuestionInfoMapper.selectOne(questionInfoQueryWrapper);
             if (certificateInfo == null) {
@@ -622,7 +622,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         if (groupType.equals(GroupType.INTERVIEW)) {
             LambdaQueryWrapper<InterviewQuestionInfo> interviewInfoQueryWrapper = new LambdaQueryWrapper<>();
             interviewInfoQueryWrapper.in(InterviewQuestionInfo::getId, questionIds)
-                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
             List<InterviewQuestionInfo> interviewQuestionInfos = interviewQuestionInfoMapper.selectList(interviewInfoQueryWrapper);
             Map<Long, String> questionIdToTitleMap = interviewQuestionInfos.stream().collect(Collectors.toMap(InterviewQuestionInfo::getId, InterviewQuestionInfo::getTitle));
@@ -646,7 +646,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         if (groupType.equals(GroupType.CERTIFICATION)) {
             LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
             questionInfoQueryWrapper.in(CertificateQuestionInfo::getId, questionIds)
-                    .eq(CertificateQuestionInfo::getIsReleased, true)
+                    .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
             List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(questionInfoQueryWrapper);
             Map<Long, String> questionIdToTitleMap = certificateQuestionInfos.stream().collect(Collectors.toMap(CertificateQuestionInfo::getId, CertificateQuestionInfo::getTitle));
@@ -699,7 +699,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         if (groupType.equals(GroupType.INTERVIEW)) {
             LambdaQueryWrapper<InterviewQuestionInfo> interviewInfoQueryWrapper = new LambdaQueryWrapper<>();
             interviewInfoQueryWrapper.eq(InterviewQuestionInfo::getId, questionId)
-                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
             InterviewQuestionInfo interviewInfo = interviewQuestionInfoMapper.selectOne(interviewInfoQueryWrapper);
             if (interviewInfo == null) {
@@ -715,7 +715,7 @@ public class UserCenterServiceImpl implements UserCenterService {
         if (groupType.equals(GroupType.CERTIFICATION)) {
             LambdaQueryWrapper<CertificateQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
             questionInfoQueryWrapper.eq(CertificateQuestionInfo::getId, questionId)
-                    .eq(CertificateQuestionInfo::getIsReleased, true)
+                    .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
             CertificateQuestionInfo certificateInfo = certificateQuestionInfoMapper.selectOne(questionInfoQueryWrapper);
             if (certificateInfo == null) {

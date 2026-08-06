@@ -11,6 +11,7 @@ import com.homework.model.entity.CertificateQuestionInfo;
 import com.homework.model.entity.InterviewQuestionInfo;
 import com.homework.model.entity.QuestionBank;
 import com.homework.model.enums.GroupType;
+import com.homework.model.enums.QuestionInfoStatus;
 import com.homework.web.admin.mapper.BankTagMapper;
 import com.homework.web.admin.mapper.CategoryGroupMapper;
 import com.homework.web.admin.mapper.CategoryModuleMapper;
@@ -52,25 +53,25 @@ public class QuestionBankAssembler {
 
         // 变更：题目总数原来由关系表计算，现在按题目实体的 bank_id 直接统计。
         long questionCount;
-        long releasedCount;
+        long publishedCount;
         if (group.getGroupType() == GroupType.INTERVIEW) {
             questionCount = interviewQuestionMapper.selectCount(
                     new LambdaQueryWrapper<InterviewQuestionInfo>()
                             .eq(InterviewQuestionInfo::getBankId, bank.getId())
             );
-            releasedCount = interviewQuestionMapper.selectCount(
+            publishedCount = interviewQuestionMapper.selectCount(
                     new LambdaQueryWrapper<InterviewQuestionInfo>()
                             .eq(InterviewQuestionInfo::getBankId, bank.getId())
-                            .eq(InterviewQuestionInfo::getIsReleased, true));
+                            .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED));
         } else {
             questionCount = certificateQuestionMapper.selectCount(
                     new LambdaQueryWrapper<CertificateQuestionInfo>()
                             .eq(CertificateQuestionInfo::getBankId, bank.getId())
             );
-            releasedCount = certificateQuestionMapper.selectCount(
+            publishedCount = certificateQuestionMapper.selectCount(
                     new LambdaQueryWrapper<CertificateQuestionInfo>()
                             .eq(CertificateQuestionInfo::getBankId, bank.getId())
-                            .eq(CertificateQuestionInfo::getIsReleased, true));
+                            .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED));
         }
 
         QuestionBankRowVO vo = new QuestionBankRowVO();
@@ -99,7 +100,7 @@ public class QuestionBankAssembler {
         // 变更：原 priority 字段已改为 sortOrder 人工曝光权重。
         vo.setSortOrder(bank.getSortOrder());
         vo.setQuestionCount(questionCount);
-        vo.setReleasedQuestionCount(releasedCount);
+        vo.setPublishedQuestionCount(publishedCount);
         vo.setViewCount(bank.getViewCount());
         vo.setCompleteCount(bank.getCompleteCount());
         vo.setPublishedTime(bank.getPublishedTime());

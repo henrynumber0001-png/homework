@@ -4,6 +4,7 @@ import com.homework.common.result.PageResult;
 import com.homework.common.result.Result;
 import com.homework.model.enums.AdminSortMode;
 import com.homework.model.enums.QuestionInfoQuestionType;
+import com.homework.model.enums.QuestionInfoStatus;
 import com.homework.web.admin.auth.AdminAccessService;
 import com.homework.web.admin.auth.AdminPermission;
 import com.homework.web.admin.dto.QuestionCreateDTO;
@@ -49,14 +50,14 @@ public class AdminQuestionController {
             @PathVariable Long bankId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) QuestionInfoQuestionType questionType,
-            @RequestParam(required = false) Boolean released,
+            @RequestParam(required = false) QuestionInfoStatus status,
             @RequestParam(required = false) Integer pageNum,
             @RequestParam(required = false) Integer pageSize,
             // 数字 1 表示更新时间降序，数字 3 表示题目序号升序。
             @RequestParam(required = false) AdminSortMode sortMode
     ) {
         return Result.success(questionService.list(
-                bankId, keyword, questionType, released,
+                bankId, keyword, questionType, status,
                 pageNum, pageSize, sortMode
         ));
     }
@@ -72,7 +73,7 @@ public class AdminQuestionController {
         return Result.success(questionService.get(bankId, questionId));
     }
 
-    /** 在指定题库中创建一条默认未发布的题目。 */
+    /** 在指定题库中创建一条默认处于草稿状态的题目。 */
     @Operation(summary = "创建题目")
     @AdminPermission("question:create")
     @PostMapping("/question-banks/{bankId}/questions")

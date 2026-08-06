@@ -2,6 +2,7 @@ package com.homework.web.admin.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.homework.model.entity.CertificateQuestionInfo;
+import com.homework.model.enums.QuestionInfoStatus;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -64,26 +65,26 @@ public interface CertificateQuestionMapper extends BaseMapper<CertificateQuestio
             UPDATE certificate_question_info
             SET question_no = -question_no
             WHERE bank_id = #{bankId} AND is_deleted = 0
-              AND question_no BETWEEN #{lowerQuestionNo} AND #{upperQuestionNo}
+              AND question_no BETWEEN #{firstQuestionNo} AND #{lastQuestionNo}
             """)
-    int negateQuestionNoRange(
+    int negativeQuestionNoRange(
             @Param("bankId") Long bankId,
-            @Param("lowerQuestionNo") Integer lowerQuestionNo,
-            @Param("upperQuestionNo") Integer upperQuestionNo
+            @Param("firstQuestionNo") Integer firstQuestionNo,
+            @Param("lastQuestionNo") Integer lastQuestionNo
     );
 
-    /** 恢复暂存区间，并按 delta（1 或 -1）完成顺移。 */
+    /** 恢复暂存区间，并按 questionNoChange（1 或 -1）完成顺移。 */
     @Update("""
             UPDATE certificate_question_info
-            SET question_no = -question_no + #{delta}, updated_time = CURRENT_TIMESTAMP(3)
+            SET question_no = -question_no + #{questionNoChange}, updated_time = CURRENT_TIMESTAMP(3)
             WHERE bank_id = #{bankId} AND is_deleted = 0
-              AND question_no BETWEEN 0 - #{upperQuestionNo} AND 0 - #{lowerQuestionNo}
+              AND question_no BETWEEN 0 - #{lastQuestionNo} AND 0 - #{firstQuestionNo}
             """)
     int restoreQuestionNoRange(
             @Param("bankId") Long bankId,
-            @Param("lowerQuestionNo") Integer lowerQuestionNo,
-            @Param("upperQuestionNo") Integer upperQuestionNo,
-            @Param("delta") Integer delta
+            @Param("firstQuestionNo") Integer firstQuestionNo,
+            @Param("lastQuestionNo") Integer lastQuestionNo,
+            @Param("questionNoChange") Integer questionNoChange
     );
 
     @Update("""
@@ -101,7 +102,7 @@ public interface CertificateQuestionMapper extends BaseMapper<CertificateQuestio
     /** 变更：逻辑删除同时校验 bank_id，防止跨题库操作题目。 */
     @Update("""
             UPDATE certificate_question_info
-            SET is_deleted = 1, is_released = 0, version = version + 1,
+            SET is_deleted = 1, status = #{status}, version = version + 1,
                 updated_time = CURRENT_TIMESTAMP(3)
             WHERE bank_id = #{bankId} AND id = #{questionId}
               AND is_deleted = 0 AND version = #{version}
@@ -109,7 +110,8 @@ public interface CertificateQuestionMapper extends BaseMapper<CertificateQuestio
     int logicalDelete(
             @Param("bankId") Long bankId,
             @Param("questionId") Long questionId,
-            @Param("version") Integer version
+            @Param("version") Integer version,
+            @Param("status") QuestionInfoStatus status
     );
 
 }

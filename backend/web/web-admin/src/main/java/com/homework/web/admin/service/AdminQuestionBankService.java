@@ -18,6 +18,7 @@ import com.homework.model.enums.AdminSortMode;
 import com.homework.model.enums.BankDataScope;
 import com.homework.model.enums.GroupType;
 import com.homework.model.enums.QuestionBankStatus;
+import com.homework.model.enums.QuestionInfoStatus;
 import com.homework.web.admin.auth.AdminAccessService;
 import com.homework.web.admin.context.AdminContext;
 import com.homework.web.admin.dto.QuestionBankActionDTO;
@@ -415,23 +416,23 @@ public class AdminQuestionBankService {
             }
 
             // 预设已发布题目数量为 0，后面根据题库一级类型选择对应题目表统计。
-            long released = 0;
+            long publishedQuestionCount = 0;
             // 沿题库分类链路查询其所属的 INTERVIEW 或 CERTIFICATION 类型。
             GroupType groupType = bankMapper.selectGroupType(bankId);
             if (groupType == GroupType.INTERVIEW) {
-                released = interviewQuestionMapper.selectCount(
+                publishedQuestionCount = interviewQuestionMapper.selectCount(
                         new LambdaQueryWrapper<InterviewQuestionInfo>()
                                 .eq(InterviewQuestionInfo::getBankId, bankId)
-                                .eq(InterviewQuestionInfo::getIsReleased, true));
+                                .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED));
             }
             if (groupType == GroupType.CERTIFICATION) {
-                released = certificateQuestionMapper.selectCount(
+                publishedQuestionCount = certificateQuestionMapper.selectCount(
                         new LambdaQueryWrapper<CertificateQuestionInfo>()
                                 .eq(CertificateQuestionInfo::getBankId, bankId)
-                                .eq(CertificateQuestionInfo::getIsReleased, true));
+                                .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED));
             }
             // 没有任何已发布题目时不允许发布整个题库。
-            if (released == 0) {
+            if (publishedQuestionCount == 0) {
                 throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_NO_RELEASED_QUESTION);
             }
 

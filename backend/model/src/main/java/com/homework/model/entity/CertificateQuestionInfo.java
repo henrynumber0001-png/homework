@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.Version;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.homework.common.entity.BaseEntity;
 import com.homework.model.enums.QuestionInfoQuestionType;
+import com.homework.model.enums.QuestionInfoStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -35,7 +36,8 @@ public class CertificateQuestionInfo extends BaseEntity {
 
     private QuestionInfoQuestionType questionType;
 
-    private Boolean isReleased;
+    /** 后台维护的草稿、已发布、已下架或已删除状态。 */
+    private QuestionInfoStatus status;
 
     private Long createUserId;
 

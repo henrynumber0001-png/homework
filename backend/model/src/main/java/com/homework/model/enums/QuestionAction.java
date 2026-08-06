@@ -7,7 +7,7 @@ import lombok.Getter;
 @Getter
 public enum QuestionAction implements BaseEnum {
 
-    /** 发布一道尚未发布的题目。 */
+    /** 发布一道草稿或已下架题目。 */
     PUBLISH(1, "publish"),
 
     /** 下架一道已经发布的题目。 */

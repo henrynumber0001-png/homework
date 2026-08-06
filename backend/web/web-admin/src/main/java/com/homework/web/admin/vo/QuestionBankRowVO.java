@@ -42,7 +42,7 @@ public class QuestionBankRowVO {
     private Long questionCount;
 
     /** 已发布题目数。 */
-    private Long releasedQuestionCount;
+    private Long publishedQuestionCount;
 
     /** 累计浏览次数。 */
     private Integer viewCount;

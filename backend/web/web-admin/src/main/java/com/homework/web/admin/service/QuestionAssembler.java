@@ -28,7 +28,7 @@ public class QuestionAssembler {
         vo.setQuestionType(question.getQuestionType());
         vo.setTitle(question.getTitle());
         vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
-        vo.setReleased(question.getIsReleased());
+        vo.setStatus(question.getStatus());
         vo.setQuestionNo(question.getQuestionNo());
         vo.setCreatedTime(question.getCreatedTime());
         vo.setUpdatedTime(question.getUpdatedTime());
@@ -44,7 +44,7 @@ public class QuestionAssembler {
         vo.setQuestionType(question.getQuestionType());
         vo.setTitle(question.getTitle());
         vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
-        vo.setReleased(question.getIsReleased());
+        vo.setStatus(question.getStatus());
         vo.setQuestionNo(question.getQuestionNo());
         vo.setCreatedTime(question.getCreatedTime());
         vo.setUpdatedTime(question.getUpdatedTime());
@@ -63,8 +63,8 @@ public class QuestionAssembler {
         vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setAnalysis(question.getAnalysis());
         vo.setOptions(List.of());
-        vo.setCorrectAnswers(List.of());
-        vo.setReleased(question.getIsReleased());
+        vo.setCorrectAnswerKeys(List.of());
+        vo.setStatus(question.getStatus());
         vo.setQuestionNo(question.getQuestionNo());
         vo.setVersion(question.getVersion());
         return vo;
@@ -81,21 +81,29 @@ public class QuestionAssembler {
         vo.setImageUrl(readUrlSigner.sign(question.getImageObjectKey()));
         vo.setAnalysis(question.getAnalysis());
         List<QuestionOptionVO> optionVos = new ArrayList<>();
-        List<String> correctKeys = new ArrayList<>();
+        List<String> correctAnswerKeys = new ArrayList<>();
+
+        //这里是把选项内容再“序列化”为选项（通过列表顺序重新组装上Key）
         List<String> optionContents = question.getOptions() == null ? List.of() : question.getOptions();
         for (int index = 0; index < optionContents.size(); index++) {
             QuestionOptionVO option = new QuestionOptionVO();
+
+            //app端，后端也返回optionContents，但不需要组装key。前端直接根据列表的顺序，通过下标生成选项：String.fromCharCode(65 + index)
+            //admin端，就还需要单独设置一个key字段，给选项还原回来。因为管理员可能需要修改正确选项，而admin的后端 correctAnswer 的设计逻辑是记录 key，而非content的
+            //为什么admin端不像app端一样，也在前端设置为收集optionContent,而非key呢？
+            //这是因为admin端是给管理员使用的，不论是创建单个题目，通过点击设置正确答案的选项，还是通过excel批量上传题目，设置key远比写correctContent更方便，因为content可能会很长，还可能写错或写漏
+
             String key = String.valueOf((char) ('A' + index));
             option.setKey(key);
             option.setContent(optionContents.get(index));
             optionVos.add(option);
             if (question.getCorrectAnswer() != null && question.getCorrectAnswer().contains(optionContents.get(index))) {
-                correctKeys.add(key);
+                correctAnswerKeys.add(key);
             }
         }
         vo.setOptions(optionVos);
-        vo.setCorrectAnswers(correctKeys);
-        vo.setReleased(question.getIsReleased());
+        vo.setCorrectAnswerKeys(correctAnswerKeys);
+        vo.setStatus(question.getStatus());
         vo.setQuestionNo(question.getQuestionNo());
         vo.setVersion(question.getVersion());
         return vo;

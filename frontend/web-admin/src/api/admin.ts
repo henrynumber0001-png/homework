@@ -158,7 +158,7 @@ export function getQuestion(bankId: number, questionId: number) {
   })
 }
 
-/** 在指定题库中创建一条未发布题目。 */
+/** 在指定题库中创建一条草稿题目。 */
 export function createQuestion(bankId: number, payload: QuestionPayload) {
   return request<QuestionDetail>({
     method: 'POST',

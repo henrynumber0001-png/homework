@@ -431,7 +431,7 @@ GET /api/admin/question-banks?keyword=spring&groupId=1&moduleId=11&subModuleId=1
   "tags": ["Spring", "Backend"],
   "sortOrder": 10,
   "questionCount": 100,
-  "releasedQuestionCount": 98,
+  "publishedQuestionCount": 98,
   "viewCount": 5000,
   "completeCount": 930,
   "publishedTime": "2026-07-01T10:00:00",
@@ -555,7 +555,7 @@ V1 不支持判断题。
 ### 8.3 题目列表
 
 ```http
-GET /api/admin/question-banks/101/questions?keyword=事务&questionType=ESSAY&released=true&pageNum=1&pageSize=20&sortMode=3
+GET /api/admin/question-banks/101/questions?keyword=事务&questionType=ESSAY&status=2&pageNum=1&pageSize=20&sortMode=3
 ```
 
 记录：
@@ -567,7 +567,7 @@ GET /api/admin/question-banks/101/questions?keyword=事务&questionType=ESSAY&re
   "questionType": "ESSAY",
   "title": "Spring 事务失效的常见原因有哪些？",
   "imageUrl": null,
-  "released": true,
+  "status": 2,
   "questionNo": 1,
   "updatedTime": "2026-07-20T10:00:00",
   "version": 3
@@ -600,14 +600,14 @@ GET /api/admin/question-banks/101/questions?keyword=事务&questionType=ESSAY&re
       "content": "选项 B"
     }
   ],
-  "correctAnswers": ["A"],
-  "released": true,
+  "correctAnswerKeys": ["A"],
+  "status": 2,
   "questionNo": 2,
   "version": 3
 }
 ```
 
-面试题的 `options`、`correctAnswers` 返回空数组。变更后一道题只属于一个题库，详情不再返回共享引用题库字段。
+面试题的 `options`、`correctAnswerKeys` 返回空数组。变更后一道题只属于一个题库，详情不再返回共享引用题库字段。
 
 ### 8.5 创建题目
 
@@ -645,19 +645,19 @@ POST /api/admin/question-banks/101/questions
       "content": "选项 C"
     }
   ],
-  "correctAnswers": ["A", "C"]
+  "correctAnswerKeys": ["A", "C"]
 }
 ```
 
 规则：
 
 - 标题最大 5,000 字，解析最大 20,000 字。
-- 选择题包含 2～26 个选项，Key 从 A 连续生成。
+- 选择题包含 2～6 个选项，Key 从 A 连续生成。
 - 单选题只能有一个正确答案。
 - 多选题至少有两个正确答案。
 - 题型必须与题库 Group 匹配。
 - 同一题库的未删除题目中不能存在相同 `title`；已删除历史记录不参与重复校验。
-- 创建后默认未发布。
+- 创建后默认处于 `DRAFT` 状态。
 - 题目实体直接保存 `bank_id` 和 `question_no`，不再创建关系表记录。
 - 新题的 `question_no` 为当前题库有效题目的最大值加 1。
 
@@ -697,7 +697,7 @@ POST /api/admin/question-banks/101/questions/10001/actions
 
 规则：
 
-- 发布只允许未发布题目。
+- 发布只允许 `DRAFT` 或 `OFFLINE` 状态的题目。
 - 删除时自动下架并逻辑删除题目实体，后续有效题目的 `question_no` 自动减 1。
 - 管理端不提供题目回收站查询和恢复动作，删除记录仅用于保留历史数据。
 - 已开始的认证考试 Session 不受下架和排序变化影响。
@@ -808,7 +808,7 @@ file=<xlsx binary>
 - 只支持 `.xlsx`。
 - 文件最大 10 MB。
 - 单次最多 1,000 行。
-- 新导入题目默认未发布。
+- 新导入题目默认处于 `DRAFT` 状态。
 - 使用文件 SHA-256 防止相同文件重复导入。
 
 ### 9.4 查询结果与错误报告

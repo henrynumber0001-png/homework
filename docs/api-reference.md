@@ -243,7 +243,7 @@ POST /api/payment/wechat/native/notify
 | `PUT` | `/question-banks/{bankId}/questions/{questionId}/question-no` | 修改题目序号，中间题目自动顺移 |
 | `POST` | `/uploads/question-images` | 上传题目图片 |
 
-题目主要包含 `questionType`、`title`、`analysis`、`options`、`correctAnswers` 和可选的
+题目主要包含 `questionType`、`title`、`analysis`、`options`、`correctAnswerKeys` 和可选的
 `imageObjectKey`。同一题库的未删除题目不能使用相同 `title`；正确答案由后端校验，
 用户端接口不会提前返回考试正确答案。
 

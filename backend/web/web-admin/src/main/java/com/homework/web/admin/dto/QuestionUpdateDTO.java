@@ -29,11 +29,11 @@ public class QuestionUpdateDTO {
     private Boolean removeImage;
 
     @Valid
-    @Size(max = 26)
+    @Size(max = 6)
     private List<QuestionOptionDTO> options;
 
-    @Size(max = 26)
-    private List<String> correctAnswers;
+    @Size(max = 6)
+    private List<@NotBlank String> correctAnswerKeys;
 
     @Size(max = 500)
     private String reason;

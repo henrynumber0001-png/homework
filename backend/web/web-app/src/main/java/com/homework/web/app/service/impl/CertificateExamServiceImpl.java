@@ -11,6 +11,7 @@ import com.homework.model.entity.CertificateQuestionInfo;
 import com.homework.model.entity.UserFavoriteQuestion;
 import com.homework.model.enums.ExamSessionStatus;
 import com.homework.model.enums.QuestionInfoQuestionType;
+import com.homework.model.enums.QuestionInfoStatus;
 import com.homework.web.app.context.LoginUserHolder;
 import com.homework.web.app.dto.CertificateExamAnswerDTO;
 import com.homework.web.app.mapper.*;
@@ -115,7 +116,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         List<CertificateQuestionInfo> certQuestionInfos = certificateQuestionInfoMapper.selectList(
                 new LambdaQueryWrapper<CertificateQuestionInfo>()
                         .eq(CertificateQuestionInfo::getBankId, bankId)
-                        .eq(CertificateQuestionInfo::getIsReleased, true)
+                        .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                         .in(
                                 CertificateQuestionInfo::getQuestionType,
                                 QuestionInfoQuestionType.SINGLE_CHOICE,
@@ -430,7 +431,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
                 session.getUserId(), session.getBankId(), questionOrder);
 
         //根据 questionOrder(verifiedQuestionIds) 再去CertificateQuestionInfo 查询一遍 题目列表
-        //普通下架情况下，结算时继续显示并判定这道题是合理的，因此只在创建session的时候，拿到questionOrder之前 执行 isReleased 过滤
+        // 普通下架情况下，结算时继续显示并判定这道题是合理的，因此只在创建 Session、生成 questionOrder 前筛选 PUBLISHED 状态。
         LambdaQueryWrapper<CertificateQuestionInfo> questionQueryWrapper = new LambdaQueryWrapper<>();
         questionQueryWrapper.in(CertificateQuestionInfo::getId, questionOrder)
                 .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);

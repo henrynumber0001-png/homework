@@ -39,6 +39,9 @@ export type GroupType = (typeof GroupType)[keyof typeof GroupType]
 export const QuestionBankStatus = { DRAFT: 1, PUBLISHED: 2, OFFLINE: 3, DELETED: 4 } as const
 export type QuestionBankStatus = (typeof QuestionBankStatus)[keyof typeof QuestionBankStatus]
 
+export const QuestionInfoStatus = { DRAFT: 1, PUBLISHED: 2, OFFLINE: 3, DELETED: 4 } as const
+export type QuestionInfoStatus = (typeof QuestionInfoStatus)[keyof typeof QuestionInfoStatus]
+
 export const QuestionType = { SINGLE_CHOICE: 1, MULTIPLE: 2, ESSAY: 3 } as const
 export type QuestionType = (typeof QuestionType)[keyof typeof QuestionType]
 
@@ -174,7 +177,7 @@ export interface QuestionBank {
   /** 变更：原 priority 改为题库人工曝光权重。 */
   sortOrder: number
   questionCount: number
-  releasedQuestionCount: number
+  publishedQuestionCount: number
   viewCount: number
   completeCount: number
   publishedTime?: string
@@ -193,7 +196,7 @@ export interface Question {
   questionType: QuestionType
   title: string
   imageUrl?: string
-  released: boolean
+  status: QuestionInfoStatus
   /** 同一题库内从 1 开始的连续题目序号。 */
   questionNo: number
   createdTime: string
@@ -205,7 +208,7 @@ export interface QuestionDetail extends Question {
   groupType: GroupType
   analysis?: string
   options: QuestionOption[]
-  correctAnswers: string[]
+  correctAnswerKeys: string[]
 }
 
 export interface QuestionImageUpload {
@@ -468,7 +471,7 @@ export interface QuestionPayload {
   imageObjectKey?: string
   removeImage?: boolean
   options: QuestionOption[]
-  correctAnswers: string[]
+  correctAnswerKeys: string[]
   reason?: string
   version?: number
 }

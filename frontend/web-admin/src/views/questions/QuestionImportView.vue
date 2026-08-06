@@ -15,6 +15,7 @@ import {
 } from '@/api/admin'
 import { showApiError } from '@/api/http'
 import {
+  QuestionInfoStatus,
   QuestionImportStatus,
   type QuestionBank,
   type QuestionImportError,
@@ -131,7 +132,7 @@ async function commit(): Promise<void> {
   committing.value = true
   try {
     task.value = await commitQuestionImport(task.value.taskId, task.value.totalRows)
-    ElMessage.success(`已导入 ${task.value.importedRows} 道未发布题目`)
+    ElMessage.success(`已导入 ${task.value.importedRows} 道草稿题目`)
   } catch (error) {
     showApiError(error)
   } finally {
@@ -144,7 +145,7 @@ async function commit(): Promise<void> {
   <div v-loading="loading" class="page">
     <PageHeader
       title="Excel 导入题目"
-      :description="bank ? `导入到：${bank.bankName}。导入成功的题目全部保持未发布状态。` : ''"
+      :description="bank ? `导入到：${bank.bankName}。导入成功的题目全部保持草稿状态。` : ''"
     >
       <el-button :icon="Back" @click="router.push(`/question-banks/${bankId}`)">返回工作台</el-button>
     </PageHeader>
@@ -153,7 +154,7 @@ async function commit(): Promise<void> {
       <el-steps :active="step" align-center finish-status="success">
         <el-step title="准备文件" description="下载模板并填写" />
         <el-step title="上传预检" description="检查每一行数据" />
-        <el-step title="确认导入" description="写入为未发布题目" />
+        <el-step title="确认导入" description="写入为草稿题目" />
       </el-steps>
     </section>
 
@@ -251,7 +252,7 @@ async function commit(): Promise<void> {
             <el-icon><CircleCheck /></el-icon>
             <div>
               <strong>文件已通过预检</strong>
-              <span>确认后将一次性导入 {{ task.totalRows }} 道题，全部为未发布状态。</span>
+              <span>确认后将一次性导入 {{ task.totalRows }} 道题，全部为草稿状态。</span>
             </div>
             <el-button type="primary" size="large" :loading="committing" @click="commit">
               确认导入
@@ -269,10 +270,13 @@ async function commit(): Promise<void> {
             v-if="task.status === QuestionImportStatus.SUCCEEDED"
             icon="success"
             title="题目导入完成"
-            :sub-title="`${task.importedRows} 道题已进入题库，当前全部未发布`"
+            :sub-title="`${task.importedRows} 道题已进入题库，当前全部为草稿`"
           >
             <template #extra>
-              <el-button type="primary" @click="router.push(`/question-banks/${bankId}?released=false`)">
+              <el-button
+                type="primary"
+                @click="router.push(`/question-banks/${bankId}?status=${QuestionInfoStatus.DRAFT}`)"
+              >
                 返回工作台查看题目
               </el-button>
               <el-button @click="clearFile">继续导入</el-button>

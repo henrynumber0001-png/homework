@@ -60,7 +60,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         LambdaQueryWrapper<InterviewQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
         questionInfoQueryWrapper.eq(InterviewQuestionInfo::getBankId, bankId)
                 .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
-                .eq(InterviewQuestionInfo::getIsReleased, true)
+                .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                 .orderByAsc(InterviewQuestionInfo::getQuestionNo)
                 .orderByAsc(InterviewQuestionInfo::getId);
 
@@ -110,7 +110,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         interviewQueryWrapper.eq(InterviewQuestionInfo::getId, questionId)
                 .eq(InterviewQuestionInfo::getBankId, bankId)
                 .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
-                .eq(InterviewQuestionInfo::getIsReleased, Boolean.TRUE);
+                .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED);
 
         InterviewQuestionInfo questionInfo = interviewQuestionInfoMapper.selectOne(interviewQueryWrapper);
 
@@ -122,7 +122,8 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         }
 
         //兜底机制（但后端接口不能只相信前端，因为用户可以绕过页面，直接请求）
-        if (!questionInfo.getQuestionType().equals(QuestionInfoQuestionType.ESSAY) || !Boolean.TRUE.equals(questionInfo.getIsReleased())) {
+        if (!questionInfo.getQuestionType().equals(QuestionInfoQuestionType.ESSAY)
+                || questionInfo.getStatus() != QuestionInfoStatus.PUBLISHED) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
@@ -189,7 +190,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         // 回顾页直接按题目实体 bank_id 查询，question_no 是题库内序号来源。
         LambdaQueryWrapper<InterviewQuestionInfo> interviewQueryWrapper = new LambdaQueryWrapper<>();
         interviewQueryWrapper.eq(InterviewQuestionInfo::getBankId, bankId)
-                .eq(InterviewQuestionInfo::getIsReleased, true)
+                .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                 .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
                 .orderByAsc(InterviewQuestionInfo::getQuestionNo)
                 .orderByAsc(InterviewQuestionInfo::getId);
@@ -325,7 +326,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
         certificateQueryWrapper.eq(CertificateQuestionInfo::getBankId, bankId)
                 .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
-                .eq(CertificateQuestionInfo::getIsReleased, true)
+                .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                 .orderByAsc(CertificateQuestionInfo::getQuestionNo)
                 .orderByAsc(CertificateQuestionInfo::getId);
 
@@ -371,7 +372,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
         certificateQueryWrapper.eq(CertificateQuestionInfo::getId, questionId)
                 .eq(CertificateQuestionInfo::getBankId, bankId)
-                .eq(CertificateQuestionInfo::getIsReleased, true)
+                .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                 .eq(CertificateQuestionInfo::getQuestionType, submitDTO.getQuestionType());
 
         CertificateQuestionInfo certificateQuestionInfo = certificateQuestionInfoMapper.selectOne(certificateQueryWrapper);
@@ -386,8 +387,20 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
-        boolean correct = sameOptions(submitDTO.getChosenOptions(), certificateQuestionInfo.getCorrectAnswer());
+        List<String> correctAnswers = certificateQuestionInfo.getCorrectAnswer();
+        List<String> chosenOptions = submitDTO.getChosenOptions();
 
+        boolean correct;
+        if (chosenOptions == null) {
+            correct = false;
+        }else {
+            // HashSet.equals() 会比较两个集合包含的元素是否完全相同。
+            // 元素是 String 时，集合内部会使用 String.equals() 比较字符串内容。
+            // 先用 size 判断 用户选项和正确答案的数量上是否一致
+            // 再忽略答案的顺序，比较用户选项和正确答案的内容是否一致（使用HashSet去重之后）
+            // 二者缺一不可，如果只是HashSet去重+比较内容，会忽略掉用户可能重复传的数据（虽然这也不太可能发生）
+            correct = chosenOptions.size() == correctAnswers.size() && new HashSet<>(chosenOptions).equals(new HashSet<>(correctAnswers));
+        }
 
         //依旧是要把用户作答记录保存到UserQuestionAnswer
         Long userId = LoginUserHolder.getUserId();
@@ -426,7 +439,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         // 变更：认证题作答记录页直接按题目 bank_id 查询，不再先构造关系 ID 集合。
         LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
         certificateQueryWrapper.eq(CertificateQuestionInfo::getBankId, bankId)
-                .eq(CertificateQuestionInfo::getIsReleased, true)
+                .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                 .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
                 .orderByAsc(CertificateQuestionInfo::getQuestionNo)
                 .orderByAsc(CertificateQuestionInfo::getId);
@@ -509,7 +522,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         // 变更：面试题作答记录页直接按 bank_id 查询，并保留人工拖拽顺序。
         LambdaQueryWrapper<InterviewQuestionInfo> interviewQueryWrapper = new LambdaQueryWrapper<>();
         interviewQueryWrapper.eq(InterviewQuestionInfo::getBankId, bankId)
-                .eq(InterviewQuestionInfo::getIsReleased, true)
+                .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                 .in(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
                 .orderByAsc(InterviewQuestionInfo::getQuestionNo)
                 .orderByAsc(InterviewQuestionInfo::getId);
@@ -601,7 +614,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             // 变更：清除记录时直接按认证题 bank_id 取得当前题库题目。
             LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
             certificateQueryWrapper.eq(CertificateQuestionInfo::getBankId, bankId)
-                    .eq(CertificateQuestionInfo::getIsReleased, true)
+                    .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
                     .orderByAsc(CertificateQuestionInfo::getQuestionNo)
                     .orderByAsc(CertificateQuestionInfo::getId);
@@ -625,7 +638,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             // 变更：面试题同样直接按 bank_id 查询，不再依赖关系 ID 列表。
             LambdaQueryWrapper<InterviewQuestionInfo> interviewQueryWrapper = new LambdaQueryWrapper<>();
             interviewQueryWrapper.eq(InterviewQuestionInfo::getBankId, bankId)
-                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .in(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
                     .orderByAsc(InterviewQuestionInfo::getQuestionNo)
                     .orderByAsc(InterviewQuestionInfo::getId);
@@ -723,7 +736,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         // 变更：完成题库回顾直接按认证题 bank_id 查询，并使用手动顺序。
         LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
         certificateQueryWrapper.eq(CertificateQuestionInfo::getBankId, bankId)
-                .eq(CertificateQuestionInfo::getIsReleased, true)
+                .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                 .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
                 .orderByAsc(CertificateQuestionInfo::getQuestionNo)
                 .orderByAsc(CertificateQuestionInfo::getId);
@@ -827,7 +840,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
             certificateQueryWrapper.eq(CertificateQuestionInfo::getBankId, bankId)
                     .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
-                    .eq(CertificateQuestionInfo::getIsReleased, true);
+                    .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED);
 
             Long totalCount = certificateQuestionInfoMapper.selectCount(certificateQueryWrapper);
             if (totalCount == 0) {
@@ -887,7 +900,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             // 变更：统计面试题数量时直接使用题目表 bank_id。
             LambdaQueryWrapper<InterviewQuestionInfo> interviewQueryWrapper = new LambdaQueryWrapper<>();
             interviewQueryWrapper.eq(InterviewQuestionInfo::getBankId, bankId)
-                    .eq(InterviewQuestionInfo::getIsReleased, true)
+                    .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
             Long totalCount = interviewQuestionInfoMapper.selectCount(interviewQueryWrapper);
             List<Long> interviewIds = interviewQuestionInfoMapper.selectList(interviewQueryWrapper).stream().map(InterviewQuestionInfo::getId).toList();
@@ -1158,18 +1171,5 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
         return favorites.stream()
                 .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
-    }
-
-    //sameOptions() 是一个返回 boolean 的工具方法，如果它里面直接抛业务异常，会让方法职责变重。
-    //
-    private boolean sameOptions(List<String> userOptions, List<String> correctOptions) {
-        if (userOptions == null || correctOptions == null) {
-            return false;
-        }
-
-        //这一步把两个 List (userOptions和correctOptions) 转成 HashSet, 集合不关心顺序。
-        //但前提是两个 List 长度要相同，也就是选项的数量要相同
-        boolean result = userOptions.size() == correctOptions.size() && new HashSet<>(userOptions).equals(new HashSet<>(correctOptions));
-        return result;
     }
 }

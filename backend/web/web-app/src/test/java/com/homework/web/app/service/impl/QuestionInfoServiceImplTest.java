@@ -7,6 +7,7 @@ import com.homework.model.enums.MembershipType;
 import com.homework.model.entity.UserFavoriteQuestion;
 import com.homework.model.enums.ActionStatus;
 import com.homework.model.enums.QuestionInfoQuestionType;
+import com.homework.model.enums.QuestionInfoStatus;
 import com.homework.web.app.context.LoginUserHolder;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.AiEvaluationService;
@@ -156,7 +157,7 @@ class QuestionInfoServiceImplTest {
         question.setTitle("Java 并发");
         question.setImageObjectKey("questions/java-concurrency.png");
         question.setQuestionType(QuestionInfoQuestionType.ESSAY);
-        question.setIsReleased(true);
+        question.setStatus(QuestionInfoStatus.PUBLISHED);
         UserFavoriteQuestion favorite = favorite(99L, false);
 
         when(interviewQuestionInfoMapper.selectList(any())).thenReturn(List.of(question));

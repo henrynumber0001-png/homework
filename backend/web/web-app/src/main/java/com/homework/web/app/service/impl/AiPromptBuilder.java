@@ -8,6 +8,7 @@ import com.homework.model.entity.AiChatMessage;
 import com.homework.model.entity.CertificateQuestionInfo;
 import com.homework.model.entity.InterviewQuestionInfo;
 import com.homework.model.enums.GroupType;
+import com.homework.model.enums.QuestionInfoStatus;
 import com.homework.web.app.dto.AiFollowUpDTO;
 import com.homework.web.app.mapper.CertificateQuestionInfoMapper;
 import com.homework.web.app.mapper.InterviewQuestionInfoMapper;
@@ -75,7 +76,7 @@ public class AiPromptBuilder {
                 new LambdaQueryWrapper<InterviewQuestionInfo>()
                         .eq(InterviewQuestionInfo::getId, dto.getQuestionId())
                         .eq(InterviewQuestionInfo::getBankId, dto.getBankId())
-                        .eq(InterviewQuestionInfo::getIsReleased, true)
+                        .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
         );
 
         if (question == null) {
@@ -106,7 +107,7 @@ public class AiPromptBuilder {
                 new LambdaQueryWrapper<CertificateQuestionInfo>()
                         .eq(CertificateQuestionInfo::getId, dto.getQuestionId())
                         .eq(CertificateQuestionInfo::getBankId, dto.getBankId())
-                        .eq(CertificateQuestionInfo::getIsReleased, true)
+                        .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
         );
 
         if (question == null) {

@@ -28,6 +28,10 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class QuestionImportWorkbookService {
 
+    private static final int OPTION_START_COLUMN_INDEX = 4;
+    private static final int MAX_OPTION_COUNT = 6;
+    private static final int CORRECT_ANSWER_KEYS_COLUMN_INDEX = OPTION_START_COLUMN_INDEX + MAX_OPTION_COUNT;
+
     private final QuestionContentService contentService;
     private final QuestionImageService imageService;
 
@@ -38,10 +42,10 @@ public class QuestionImportWorkbookService {
             Row header = sheet.createRow(0);
             List<String> columns = new ArrayList<>(List.of("questionType", "title", "analysis", "imageObjectKey"));
             if (groupType == GroupType.CERTIFICATION) {
-                for (char key = 'A'; key <= 'Z'; key++) {
-                    columns.add("option" + key);
+                for (int optionIndex = 0; optionIndex < MAX_OPTION_COUNT; optionIndex++) {
+                    columns.add("option" + (char) ('A' + optionIndex));
                 }
-                columns.add("correctAnswers");
+                columns.add("correctAnswerKeys");
             }
             for (int index = 0; index < columns.size(); index++) {
                 header.createCell(index).setCellValue(columns.get(index));
@@ -56,9 +60,9 @@ public class QuestionImportWorkbookService {
                 example.createCell(0).setCellValue("SINGLE_CHOICE");
                 example.createCell(1).setCellValue("请输入题干");
                 example.createCell(2).setCellValue("请输入答案解析");
-                example.createCell(4).setCellValue("选项 A");
-                example.createCell(5).setCellValue("选项 B");
-                example.createCell(30).setCellValue("A");
+                example.createCell(OPTION_START_COLUMN_INDEX).setCellValue("选项 A");
+                example.createCell(OPTION_START_COLUMN_INDEX + 1).setCellValue("选项 B");
+                example.createCell(CORRECT_ANSWER_KEYS_COLUMN_INDEX).setCellValue("A");
             }
             workbook.write(output);
             return output.toByteArray();
@@ -98,8 +102,10 @@ public class QuestionImportWorkbookService {
                 boolean optionGapViolation = false;
                 if (groupType == GroupType.CERTIFICATION) {
                     List<QuestionOptionDTO> options = new ArrayList<>();
-                    for (int optionIndex = 0; optionIndex < 26; optionIndex++) {
-                        String content = formatter.formatCellValue(row.getCell(4 + optionIndex)).trim();
+                    for (int optionIndex = 0; optionIndex < MAX_OPTION_COUNT; optionIndex++) {
+                        String content = formatter.formatCellValue(
+                                row.getCell(OPTION_START_COLUMN_INDEX + optionIndex)
+                        ).trim();
                         if (content.isEmpty()) {
                             if (!options.isEmpty()) {
                                 optionGap = true;
@@ -116,10 +122,12 @@ public class QuestionImportWorkbookService {
                         options.add(option);
                     }
                     dto.setOptions(options);
-                    String correctAnswers = formatter.formatCellValue(row.getCell(30)).trim();
-                    dto.setCorrectAnswers(correctAnswers.isEmpty()
+                    String correctAnswerKeys = formatter.formatCellValue(
+                            row.getCell(CORRECT_ANSWER_KEYS_COLUMN_INDEX)
+                    ).trim();
+                    dto.setCorrectAnswerKeys(correctAnswerKeys.isEmpty()
                             ? List.of()
-                            : Arrays.stream(correctAnswers.split("[,，]"))
+                            : Arrays.stream(correctAnswerKeys.split("[,，]"))
                                     .map(String::trim)
                                     .filter(value -> !value.isEmpty())
                                     .toList());
@@ -136,11 +144,11 @@ public class QuestionImportWorkbookService {
                     dto.setQuestionType(QuestionInfoQuestionType.valueOf(
                             questionTypeValue.toUpperCase(Locale.ROOT)
                     ));
-                    contentService.parseAndValidate(
+                    contentService.validateQuestionCreation(
                             groupType,
                             dto.getQuestionType(),
                             dto.getOptions(),
-                            dto.getCorrectAnswers()
+                            dto.getCorrectAnswerKeys()
                     );
                     if (dto.getImageObjectKey() != null) {
                         imageService.validateObjectKey(dto.getImageObjectKey());

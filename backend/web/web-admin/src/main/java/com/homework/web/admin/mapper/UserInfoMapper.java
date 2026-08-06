@@ -14,5 +14,5 @@ public interface UserInfoMapper extends BaseMapper<UserInfo> {
             SET version = version + 1, updated_time = CURRENT_TIMESTAMP(3)
             WHERE id = #{userId} AND is_deleted = 0 AND version = #{version}
             """)
-    int bumpVersion(@Param("userId") Long userId, @Param("version") Integer version);
+    int updateVersion(@Param("userId") Long userId, @Param("version") Integer version);
 }
