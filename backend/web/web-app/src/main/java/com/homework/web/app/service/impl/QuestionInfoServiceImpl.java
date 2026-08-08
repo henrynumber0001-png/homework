@@ -79,6 +79,12 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
             vo.setQuestionId(questionInfo.getId());
             vo.setTitle(questionInfo.getTitle());
+
+            //interview_question_info里存的是正式的 objectKey
+            //因为存储桶的权限模式是 私有读写，因此所有的 读取图片 的操作，都必须调用 readUrlSigner.sign 先进行鉴权（设置算法 + 签发AKID + 签名有效期（根据ttl）+ SecretKey生效时间 + 签名本身）
+            //获得 presignUrl 之后，返回给前端
+            //前端拿着这个 presignUrl 再次请求COS服务器的存储桶，最终获得二进制图片，给到浏览器（这一步不经过后端了）
+            //不必返回给前端 imageObjectKey, 因为 objectKey 已经存储到 存储桶和数据库表了（各保存一份），后端不需要再携带 objectKey 返回给前端用于bind到数据库题目表了
             vo.setImageUrl(readUrlSigner.sign(questionInfo.getImageObjectKey()));
             vo.setQuestionType(questionInfo.getQuestionType());
             vo.setIsFavorite(favoriteQuestionMap.containsKey(questionInfo.getId())); //containsKey 比 favoriteQuestionMap.get(questionInfo.getId()) != null 更优雅

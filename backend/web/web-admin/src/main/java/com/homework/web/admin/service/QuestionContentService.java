@@ -59,8 +59,7 @@ public class QuestionContentService {
         }
 
         // 选择题必须提供 2～6 个实际选项，并且至少指定一个正确答案。
-        if (options == null || options.size() < 2 || options.size() > 6
-                || correctAnswerKeys == null || correctAnswerKeys.isEmpty()) {
+        if (options == null || options.size() < 2 || options.size() > 6 || correctAnswerKeys == null || correctAnswerKeys.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_QUESTION_OPTION_INVALID);
         }
 
@@ -141,8 +140,10 @@ public class QuestionContentService {
             List<QuestionOptionDTO> options,
             List<String> correctAnswerKeys
     ) {
-        return correctAnswerKeys.stream().map(String::trim).map(String::toUpperCase)
+        return correctAnswerKeys.stream().map(String::trim).map(String::toUpperCase) //correctAnswerKeys是字符串集合，方法引用字符串方法toUpperCase全部转换成大写字母
                 .map(key -> options.get(key.charAt(0) - 'A').getContent().trim()).toList();
+        //charAt(index)方法用于获取字符串中指定索引位置的字符
+        //correctAnswerKeys是一个List集合，里面的每一个元素是一个单独的大写字母，通过与'A'的比较，能够知道正确答案的index，然后使用options.get(index)获取正确答案的选项内容
         //这一步的核心宗旨，还是：存储到题目表中的correctAnswer是 correct-answerContent，而非Key
         //因为如果你只存A/B/C/D，在QuestionInfoServiceImpl中就没办法比较 用户输入 和 正确答案 的判断结果了（万一选项顺序变了呢）
     }

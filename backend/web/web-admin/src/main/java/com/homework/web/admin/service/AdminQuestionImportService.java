@@ -52,9 +52,9 @@ public class AdminQuestionImportService {
 
     public byte[] createTemplate(Long bankId) {
         accessService.requireBank(bankId);
-        QuestionBank bank = bankMapper.selectById(bankId);
-        GroupType groupType = bank == null ? null : bankMapper.selectGroupType(bankId);
-        if (bank == null || groupType == null) {
+
+        GroupType groupType = bankMapper.selectGroupType(bankId);
+        if (groupType == null) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_NOT_FOUND);
         }
         return workbookService.createTemplate(groupType);
@@ -102,6 +102,7 @@ public class AdminQuestionImportService {
             task.setExpiresTime(LocalDateTime.now().plusHours(24));
             taskMapper.insert(task);
 
+            //调用 QuestionImportWorkbookService 的 parse 方法的返回值
             QuestionImportWorkbookResult workbookResult;
             try (InputStream input = Files.newInputStream(filePath)) {
                 workbookResult = workbookService.parse(input, groupType);

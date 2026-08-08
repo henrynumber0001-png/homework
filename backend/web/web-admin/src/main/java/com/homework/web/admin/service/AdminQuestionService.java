@@ -228,6 +228,10 @@ public class AdminQuestionService {
             question.setCreateAdminId(AdminContext.getAdminId());
             // 新题使用当前最大序号加一，默认追加到题库末尾。
             question.setQuestionNo(interviewQuestionMapper.selectMaxQuestionNo(bankId) + 1);
+
+            //调用 QuestionImageService.bind() 方法，把前端传过来的图片的临时 objectKey 改名为 正式 objectKey
+            //然后再复制正式 objectKey 到存储桶中替换（删除）临时 objectKey，永久存储
+            //最后再把正式 objectKey 存入数据库表
             question.setImageObjectKey(imageService.bind(dto.getImageObjectKey()));
             question.setVersion(0);
             interviewQuestionMapper.insert(question);

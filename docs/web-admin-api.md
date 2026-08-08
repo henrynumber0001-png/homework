@@ -778,6 +778,10 @@ GET /api/admin/question-banks/101/question-import-template
 
 根据题库 Group 返回面试题或认证题 `.xlsx` 模板。
 
+- 面试题模板列：`questionType`、`title`、`analysis`。
+- 认证题模板列：`questionType`、`title`、`analysis`、`optionA` 至 `optionF`、`correctAnswerKeys`。
+- Excel 导入不包含图片字段；题目导入为草稿后，可进入题目编辑页单独上传并保存图片。
+
 ### 9.3 上传与预检
 
 ```http
@@ -809,6 +813,7 @@ file=<xlsx binary>
 - 文件最大 10 MB。
 - 单次最多 1,000 行。
 - 新导入题目默认处于 `DRAFT` 状态。
+- Excel 不导入题目图片，图片需要在导入完成后通过题目编辑页单独添加。
 - 使用文件 SHA-256 防止相同文件重复导入。
 
 ### 9.4 查询结果与错误报告

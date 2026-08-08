@@ -28,7 +28,7 @@ public class QuestionImageService {
     private static final long MAX_IMAGE_SIZE = 5L * 1024 * 1024;
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
-    private final COSClient cosClient; //腾讯COS客户端，负责上传、下载、删除、获取文件
+    private final COSClient cosClient; //腾讯COS客户端，负责上传、下载、删除、获取图片
     private final TencentCosProperties properties; //配置文件，配置我的腾讯云账号和桶地址
     private final CosReadUrlSigner readUrlSigner; //为私有 COS 对象生成临时只读地址
 
@@ -94,19 +94,29 @@ public class QuestionImageService {
 
         LocalDateTime now = LocalDateTime.now();
         QuestionImageUploadVO result = new QuestionImageUploadVO();
+
+        //因为此时，objectKey 还没有最终确定被绑定到 题目的数据库表，也就是管理员还没点击“创建题目”按钮
+        //所以要把这个临时的 objectKey 返回给前端，用于前端在创建题目时，调用bind方法，把 objectKey 绑定到数据库表
         result.setObjectKey(objectKey);
+        //后端把这个图片在COS服务器中生成的 presignUrl 返回给前端，然后是前端拿着这个 previewUrl 自己再去请求 COS服务器，最终返回二进制图片给到浏览器（这一步不经过后端了）
         result.setPreviewUrl(previewUrl);
         result.setPreviewUrlExpiresTime(now.plusSeconds(properties.getReadUrlTtlSeconds()));
         result.setUploadExpiresTime(now.plusHours(24)); //过期时间设置为 24h
         return result;
     }
+    /*
+    前端接收到这个JSON:{objectKey, previewUrl, 过期时间}, 执行 imagePreview.value = result.previewUrl
+    再次向COS服务器发出 GET请求，COS服务器收到previewUrl之后，校验 URL 中的签名以及是否过期，返回图片二进制内容，给到前端，最终返回给管理员
+     */
 
     /** 将临时图片复制到正式目录、删除原对象，并返回正式对象 Key。 */
+
     public String bind(String objectKey) { //再把这个临时照片的 objectKey 传回来
         if (objectKey == null || objectKey.isBlank()) {
             return null;
         }
-        validateObjectKey(objectKey); //验证临时图片的 objectKey 是否有效
+        //将临时 objectKey 替换为正式 objectKey 之前，要检查 图片从第一次上传到 COS 服务器开始，到这个方法 bind() 被调用的时间，是否超过了设定的24h
+        validateObjectKey(objectKey);
 
         //设置正式图片的 objectKey
         String targetObjectKey = objectKey.replaceFirst("^admin-temp/questions/", "questions/");
