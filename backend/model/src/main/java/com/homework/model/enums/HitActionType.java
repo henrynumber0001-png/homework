@@ -13,12 +13,12 @@ public enum HitActionType implements BaseEnum {
 
     @EnumValue
     @JsonValue
-    private final Integer value;
+    private final Integer code;
 
-    private final String label;
+    private final String name;
 
-    HitActionType(Integer value, String label) {
-        this.value = value;
-        this.label = label;
+    HitActionType(Integer code, String name) {
+        this.code = code;
+        this.name = name;
     }
 }

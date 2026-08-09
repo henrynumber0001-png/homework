@@ -1,15 +1,9 @@
 import type { SortTypeValue } from '@/shared/constants/domain'
 
-export interface GraphInfo {
-  url: string | null
-  name: string | null
-}
-
 export interface CategoryModule {
   id: number
   moduleName: string
   sortOrder: number
-  graphInfoVo: GraphInfo | null
 }
 
 export interface CategorySubModule {

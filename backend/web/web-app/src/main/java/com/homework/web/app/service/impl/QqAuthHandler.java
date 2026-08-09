@@ -69,7 +69,6 @@ public class QqAuthHandler implements ThirdPartyAuthHandler {
         thirdPartyUser.setProvider(UserAuthIdentityProvider.QQ);
         thirdPartyUser.setExternalUserId(openIdResponse.getOpenId()); //本地账号唯一标识用 openid
         thirdPartyUser.setDisplayName(userInfoResponse.getNickname());
-        thirdPartyUser.setAvatar(chooseAvatar(userInfoResponse));
 
         return thirdPartyUser;
 
@@ -156,19 +155,4 @@ public class QqAuthHandler implements ThirdPartyAuthHandler {
         }
     }
 
-    private String chooseAvatar(QqUserInfoResponse response) {
-        if (StringUtils.hasText(response.getFigureUrlQq2())) {
-            return response.getFigureUrlQq2();
-        }
-        if (StringUtils.hasText(response.getFigureUrlQq1())) {
-            return response.getFigureUrlQq1();
-        }
-        if (StringUtils.hasText(response.getFigureUrl2())) {
-            return response.getFigureUrl2();
-        }
-        if (StringUtils.hasText(response.getFigureUrl1())) {
-            return response.getFigureUrl1();
-        }
-        return response.getFigureUrl();
-    }
 }

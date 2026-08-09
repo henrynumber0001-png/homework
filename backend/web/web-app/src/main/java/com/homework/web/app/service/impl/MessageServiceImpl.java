@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.common.result.PageResult;
+import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.entity.HitComment;
 import com.homework.model.entity.HitPost;
 import com.homework.model.entity.PrivateChatbox;
@@ -51,6 +52,7 @@ public class MessageServiceImpl implements MessageService {
     private final UserFollowMapper followMapper;
     private final HitCommentMapper commentMapper;
     private final HitPostMapper postMapper;
+    private final UserImageUrlResolver userImageUrlResolver;
 
     @Override
     @Transactional
@@ -207,7 +209,7 @@ public class MessageServiceImpl implements MessageService {
                 UserInfo sender = senderMap.get(notification.getSenderUserId());
                 vo.setActionUserId(notification.getSenderUserId());
                 vo.setActionDisplayName(sender == null ? "该用户已注销" : sender.getDisplayName()); //查不到用户名，只能说明状态异常，但不要报错，属于正常
-                vo.setActionAvatar(sender == null ? null : sender.getAvatar());
+                vo.setActionAvatar(sender == null ? null : resolveAvatar(sender));
             }
 
             if (notification.getSendTo() == UserNotificationSendTo.HIT_COMMENT) {
@@ -381,7 +383,7 @@ public class MessageServiceImpl implements MessageService {
             vo.setChatboxId(chatbox.getId());
             vo.setOtherUserId(otherUserId);
             vo.setOtherDisplayName(otherUser == null ? "该用户已注销" : otherUser.getDisplayName());
-            vo.setOtherAvatar(otherUser == null ? null : otherUser.getAvatar());
+            vo.setOtherAvatar(otherUser == null ? null : resolveAvatar(otherUser));
             vo.setChatAccess(chatbox.getChatAccess());
             vo.setCanCurrentUserSend(canCurrentUserSend);
             vo.setLastMessage(lastMessage == null ? null : lastMessage.getContent());
@@ -461,7 +463,7 @@ public class MessageServiceImpl implements MessageService {
         result.setOtherDisplayName(
                 otherUser == null ? "该用户已注销" : otherUser.getDisplayName()
         );
-        result.setOtherAvatar(otherUser == null ? null : otherUser.getAvatar());
+        result.setOtherAvatar(otherUser == null ? null : resolveAvatar(otherUser));
         result.setChatAccess(chatbox.getChatAccess());
         result.setCanCurrentUserSend(canCurrentUserSend);
         result.setLastMessage(lastMessage == null ? null : lastMessage.getContent());
@@ -545,7 +547,7 @@ public class MessageServiceImpl implements MessageService {
             vo.setSenderDisplayName(
                     sender == null ? "该用户已注销" : sender.getDisplayName()
             );
-            vo.setSenderAvatar(sender == null ? null : sender.getAvatar());
+            vo.setSenderAvatar(sender == null ? null : resolveAvatar(sender));
             vo.setReceiverUserId(message.getReceiverUserId());
             vo.setContent(message.getContent());
             vo.setMessageStatus(message.getMessageStatus());
@@ -692,7 +694,7 @@ public class MessageServiceImpl implements MessageService {
         result.setSenderDisplayName(
                 sender == null ? "该用户已注销" : sender.getDisplayName()
         );
-        result.setSenderAvatar(sender == null ? null : sender.getAvatar());
+        result.setSenderAvatar(sender == null ? null : resolveAvatar(sender));
         result.setReceiverUserId(message.getReceiverUserId());
         result.setContent(message.getContent());
         result.setMessageStatus(message.getMessageStatus());
@@ -716,5 +718,8 @@ public class MessageServiceImpl implements MessageService {
                         .eq(PrivateMessage::getMessageStatus, PrivateMessageStatus.SENT);
 
         messageMapper.update(updateData, updateCondition);
+    }
+    private String resolveAvatar(UserInfo userInfo) {
+        return userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey());
     }
 }

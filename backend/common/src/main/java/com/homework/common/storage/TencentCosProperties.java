@@ -20,6 +20,6 @@ public class TencentCosProperties {
     /** 包含 APPID 后缀的完整存储桶名称。 */
     private String bucket;
 
-    /** 私有题目图片签名地址的有效秒数。 */
+    /** 私有对象签名地址的有效秒数。 */
     private long readUrlTtlSeconds = 3600;
 }

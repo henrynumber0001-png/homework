@@ -12,9 +12,9 @@ public enum ExamSessionStatus implements BaseEnum {
 
     @EnumValue
     @JsonValue
-    private final Integer value;
-    private final String label;
-    ExamSessionStatus(Integer value, String label) {
-        this.value = value; this.label = label;
+    private final Integer code;
+    private final String name;
+    ExamSessionStatus(Integer code, String name) {
+        this.code = code; this.name = name;
     }
 }

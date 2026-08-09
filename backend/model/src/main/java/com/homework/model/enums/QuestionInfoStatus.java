@@ -16,13 +16,13 @@ public enum QuestionInfoStatus implements BaseEnum {
     /** 保存到数据库并通过接口返回的状态值。 */
     @EnumValue
     @JsonValue
-    private final Integer value;
+    private final Integer code;
 
     /** 状态的英文说明。 */
-    private final String label;
+    private final String name;
 
-    QuestionInfoStatus(Integer value, String label) {
-        this.value = value;
-        this.label = label;
+    QuestionInfoStatus(Integer code, String name) {
+        this.code = code;
+        this.name = name;
     }
 }

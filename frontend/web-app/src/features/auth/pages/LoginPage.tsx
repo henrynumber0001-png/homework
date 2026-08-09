@@ -97,7 +97,7 @@ export function LoginPage() {
         </label>
         <Turnstile onTokenChange={handleTurnstile} />
         {loginMutation.isError ? (
-          <p className="rounded-xl bg-[#f8eaea] px-3 py-2 text-sm text-danger">
+          <p className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">
             {getErrorMessage(loginMutation.error)}
           </p>
         ) : null}

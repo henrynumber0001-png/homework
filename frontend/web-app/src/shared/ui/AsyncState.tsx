@@ -43,7 +43,7 @@ interface EmptyStateProps {
 export function EmptyState({ title, description }: EmptyStateProps) {
   return (
     <div className="flex min-h-40 flex-col items-center justify-center gap-2 p-6 text-center">
-      <Inbox className="size-7 text-[#a69a92]" aria-hidden="true" />
+      <Inbox className="size-7 text-placeholder" aria-hidden="true" />
       <p className="font-semibold text-ink">{title}</p>
       {description ? <p className="text-sm text-muted">{description}</p> : null}
     </div>

@@ -12,12 +12,12 @@ public enum UserNotificationReadStatus implements BaseEnum {
 
     @EnumValue
     @JsonValue
-    private final Integer value;
+    private final Integer code;
 
-    private final String label;
+    private final String name;
 
-    UserNotificationReadStatus(Integer value, String label) {
-        this.value = value;
-        this.label = label;
+    UserNotificationReadStatus(Integer code, String name) {
+        this.code = code;
+        this.name = name;
     }
 }

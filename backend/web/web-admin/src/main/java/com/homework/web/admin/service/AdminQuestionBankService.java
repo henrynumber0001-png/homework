@@ -495,9 +495,9 @@ public class AdminQuestionBankService {
         // 返回本次操作的题库 ID。
         result.setTargetId(bankId);
         // 返回动作枚举的固定数字 value。
-        result.setAction(action.getValue());
+        result.setAction(action.getCode());
         // 返回动作完成后的题库状态。
-        result.setStatus(after.getStatus().getValue());
+        result.setStatus(after.getStatus().getCode());
         // 返回动作完成后的最新版本号，供前端下一次操作使用。
         result.setVersion(after.getVersion());
         // 返回动作完成后的最后更新时间。

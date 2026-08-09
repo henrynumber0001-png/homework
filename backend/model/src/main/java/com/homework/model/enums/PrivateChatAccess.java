@@ -12,11 +12,11 @@ public enum PrivateChatAccess implements BaseEnum {
 
     @EnumValue
     @JsonValue
-    private final Integer value;
-    private final String label;
+    private final Integer code;
+    private final String name;
 
-    PrivateChatAccess(Integer value, String label) {
-        this.value = value;
-        this.label = label;
+    PrivateChatAccess(Integer code, String name) {
+        this.code = code;
+        this.name = name;
     }
 }

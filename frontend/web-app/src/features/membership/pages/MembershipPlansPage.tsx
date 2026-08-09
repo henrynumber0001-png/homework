@@ -1,5 +1,12 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { ArrowRight, Check, Crown, ShieldCheck, Sparkles } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Crown,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
@@ -68,8 +75,14 @@ export function MembershipPlansPage() {
 
   return (
     <div className="app-container py-8">
-      <section className="relative overflow-hidden rounded-2xl border border-[#d8c18a] bg-[#fff8e7] px-6 py-9 text-center sm:px-8">
-        <div className="absolute -left-10 -top-20 size-60 rounded-full border-[32px] border-[#d9bd77]/12" />
+      <Button asChild variant="ghost" size="sm" className="-ml-3 mb-4">
+        <Link to="/membership/center">
+          <ArrowLeft className="size-4" />
+          返回会员中心
+        </Link>
+      </Button>
+      <section className="relative overflow-hidden rounded-2xl border border-[#b9cce2] bg-[linear-gradient(135deg,#e9f1fa_0%,#f7f9fd_55%,#eef3fb_100%)] px-6 py-9 text-center sm:px-8">
+        <div className="absolute -left-10 -top-20 size-60 rounded-full border-[32px] border-brand/10" />
         <Crown className="relative mx-auto size-8 text-premium" />
         <p className="relative mt-3 text-sm font-bold text-premium">
           HomeWork Membership
@@ -93,7 +106,7 @@ export function MembershipPlansPage() {
           return (
             <Card
               key={card.membershipType}
-              className={plus ? 'border-[#d8c18a] p-6' : 'p-6'}
+              className={plus ? 'border-[#b9cce2] p-6' : 'p-6'}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -105,8 +118,8 @@ export function MembershipPlansPage() {
                 <span
                   className={
                     plus
-                      ? 'flex size-11 items-center justify-center rounded-xl bg-[#fff1c7] text-premium'
-                      : 'flex size-11 items-center justify-center rounded-xl bg-[#e9f0ed] text-accent'
+                      ? 'flex size-11 items-center justify-center rounded-xl bg-premium-soft text-premium'
+                      : 'flex size-11 items-center justify-center rounded-xl bg-accent-soft text-accent'
                   }
                 >
                   {plus ? (
@@ -148,7 +161,7 @@ export function MembershipPlansPage() {
         <Card className="mt-6 p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <Badge className="border-[#d8c18a] bg-[#fff8e7] text-premium">
+              <Badge className="border-[#d8c18a] bg-premium-soft text-premium">
                 补差升级
               </Badge>
               <h2 className="mt-3 text-xl font-extrabold">
@@ -175,7 +188,7 @@ export function MembershipPlansPage() {
       ) : null}
 
       {orderMutation.isError ? (
-        <Card className="mt-5 border-[#e3b9b9] bg-[#fbf0f0] p-4 text-sm text-danger">
+        <Card className="mt-5 border-[#e3b9b9] bg-danger-soft p-4 text-sm text-danger">
           订单创建失败。再次点击同一套餐会复用本次购买标识，不会重复建单。
         </Card>
       ) : null}
@@ -205,7 +218,7 @@ function SkuButton({
     <button
       type="button"
       disabled={pending}
-      className="rounded-xl border border-line bg-white p-3 text-left transition hover:border-premium hover:bg-[#fffcf3] disabled:opacity-60"
+      className="rounded-xl border border-line bg-white p-3 text-left transition-colors hover:border-brand/50 hover:bg-brand-soft disabled:opacity-60"
       onClick={onClick}
     >
       <span className="block text-xs text-muted">

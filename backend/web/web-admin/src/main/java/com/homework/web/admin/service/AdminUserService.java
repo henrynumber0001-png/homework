@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.PageResult;
 import com.homework.common.result.ResultCodeEnum;
+import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.entity.BaseVipRecord;
 import com.homework.model.entity.HitComment;
 import com.homework.model.entity.HitPost;
@@ -52,6 +53,7 @@ public class AdminUserService {
     private final HitPostMapper postMapper;
     private final HitCommentMapper commentMapper;
     private final AdminAuditService auditService;
+    private final UserImageUrlResolver userImageUrlResolver;
 
     public PageResult<UserRowVO> list(
             String keyword,
@@ -162,8 +164,8 @@ public class AdminUserService {
         auditService.record("USER", action.name(), "USER", userId, dto.getReason(), before, updated);
         ActionResultVO result = new ActionResultVO();
         result.setTargetId(userId);
-        result.setAction(action.getValue());
-        result.setStatus(updated.getStatus().getValue());
+        result.setAction(action.getCode());
+        result.setStatus(updated.getStatus().getCode());
         result.setVersion(updated.getVersion());
         result.setUpdatedTime(updated.getUpdatedTime());
         return result;
@@ -224,7 +226,7 @@ public class AdminUserService {
         vo.setId(user.getId());
         vo.setAccountNo(user.getAccountNo());
         vo.setDisplayName(user.getDisplayName());
-        vo.setAvatar(user.getAvatar());
+        vo.setAvatar(userImageUrlResolver.resolveAvatar(user.getAvatarObjectKey()));
         vo.setStatus(user.getStatus());
         LocalDateTime now = LocalDateTime.now();
         SvipRecord svip = svipMapper.selectOne(new LambdaQueryWrapper<SvipRecord>()

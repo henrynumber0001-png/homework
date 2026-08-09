@@ -166,7 +166,7 @@ class AdminQuestionServiceTest {
 
         ActionResultVO result = service.action(11L, 55L, dto);
 
-        assertEquals(QuestionInfoStatus.DELETED.getValue(), result.getStatus());
+        assertEquals(QuestionInfoStatus.DELETED.getCode(), result.getStatus());
         verify(interviewQuestionMapper).negativeQuestionNoRange(11L, 4, 8);
         verify(interviewQuestionMapper).restoreQuestionNoRange(11L, 4, 8, -1);
         verify(bankMapper).updateVersion(11L, 12);

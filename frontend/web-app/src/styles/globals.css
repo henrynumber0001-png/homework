@@ -1,27 +1,36 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-canvas: #f5f1ec;
-  --color-surface: #fffdfb;
-  --color-ink: #2f2925;
-  --color-muted: #6f655e;
-  --color-brand: #80685f;
-  --color-brand-dark: #665149;
-  --color-accent: #627d79;
-  --color-premium: #a87924;
-  --color-success: #4f7f72;
-  --color-warning: #a66f21;
-  --color-danger: #b55353;
-  --color-line: #ded5ce;
+  --color-canvas: #f3f6fb;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f6f8fc;
+  --color-ink: #10213f;
+  --color-muted: #66758d;
+  --color-brand: #173f73;
+  --color-brand-dark: #0e2d56;
+  --color-brand-soft: #e7eef8;
+  --color-accent: #2f6fae;
+  --color-accent-soft: #e7f1fb;
+  --color-premium: #986817;
+  --color-premium-soft: #fff6dc;
+  --color-success: #2c796a;
+  --color-success-soft: #eaf6f2;
+  --color-warning: #9b651e;
+  --color-warning-soft: #fff4e5;
+  --color-danger: #b44d5c;
+  --color-danger-soft: #fbecef;
+  --color-line: #d7e0ec;
+  --color-placeholder: #8b98ab;
   --font-sans: Inter, 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
 }
 
 :root {
-  color: #2f2925;
-  background: #f5f1ec;
+  color: #10213f;
+  background: #f3f6fb;
   font-family: Inter, 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  --ease-out-ui: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 * {
@@ -31,7 +40,7 @@
 html {
   min-width: 320px;
   min-height: 100%;
-  background: #f5f1ec;
+  background: #f3f6fb;
 }
 
 body {
@@ -41,10 +50,10 @@ body {
   background:
     radial-gradient(
       circle at 5% 0%,
-      rgb(255 253 251 / 0.85),
+      rgb(222 233 247 / 0.85),
       transparent 28rem
     ),
-    #f5f1ec;
+    #f3f6fb;
 }
 
 button,
@@ -63,13 +72,13 @@ a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid #627d79;
+  outline: 2px solid #2f6fae;
   outline-offset: 3px;
 }
 
 ::selection {
-  color: #2f2925;
-  background: #ded5ce;
+  color: #10213f;
+  background: #dbe8f7;
 }
 
 .app-container {
@@ -83,18 +92,18 @@ textarea:focus-visible,
 }
 
 .surface-card {
-  border: 1px solid rgb(222 213 206 / 0.9);
+  border: 1px solid rgb(215 224 236 / 0.9);
   border-radius: 1rem;
-  background: rgb(255 253 251 / 0.94);
+  background: rgb(255 255 255 / 0.96);
 }
 
 .subtle-shadow {
-  box-shadow: 0 14px 40px rgb(58 47 41 / 0.08);
+  box-shadow: 0 14px 40px rgb(15 31 61 / 0.08);
 }
 
 .bank-card:hover,
 .bank-card:focus-within {
-  box-shadow: 0 16px 34px rgb(68 59 55 / 0.11);
+  box-shadow: 0 16px 34px rgb(15 31 61 / 0.12);
   transform: translateY(-2px);
 }
 

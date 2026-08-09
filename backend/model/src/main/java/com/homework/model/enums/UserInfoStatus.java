@@ -13,12 +13,12 @@ public enum UserInfoStatus implements BaseEnum {
 
     @EnumValue
     @JsonValue
-    private final Integer value;
+    private final Integer code;
 
-    private final String label;
+    private final String name;
 
-    UserInfoStatus(Integer value, String label) {
-        this.value = value;
-        this.label = label;
+    UserInfoStatus(Integer code, String name) {
+        this.code = code;
+        this.name = name;
     }
 }

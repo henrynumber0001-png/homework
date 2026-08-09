@@ -3,6 +3,7 @@ package com.homework.web.app.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
+import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.entity.HitAction;
 import com.homework.model.entity.HitComment;
 import com.homework.model.entity.HitCommentLike;
@@ -46,6 +47,8 @@ class HitServiceImplTest {
     private NotificationService notificationService;
     @Mock
     private CommunityAccessService communityAccessService;
+    @Mock
+    private UserImageUrlResolver userImageUrlResolver;
 
     private HitServiceImpl service;
 
@@ -53,7 +56,7 @@ class HitServiceImplTest {
     void setUp() {
         service = new HitServiceImpl(hitPostMapper, hitCommentMapper, hitActionMapper,
                 userInfoMapper, hitCommentLikeMapper, notificationService, new ObjectMapper(),
-                communityAccessService);
+                communityAccessService, userImageUrlResolver);
         LoginUserHolder.setUserId(7L);
     }
 

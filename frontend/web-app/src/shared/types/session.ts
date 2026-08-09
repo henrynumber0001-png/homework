@@ -6,7 +6,8 @@ import type {
 export interface UserInfo {
   accountNo: string
   displayName: string
-  avatar: string | null
+  avatarUrl: string | null
+  bannerUrl: string | null
 }
 
 export interface MembershipInfo {

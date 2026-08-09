@@ -1,9 +1,7 @@
 package com.homework.web.app.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 
@@ -22,9 +20,6 @@ public class WechatUserInfoResponse {
     private String city;
 
     private String country;
-
-    @JsonProperty("headimgurl")
-    private String headImgUrl;
 
     private List<String> privilege;
 
@@ -46,7 +41,7 @@ authCode
   ↓
 校验 id_token
   ↓
-直接从 id_token 里取 sub / email / name / avatar
+直接从 id_token 里取 sub / email / name
 所以 Google/Apple 只需要类似：GoogleTokenResponse
 
 因为用户信息已经在 id_token 里了。
@@ -62,7 +57,7 @@ authCode
   ↓
 再调用 (微信的)userinfo 接口
   ↓
-拿 nickname / headimgurl / province / city 等用户资料 (WechatUserInfoResponse)
+拿 nickname / province / city 等用户资料 (WechatUserInfoResponse)
 
 所以微信通常需要两个 Response：
 WechatTokenResponse 用来接收 code 换 token 的结果：
@@ -75,7 +70,7 @@ WechatTokenResponse 用来接收 code 换 token 的结果：
   "unionid": "..."
 }
 以及：WechatUserInfoResponse 用来接收用户资料：
-这里主要是需要 nickname 和 headimgurl 信息 （如果要拿unionid 和 openid, 优先去WechatTokenResponse中拿，因为WechatTokenResponse中的openid 和 unionid 本来就是基于 WechatTokenResponse 查出来的)
+这里主要使用 nickname；unionid 和 openid 优先从 WechatTokenResponse 中获取。
 {
   "openid": "...",
   "nickname": "Henry",
@@ -83,7 +78,6 @@ WechatTokenResponse 用来接收 code 换 token 的结果：
   "province": "Guangdong",
   "city": "Shenzhen",
   "country": "CN",
-  "headimgurl": "https://...",
   "privilege": [],
   "unionid": "..."
 }

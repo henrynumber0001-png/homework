@@ -13,7 +13,7 @@ export function Avatar({ src, name, className }: AvatarProps) {
   return (
     <AvatarPrimitive.Root
       className={cn(
-        'inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#e7ded7] text-sm font-bold text-brand',
+        'inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-brand-soft text-sm font-bold text-brand',
         className,
       )}
     >

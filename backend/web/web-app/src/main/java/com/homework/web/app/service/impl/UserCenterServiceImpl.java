@@ -7,6 +7,7 @@ import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.PageResult;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.common.storage.CosReadUrlSigner;
+import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.entity.*;
 import com.homework.model.enums.*;
 import com.homework.web.app.dto.AiEvaluationResult;
@@ -27,10 +28,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class UserCenterServiceImpl implements UserCenterService {
-    private static final long USER_CENTER_BANNER_ITEM_ID = 0L;
-
     private final UserInfoMapper userInfoMapper;
-    private final GraphInfoMapper graphInfoMapper;
     private final MembershipAccessService membershipAccessService;
     private final UserFollowMapper userFollowMapper;
     private final HitPostMapper hitPostMapper;
@@ -44,6 +42,7 @@ public class UserCenterServiceImpl implements UserCenterService {
     private final QuestionAiEvaluationMapper questionAiEvaluationMapper;
     private final QuestionBankMapper questionBankMapper;
     private final CosReadUrlSigner readUrlSigner;
+    private final UserImageUrlResolver userImageUrlResolver;
 
     @Override
     public UserCenterPageVO getCenterPageInfo(Long userId) {
@@ -64,22 +63,13 @@ public class UserCenterServiceImpl implements UserCenterService {
         //装配UserInfoVO
         UserInfoVO userInfoVO = new UserInfoVO();
         userInfoVO.setAccountNo(userInfo.getAccountNo());
-        userInfoVO.setAvatar(userInfo.getAvatar() == null ? null : userInfo.getAvatar());
+        userInfoVO.setAvatarUrl(userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey()));
+        userInfoVO.setBannerUrl(userImageUrlResolver.resolveBanner(userInfo.getBannerObjectKey()));
         userInfoVO.setDisplayName(userInfo.getDisplayName());
 
         userCenterPageVO.setUserInfoVO(userInfoVO);
 
-        //装配GraphInfoVO graphInfoVO
-        LambdaQueryWrapper<GraphInfo> graphInfoQueryWrapper = new LambdaQueryWrapper<>();
-        graphInfoQueryWrapper.eq(GraphInfo::getItemType, ItemType.USER_CENTER_BANNER)
-                .eq(GraphInfo::getItemId, USER_CENTER_BANNER_ITEM_ID);
-        GraphInfo graphInfo = graphInfoMapper.selectOne(graphInfoQueryWrapper);
 
-        if (graphInfo != null) {
-            GraphInfoVO graphInfoVO = new GraphInfoVO();
-            graphInfoVO.setUrl(graphInfo.getUrl());
-            userCenterPageVO.setGraphInfoVO(graphInfoVO);
-        }
 
 
         MembershipAccessSnapshot membership = membershipAccessService.getAccess(userId);
@@ -755,7 +745,7 @@ public class UserCenterServiceImpl implements UserCenterService {
 
         MembershipInfoVO vo = new MembershipInfoVO();
         vo.setDisplayName(userInfo.getDisplayName());
-        vo.setAvatarUrl(userInfo.getAvatar());
+        vo.setAvatarUrl(userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey()));
 
         MembershipAccessSnapshot membership = membershipAccessService.getAccess(userId);
         vo.setMemberStatus(membership.status());
@@ -764,4 +754,5 @@ public class UserCenterServiceImpl implements UserCenterService {
         vo.setBaseFreezeExpireTime(membership.baseFreezeExpireTime());
         return vo;
     }
+
 }

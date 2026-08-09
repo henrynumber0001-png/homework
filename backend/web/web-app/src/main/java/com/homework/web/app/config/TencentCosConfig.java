@@ -2,6 +2,7 @@ package com.homework.web.app.config;
 
 import com.homework.common.storage.CosReadUrlSigner;
 import com.homework.common.storage.TencentCosProperties;
+import com.homework.common.storage.UserImageUrlResolver;
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.ClientConfig;
 import com.qcloud.cos.auth.BasicCOSCredentials;
@@ -12,7 +13,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** 创建 App 端使用只读子账号密钥的腾讯云 COS 客户端。 */
+/** 创建 App 端使用最小权限子账号密钥的腾讯云 COS 客户端。 */
 @Configuration
 @EnableConfigurationProperties(TencentCosProperties.class)
 public class TencentCosConfig {
@@ -29,7 +30,7 @@ public class TencentCosConfig {
         return new COSClient(credentials, clientConfig);
     }
 
-    /** 创建 App 端题目图片只读地址签发器。 */
+    /** 创建 App 端私有对象只读地址签发器。 */
     @Bean
     public CosReadUrlSigner cosReadUrlSigner(COSClient cosClient, TencentCosProperties properties) {
         return new CosReadUrlSigner(
@@ -37,5 +38,10 @@ public class TencentCosConfig {
                 properties.getBucket(),
                 properties.getReadUrlTtlSeconds()
         );
+    }
+
+    @Bean
+    public UserImageUrlResolver userImageUrlResolver(CosReadUrlSigner readUrlSigner) {
+        return new UserImageUrlResolver(readUrlSigner);
     }
 }

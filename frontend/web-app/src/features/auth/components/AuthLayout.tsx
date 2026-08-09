@@ -15,8 +15,8 @@ export function AuthLayout({
 }: AuthLayoutProps) {
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-10">
-      <div className="absolute -left-24 top-10 size-72 rounded-full bg-[#d8e3df]/55 blur-3xl" />
-      <div className="absolute -right-20 bottom-0 size-80 rounded-full bg-[#e5d8cc]/70 blur-3xl" />
+      <div className="absolute -left-24 top-10 size-72 rounded-full bg-[#c9dcf2]/65 blur-3xl" />
+      <div className="absolute -right-20 bottom-0 size-80 rounded-full bg-[#dce8f7]/80 blur-3xl" />
       <section className="surface-card subtle-shadow relative w-full max-w-md p-6 sm:p-8">
         <Link
           to="/login"

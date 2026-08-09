@@ -250,8 +250,8 @@ public class AdminManagementService {
         auditService.record("ADMIN", action.name(), "ADMIN_ACCOUNT", adminId, dto.getReason(), before, toRow(updated));
         ActionResultVO result = new ActionResultVO();
         result.setTargetId(adminId);
-        result.setAction(action.getValue());
-        result.setStatus(updated.getStatus().getValue());
+        result.setAction(action.getCode());
+        result.setStatus(updated.getStatus().getCode());
         result.setVersion(updated.getVersion());
         result.setUpdatedTime(updated.getUpdatedTime());
         return result;

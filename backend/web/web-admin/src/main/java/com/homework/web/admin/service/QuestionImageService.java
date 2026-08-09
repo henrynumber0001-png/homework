@@ -86,7 +86,7 @@ public class QuestionImageService {
                     inputStream, //上传对象的字节输入流(真正的图片)
                     metadata //附加信息，如文件类型（扩展名）、字节数(KB/MB)
             ));
-            //previewUrl = Predesign URL
+            //previewUrl = PreSign URL
             previewUrl = readUrlSigner.sign(objectKey);
         } catch (Exception exception) {
             throw new HomeworkException(ResultCodeEnum.SERVICE_ERROR, exception);

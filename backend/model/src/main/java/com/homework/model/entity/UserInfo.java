@@ -18,7 +18,10 @@ public class UserInfo extends BaseEntity {
 
     private String displayName;
 
-    private String avatar;
+    /** 用户主动上传的私有 COS 对象 key。 */
+    private String avatarObjectKey;
+
+    private String bannerObjectKey;
 
     /** 1.active;2.disabled;3.banned */
     private UserInfoStatus status;

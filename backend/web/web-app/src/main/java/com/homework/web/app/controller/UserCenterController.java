@@ -5,13 +5,16 @@ import com.homework.common.result.PageResult;
 import com.homework.common.result.Result;
 import com.homework.model.enums.GroupType;
 import com.homework.web.app.context.LoginUserHolder;
+import com.homework.web.app.dto.UserImageUpdateDTO;
 import com.homework.web.app.service.UserCenterService;
+import com.homework.model.enums.UserImageType;
+import com.homework.web.app.service.impl.UserImageService;
 import com.homework.web.app.vo.*;
+import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 
 @RestController
@@ -20,12 +23,30 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserCenterController {
 
     private final UserCenterService userCenterService;
+    private final UserImageService imageService;
 
     @GetMapping
     public Result<UserCenterPageVO> centerPageInfo() {
         Long userId = LoginUserHolder.getUserId();
         UserCenterPageVO pageVO = userCenterService.getCenterPageInfo(userId);
         return Result.success(pageVO);
+    }
+
+    @Operation(summary = "上传头像或banner图片")
+    @PostMapping("/images/{imageType}")
+    public Result<UserImageVO> uploadImage(@PathVariable UserImageType imageType,@RequestParam("file") MultipartFile file) {
+        UserImageVO userImageVO = imageService.upload(imageType,file,LoginUserHolder.getUserId());
+        return Result.success(userImageVO);
+    }
+
+
+    @Operation(summary = "确认修改头像或banner图片")
+    @PutMapping("/images/update")
+    //注意：imageType可以选择通过 @PathVariable 或 @RequestParam，然后通过路径传参{imageType}，走你自己设计的转换器完成从数字到枚举常量的转换
+    //也可以通过 @RequestBody，通过Jackson 的 HttpMessageConverter（反序列化），把Json 转换成 枚举常量，但也需要在你的枚举类中 自定义一个 @JsonCreator方法，遍历枚举常量，看是否匹配其中的数字字段
+    public Result<Void> updateImage(@Valid @RequestBody UserImageUpdateDTO dto) {
+        imageService.updateImage(dto.getUserImageType(),dto.getImageObjectKey(),LoginUserHolder.getUserId());
+        return Result.success();
     }
 
 

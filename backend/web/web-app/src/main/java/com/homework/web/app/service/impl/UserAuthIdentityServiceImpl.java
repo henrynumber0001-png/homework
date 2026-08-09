@@ -49,8 +49,6 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
     @Autowired
     private ThirdPartyAuthService thirdPartyAuthService;
 
-
-
     @Transactional(rollbackFor = Exception.class)
     @Override
     public String registerByEmail(EmailRegisterDTO emailRegisterDTO, HttpServletRequest request) {
@@ -149,7 +147,7 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
             displayName = thirdPartyUser.getEmail(); //ThirdPartyUser 中的 email 属性，用于 displayName 返回缺失时候的兜底条件
         }
         if(!StringUtils.hasText(displayName)){ //第二个兜底，因为如果email也返回null，那么就要自创一个displayName
-            displayName = thirdPartyRegisterDTO.getIdentityProvider().getLabel() + "用户" + RandomUtil.randomNumbers(6);
+            displayName = thirdPartyRegisterDTO.getIdentityProvider().getName() + "用户" + RandomUtil.randomNumbers(6);
         }
         userInfo.setDisplayName(displayName);
         userInfo.setStatus(UserInfoStatus.ACTIVE);
@@ -262,12 +260,11 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
                 userInfo.setDisplayName(thirdPartyUser.getEmail());
             }
             if(!StringUtils.hasText(displayName)){
-                displayName = thirdPartyUser.getProvider().getLabel() + "用户" + RandomUtil.randomNumbers(6);
+                displayName = thirdPartyUser.getProvider().getName() + "用户" + RandomUtil.randomNumbers(6);
             }
 
             userInfo.setDisplayName(displayName);
             userInfo.setStatus(UserInfoStatus.ACTIVE);
-            userInfo.setAvatar(thirdPartyUser.getAvatar());
             userInfo.setCreatedTime(LocalDateTime.now());
             userInfo.setUpdatedTime(LocalDateTime.now());
             insertUserInfoWithAccountNo(userInfo);
@@ -293,7 +290,6 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
         String token = jwtUtil.createToken(userId,accountNo);
         return token;
     }
-
 
     private String identifierOfEmail(String email){
         if(!StringUtils.hasText(email)){

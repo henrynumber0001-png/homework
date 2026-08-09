@@ -47,7 +47,7 @@ export function AiChatDialog({
       description="围绕当前题目和答案解析继续提问。"
       className="max-h-[88vh] w-[min(94vw,42rem)]"
     >
-      <div className="flex max-h-[52vh] min-h-64 flex-col gap-4 overflow-y-auto rounded-xl bg-[#f7f3ef] p-4">
+      <div className="flex max-h-[52vh] min-h-64 flex-col gap-4 overflow-y-auto rounded-xl bg-surface-muted p-4">
         {chatQuery.isLoading ? (
           <div className="m-auto size-8 animate-spin rounded-full border-2 border-line border-t-brand" />
         ) : chatQuery.data?.messages.length ? (

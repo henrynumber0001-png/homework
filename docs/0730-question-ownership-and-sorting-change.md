@@ -59,7 +59,6 @@ question_bank
 | `CertificateQuestionInfo` | 增加 `bankId`；保留 `sortOrder` | 直接保存认证题的所属题库和题库内顺序 |
 | `QuestionBank` | `priority` 改为 `sortOrder` | App 端人工曝光权重 |
 | `QuestionBankQuestion` | 删除 | 不再维护题库与题目的多对多关系 |
-| `ItemType` | 补回 `MODULE(1, "module")` | 修复原有模块图片查询引用枚举但枚举值缺失的构建问题 |
 
 ## 4. 管理端后端修改
 

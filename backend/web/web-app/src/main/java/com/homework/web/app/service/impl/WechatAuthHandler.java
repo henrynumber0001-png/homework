@@ -67,7 +67,6 @@ public class WechatAuthHandler implements ThirdPartyAuthHandler {
         thirdPartyUser.setProvider(UserAuthIdentityProvider.WECHAT);
         thirdPartyUser.setExternalUserId(externalUserId);
         thirdPartyUser.setDisplayName(userInfoResponse.getNickname());
-        thirdPartyUser.setAvatar(userInfoResponse.getHeadImgUrl());
 
         return thirdPartyUser;
     }

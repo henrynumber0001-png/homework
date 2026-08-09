@@ -5,12 +5,12 @@ import { cn } from '@/shared/lib/cn'
 import { Card } from '@/shared/ui/Card'
 
 function activityColor(minutes: number | undefined) {
-  if (minutes == null) return 'bg-[#ebe5e0]'
-  if (minutes === 0) return 'bg-[#dcebe5]'
-  if (minutes <= 30) return 'bg-[#bad8cd]'
-  if (minutes <= 60) return 'bg-[#91c1b1]'
-  if (minutes <= 120) return 'bg-[#659e8b]'
-  return 'bg-[#3f7563]'
+  if (minutes == null) return 'bg-[#e5ebf3]'
+  if (minutes === 0) return 'bg-[#dce9f6]'
+  if (minutes <= 30) return 'bg-[#b9d3eb]'
+  if (minutes <= 60) return 'bg-[#82afd5]'
+  if (minutes <= 120) return 'bg-[#4e83b3]'
+  return 'bg-[#1f568a]'
 }
 
 export function LearningCalendar() {

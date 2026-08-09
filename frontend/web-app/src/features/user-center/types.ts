@@ -2,7 +2,6 @@ import type {
   MembershipTypeValue,
   QuestionTypeValue,
 } from '@/shared/constants/domain'
-import type { UserInfo } from '@/shared/types/session'
 
 export interface UserCenterCounts {
   followerCount: number
@@ -17,15 +16,23 @@ export interface UserCenterCounts {
 }
 
 export interface UserCenterData {
-  graphInfoVO: {
-    url: string | null
-    name: string | null
-  } | null
-  userInfoVO: UserInfo
+  userInfoVO: {
+    accountNo: string
+    displayName: string
+    avatarUrl: string | null
+    bannerUrl: string | null
+  }
   membershipActive: boolean
   membershipType: MembershipTypeValue | null
   aiFeaturesEnabled: boolean
   countsVO: UserCenterCounts
+}
+
+export type UserImageType = 'avatar' | 'banner'
+
+export interface UserImageUpload {
+  imageObjectKey: string
+  previewUrl: string
 }
 
 export interface LearningCalendarItem {

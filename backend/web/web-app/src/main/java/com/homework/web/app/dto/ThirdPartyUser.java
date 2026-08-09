@@ -17,7 +17,5 @@ public class ThirdPartyUser {
 
     private String displayName;
 
-    private String avatar;
-
     private String email;
 }

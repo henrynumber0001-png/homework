@@ -61,7 +61,7 @@ export function HitComposer() {
   return (
     <Card className="relative p-5">
       <div className="flex items-center gap-2">
-        <span className="flex size-9 items-center justify-center rounded-xl bg-[#eee7e1] text-brand">
+        <span className="flex size-9 items-center justify-center rounded-xl bg-brand-soft text-brand">
           <Send className="size-4" />
         </span>
         <div>
@@ -70,7 +70,7 @@ export function HitComposer() {
         </div>
       </div>
       <Textarea
-        className="mt-4 min-h-28 border-0 bg-[#f7f3ef] focus:ring-0"
+        className="mt-4 min-h-28 border-0 bg-surface-muted focus:ring-0"
         placeholder="最近学到了什么？使用 #标签 和 @用户 让内容更容易被发现。"
         value={content}
         onChange={(event) => setContent(event.target.value)}
@@ -82,7 +82,7 @@ export function HitComposer() {
             <button
               key={user.userId}
               type="button"
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-[#eee7e1]"
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-brand-soft"
               onClick={() => selectMention(user)}
             >
               <Avatar

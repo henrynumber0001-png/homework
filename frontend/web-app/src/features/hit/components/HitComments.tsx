@@ -70,7 +70,7 @@ export function HitComments({ postId }: { postId: number }) {
   return (
     <div className="mt-4 border-t border-line/70 pt-4">
       {replyTo ? (
-        <div className="mb-2 flex items-center justify-between rounded-lg bg-[#eee7e1] px-3 py-2 text-xs text-muted">
+        <div className="mb-2 flex items-center justify-between rounded-lg bg-brand-soft px-3 py-2 text-xs text-muted">
           <span>回复 {replyTo.displayName}</span>
           <button type="button" onClick={() => setReplyTo(null)}>
             取消

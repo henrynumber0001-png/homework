@@ -13,12 +13,12 @@ public enum MembershipStatus implements BaseEnum {
 
     @EnumValue
     @JsonValue
-    private final Integer value;
+    private final Integer code;
 
-    private final String label;
+    private final String name;
 
-    MembershipStatus(Integer value, String label) {
-        this.value = value;
-        this.label = label;
+    MembershipStatus(Integer code, String name) {
+        this.code = code;
+        this.name = name;
     }
 }

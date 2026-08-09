@@ -5,15 +5,45 @@ import type {
   LearningCalendarItem,
   LibraryKind,
   UserCenterData,
+  UserImageType,
+  UserImageUpload,
   UserQuestionBank,
   UserQuestionDetail,
   UserQuestionListItem,
 } from '@/features/user-center/types'
 
+const userImageTypeCodes: Record<UserImageType, 1 | 2> = {
+  avatar: 1,
+  banner: 2,
+}
+
 export function getUserCenter() {
   return apiRequest<UserCenterData>({
     url: '/app/user-center',
   })
+}
+
+export async function replaceUserCenterImage(
+  imageType: UserImageType,
+  file: File,
+) {
+  const userImageType = userImageTypeCodes[imageType]
+  const formData = new FormData()
+  formData.append('file', file)
+  const upload = await apiRequest<UserImageUpload>({
+    method: 'post',
+    url: `/app/user-center/images/${userImageType}`,
+    data: formData,
+  })
+  await apiRequest<void>({
+    method: 'put',
+    url: '/app/user-center/images/update',
+    data: {
+      imageObjectKey: upload.imageObjectKey,
+      userImageType,
+    },
+  })
+  return upload
 }
 
 export function getLearningCalendar(year: number) {

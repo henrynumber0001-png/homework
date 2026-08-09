@@ -20,7 +20,7 @@ export function OAuthButtons({ turnstileToken }: OAuthButtonsProps) {
 
   return (
     <>
-      <div className="my-6 flex items-center gap-3 text-xs text-[#998e86]">
+      <div className="my-6 flex items-center gap-3 text-xs text-placeholder">
         <span className="h-px flex-1 bg-line" />
         或使用第三方账号
         <span className="h-px flex-1 bg-line" />

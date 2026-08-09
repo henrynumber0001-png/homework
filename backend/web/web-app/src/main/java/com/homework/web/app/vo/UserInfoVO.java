@@ -13,5 +13,8 @@ public class UserInfoVO {
     private String displayName;
 
     @Schema(description = "用户头像")
-    private String avatar;
+    private String avatarUrl;
+
+    @Schema(description = "用户banner")
+    private String bannerUrl;
 }

@@ -142,7 +142,7 @@ export function UserQuestionLibraryPage({ kind }: { kind: LibraryKind }) {
                     type="button"
                     className={cn(
                       'flex w-full items-center gap-3 px-4 py-4 text-left transition',
-                      active ? 'bg-[#eee7e1]' : 'hover:bg-[#f7f3ef]',
+                      active ? 'bg-brand-soft' : 'hover:bg-surface-muted',
                     )}
                     onClick={() =>
                       updateParams({
@@ -189,12 +189,12 @@ export function UserQuestionLibraryPage({ kind }: { kind: LibraryKind }) {
                   <button
                     type="button"
                     disabled={!question.isAvailable}
-                    className="flex w-full items-center gap-3 p-4 text-left hover:bg-[#f7f3ef] disabled:cursor-not-allowed disabled:opacity-55"
+                    className="flex w-full items-center gap-3 p-4 text-left hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-55"
                     onClick={() =>
                       updateParams({ questionId: question.questionId })
                     }
                   >
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#eee7e1] text-xs font-bold text-brand">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-xs font-bold text-brand">
                       {index + 1}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -210,7 +210,7 @@ export function UserQuestionLibraryPage({ kind }: { kind: LibraryKind }) {
                     <ChevronRight className="size-4 text-muted" />
                   </button>
                   {questionId === question.questionId ? (
-                    <div className="border-t border-line bg-[#faf7f4] p-5">
+                    <div className="border-t border-line bg-surface-muted p-5">
                       {detailQuery.isLoading ? (
                         <p className="text-sm text-muted">加载详情中…</p>
                       ) : detailQuery.data ? (
@@ -248,7 +248,7 @@ function GroupButton({
       type="button"
       className={cn(
         'rounded-lg px-4 py-2 text-sm font-semibold',
-        active ? 'bg-[#eee7e1] text-brand' : 'text-muted',
+        active ? 'bg-brand-soft text-brand' : 'text-muted',
       )}
       onClick={onClick}
     >

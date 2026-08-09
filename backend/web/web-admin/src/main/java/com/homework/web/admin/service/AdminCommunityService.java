@@ -137,8 +137,8 @@ public class AdminCommunityService {
         auditService.record("COMMUNITY", action.name(), "HIT_POST", postId, dto.getReason(), before, updated);
         ActionResultVO result = new ActionResultVO();
         result.setTargetId(postId);
-        result.setAction(action.getValue());
-        result.setStatus(updated.getPostStatus().getValue());
+        result.setAction(action.getCode());
+        result.setStatus(updated.getPostStatus().getCode());
         result.setVersion(updated.getVersion());
         result.setUpdatedTime(updated.getUpdatedTime());
         return result;
@@ -183,8 +183,8 @@ public class AdminCommunityService {
         auditService.record("COMMUNITY", action.name(), "HIT_COMMENT", commentId, dto.getReason(), before, updated);
         ActionResultVO result = new ActionResultVO();
         result.setTargetId(commentId);
-        result.setAction(action.getValue());
-        result.setStatus(updated.getCommentStatus().getValue());
+        result.setAction(action.getCode());
+        result.setStatus(updated.getCommentStatus().getCode());
         result.setVersion(updated.getVersion());
         result.setUpdatedTime(updated.getUpdatedTime());
         return result;

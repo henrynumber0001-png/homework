@@ -18,13 +18,13 @@ public enum AdminSortMode implements BaseEnum {
 
     /** 前后端接口中传递的固定数字值。 */
     @JsonValue
-    private final Integer value;
+    private final Integer code;
 
     /** 供日志、文档和调试使用的英文说明。 */
-    private final String label;
+    private final String name;
 
-    AdminSortMode(Integer value, String label) {
-        this.value = value;
-        this.label = label;
+    AdminSortMode(Integer code, String name) {
+        this.code = code;
+        this.name = name;
     }
 }

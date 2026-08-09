@@ -46,67 +46,67 @@ interface ViewState extends GroupPageData {
 
 const moduleTones = [
   {
-    active: 'border-[#9b776d] bg-[#9b776d] text-white shadow-[#80665d]/20',
+    active: 'border-[#1d4f84] bg-[#1d4f84] text-white shadow-[#12395f]/20',
     inactive:
-      'border-[#d5beb6] bg-[#eadbd6] text-[#604b45] hover:border-[#c39e92] hover:bg-[#dfc6be]',
-    panel: 'bg-[#e6d6d1]',
-    accent: 'bg-[#9b776d]',
-    icon: 'text-[#7f5e55]',
+      'border-[#bed0e3] bg-[#e6eef8] text-[#173b66] hover:border-[#8faecb] hover:bg-[#d8e5f2]',
+    panel: 'bg-[#e2ecf7]',
+    accent: 'bg-[#1d4f84]',
+    icon: 'text-[#2a5f94]',
   },
   {
-    active: 'border-[#748777] bg-[#748777] text-white shadow-[#5f7462]/20',
+    active: 'border-[#2e6a9f] bg-[#2e6a9f] text-white shadow-[#1e4d78]/20',
     inactive:
-      'border-[#c5d0c4] bg-[#dce4da] text-[#465849] hover:border-[#9eb09d] hover:bg-[#cedaca]',
-    panel: 'bg-[#d9e1d7]',
-    accent: 'bg-[#748777]',
-    icon: 'text-[#5f7462]',
+      'border-[#c2d9ec] bg-[#e7f2fb] text-[#1d4e74] hover:border-[#91bbda] hover:bg-[#d6e9f7]',
+    panel: 'bg-[#e2eef8]',
+    accent: 'bg-[#2e6a9f]',
+    icon: 'text-[#27618f]',
   },
   {
-    active: 'border-[#708594] bg-[#708594] text-white shadow-[#596f7e]/20',
+    active: 'border-[#28738e] bg-[#28738e] text-white shadow-[#1b5268]/20',
     inactive:
-      'border-[#c4d0d7] bg-[#dbe3e7] text-[#455966] hover:border-[#9fb1bc] hover:bg-[#cdd9df]',
-    panel: 'bg-[#d9e1e5]',
-    accent: 'bg-[#708594]',
-    icon: 'text-[#586f7d]',
+      'border-[#bfdae4] bg-[#e4f1f5] text-[#245568] hover:border-[#8dbbcb] hover:bg-[#d4e8ef]',
+    panel: 'bg-[#dfeef3]',
+    accent: 'bg-[#28738e]',
+    icon: 'text-[#276077]',
   },
   {
-    active: 'border-[#8b7482] bg-[#8b7482] text-white shadow-[#755e6b]/20',
+    active: 'border-[#4d5f96] bg-[#4d5f96] text-white shadow-[#354474]/20',
     inactive:
-      'border-[#d3c5cd] bg-[#e6dce2] text-[#604d58] hover:border-[#b7a0ad] hover:bg-[#dacbd3]',
-    panel: 'bg-[#e3d9df]',
-    accent: 'bg-[#8b7482]',
-    icon: 'text-[#725d69]',
+      'border-[#cbd2e6] bg-[#edf0f8] text-[#39466f] hover:border-[#9facce] hover:bg-[#dfe4f2]',
+    panel: 'bg-[#e7eaf4]',
+    accent: 'bg-[#4d5f96]',
+    icon: 'text-[#435485]',
   },
 ] as const
 
 const bankTones = [
   {
-    card: 'border-[#dfcbc3] bg-[#fffaf8] hover:border-[#bd8876]',
-    marker: 'bg-[#bd8876]',
-    action: 'bg-[#b87965] hover:bg-[#a76855]',
+    card: 'border-[#cfdeed] bg-[#f8fbff] hover:border-[#4c79a8]',
+    marker: 'bg-[#4c79a8]',
+    action: 'bg-[#2f6194] hover:bg-[#244f7e]',
   },
   {
-    card: 'border-[#cbd6db] bg-[#f9fbfc] hover:border-[#8096a3]',
-    marker: 'bg-[#8096a3]',
-    action: 'bg-[#708895] hover:bg-[#607985]',
+    card: 'border-[#ccdeec] bg-[#f7fbfe] hover:border-[#4e86aa]',
+    marker: 'bg-[#4e86aa]',
+    action: 'bg-[#357596] hover:bg-[#29617f]',
   },
   {
-    card: 'border-[#cbd5ca] bg-[#fafcf9] hover:border-[#829582]',
-    marker: 'bg-[#829582]',
-    action: 'bg-[#728874] hover:bg-[#617764]',
+    card: 'border-[#ced8ec] bg-[#f8f9fe] hover:border-[#6276aa]',
+    marker: 'bg-[#6276aa]',
+    action: 'bg-[#4d6398] hover:bg-[#3e5181]',
   },
   {
-    card: 'border-[#d7c9d1] bg-[#fcf9fb] hover:border-[#987d8c]',
-    marker: 'bg-[#987d8c]',
-    action: 'bg-[#896f7e] hover:bg-[#775e6c]',
+    card: 'border-[#cadfea] bg-[#f7fbfd] hover:border-[#3f839d]',
+    marker: 'bg-[#3f839d]',
+    action: 'bg-[#30748e] hover:bg-[#255e76]',
   },
 ] as const
 
 const tagTones = [
-  'border-[#dbc3ba] bg-[#edddd7] text-[#74564c]',
-  'border-[#c6d4d9] bg-[#dde6e9] text-[#526a76]',
-  'border-[#c9d5c8] bg-[#dfe7dc] text-[#506552]',
-  'border-[#d8cdbd] bg-[#eae2d6] text-[#71614c]',
+  'border-[#c8d9eb] bg-[#e8f0f9] text-[#2b5785]',
+  'border-[#c7dce9] bg-[#e7f2f8] text-[#32677f]',
+  'border-[#cfd7ea] bg-[#eceff8] text-[#4a5985]',
+  'border-[#c4dbe7] bg-[#e5f1f6] text-[#2b6579]',
 ] as const
 
 export function QuestionBankPage({ kind }: QuestionBankPageProps) {
@@ -326,15 +326,15 @@ export function QuestionBankPage({ kind }: QuestionBankPageProps) {
   return (
     <div className="app-container relative isolate overflow-x-clip py-8">
       <span
-        className="pointer-events-none absolute -right-24 top-4 -z-10 hidden size-72 rounded-full bg-[#d7dfe0]/45 blur-3xl sm:block"
+        className="pointer-events-none absolute -right-24 top-4 -z-10 hidden size-72 rounded-full bg-[#d5e3f3]/55 blur-3xl sm:block"
         aria-hidden="true"
       />
       <span
-        className="pointer-events-none absolute -left-28 top-48 -z-10 hidden size-64 rounded-full bg-[#e3d4ce]/40 blur-3xl sm:block"
+        className="pointer-events-none absolute -left-28 top-48 -z-10 hidden size-64 rounded-full bg-[#dce9f6]/55 blur-3xl sm:block"
         aria-hidden="true"
       />
       <header>
-        <p className="inline-flex rounded-full bg-[#e4d6d1] px-3 py-1 text-xs font-bold tracking-wide text-[#755a51]">
+        <p className="inline-flex rounded-full bg-brand-soft px-3 py-1 text-xs font-bold tracking-wide text-brand">
           题库中心
         </p>
         <h1 className="mt-1 text-3xl font-extrabold tracking-tight">{title}</h1>
@@ -398,7 +398,7 @@ export function QuestionBankPage({ kind }: QuestionBankPageProps) {
               <Layers3 className="size-4.5" />
             </span>
             <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#958a83]">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-placeholder">
                 学习方向
               </p>
               <p className="mt-0.5 truncate text-sm font-extrabold text-ink">
@@ -436,7 +436,7 @@ export function QuestionBankPage({ kind }: QuestionBankPageProps) {
                       'flex size-6 shrink-0 items-center justify-center rounded-lg text-[10px] font-extrabold',
                       active
                         ? cn(currentTone.accent, 'text-white')
-                        : 'bg-white/65 text-[#958a83] group-hover:bg-white',
+                        : 'bg-white/65 text-placeholder group-hover:bg-white',
                     )}
                   >
                     {String(index + 1).padStart(2, '0')}
@@ -449,7 +449,7 @@ export function QuestionBankPage({ kind }: QuestionBankPageProps) {
                       'size-3.5 shrink-0 transition',
                       active
                         ? 'translate-x-0 text-brand'
-                        : '-translate-x-1 text-transparent group-hover:translate-x-0 group-hover:text-[#a69a92]',
+                        : '-translate-x-1 text-transparent group-hover:translate-x-0 group-hover:text-placeholder',
                     )}
                   />
                 </button>
@@ -466,7 +466,7 @@ export function QuestionBankPage({ kind }: QuestionBankPageProps) {
                 共 {view.banks.length} 个题库
               </p>
             </div>
-            <div className="flex rounded-xl border border-[#c8d3d5] bg-[#e5eaeb] p-1 shadow-inner">
+            <div className="flex rounded-xl border border-line bg-brand-soft p-1 shadow-inner">
               <SortButton
                 active={view.sort === SortType.HOT}
                 icon={Flame}
@@ -498,7 +498,7 @@ export function QuestionBankPage({ kind }: QuestionBankPageProps) {
 
           {selectionMutation.isError ? (
             <p
-              className="mt-4 rounded-xl bg-[#f8eaea] px-4 py-3 text-sm text-danger"
+              className="mt-4 rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger"
               role="alert"
             >
               {getErrorMessage(selectionMutation.error)}
@@ -527,7 +527,7 @@ export function QuestionBankPage({ kind }: QuestionBankPageProps) {
                           aria-hidden="true"
                         />
                         <div className="min-w-0 flex-1">
-                          <h3 className="truncate text-base font-bold transition-colors group-hover:text-[#5d4d47]">
+                          <h3 className="truncate text-base font-bold transition-colors group-hover:text-brand">
                             {bank.bankName}
                           </h3>
                           <div className="mt-2 flex flex-wrap gap-2">
@@ -548,16 +548,16 @@ export function QuestionBankPage({ kind }: QuestionBankPageProps) {
                       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 pl-4 text-xs text-muted">
                         {bank.questionCount != null ? (
                           <span className="inline-flex items-center gap-1.5">
-                            <BookOpen className="size-3.5 text-[#8c776f]" />
+                            <BookOpen className="size-3.5 text-accent" />
                             {bank.questionCount} 道题
                           </span>
                         ) : null}
                         <span className="inline-flex items-center gap-1.5">
-                          <Users className="size-3.5 text-[#71858f]" />
+                          <Users className="size-3.5 text-[#47769d]" />
                           {formatCount(bank.completeCount)} 人完成
                         </span>
                         <span className="inline-flex items-center gap-1.5">
-                          <BarChart3 className="size-3.5 text-[#718675]" />
+                          <BarChart3 className="size-3.5 text-[#3e7690]" />
                           平均正确率
                           <strong className="font-extrabold text-ink">
                             {formatRate(bank.avgCorrectRate)}
@@ -583,7 +583,7 @@ export function QuestionBankPage({ kind }: QuestionBankPageProps) {
                 )
               })
             ) : (
-              <Card className="border-[#cbd5ca] bg-[#f7faf6]">
+              <Card className="border-line bg-surface-muted">
                 <EmptyState title="当前分类暂无题库" />
               </Card>
             )}
@@ -645,8 +645,8 @@ function SortButton({
       className={cn(
         'flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-all duration-200 motion-reduce:transition-none',
         active
-          ? 'bg-[#708792] text-white shadow-sm'
-          : 'text-[#5e7078] hover:-translate-y-0.5 hover:bg-white/75 hover:text-[#43545b] motion-reduce:hover:translate-y-0',
+          ? 'bg-brand text-white shadow-sm'
+          : 'text-muted hover:-translate-y-0.5 hover:bg-white/80 hover:text-brand-dark motion-reduce:hover:translate-y-0',
       )}
       onClick={onClick}
     >
@@ -673,7 +673,7 @@ function ModeButton({
     <button
       type="button"
       disabled={disabled}
-      className="rounded-xl border border-line p-4 text-left transition hover:border-brand hover:bg-[#f8f4f0] disabled:opacity-60"
+      className="rounded-xl border border-line p-4 text-left transition-colors hover:border-brand hover:bg-brand-soft disabled:opacity-60"
       onClick={onClick}
     >
       <Icon className="size-5 text-brand" />

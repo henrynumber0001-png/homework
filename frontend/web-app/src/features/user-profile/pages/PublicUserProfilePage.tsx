@@ -93,8 +93,8 @@ export function PublicUserProfilePage() {
   return (
     <div className="reading-container py-8">
       <Card className="overflow-hidden">
-        <div className="h-24 bg-[#d9ccc2]">
-          <div className="h-full bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,.65),transparent_35%),radial-gradient(circle_at_80%_100%,rgba(98,125,121,.28),transparent_40%)]" />
+        <div className="h-24 bg-[#173f73]">
+          <div className="h-full bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,.24),transparent_35%),radial-gradient(circle_at_80%_100%,rgba(79,163,220,.34),transparent_40%)]" />
         </div>
         <div className="px-5 pb-6 sm:px-7">
           <div className="-mt-10 flex flex-wrap items-end justify-between gap-4">
@@ -144,14 +144,14 @@ export function PublicUserProfilePage() {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-extrabold">{info.displayName}</h1>
             {info.memberStatus ? (
-              <Badge className="border-[#dfc98f] bg-[#fff8e8] text-premium">
+              <Badge className="border-[#dfc98f] bg-premium-soft text-premium">
                 {info.membershipType === MembershipType.PREMIUM_PLUS
                   ? 'Premium Plus'
                   : 'Premium'}
               </Badge>
             ) : null}
             {profile.mutualFollow ? (
-              <Badge className="border-[#add0c3] bg-[#f0f7f4] text-success">
+              <Badge className="border-[#add0c3] bg-success-soft text-success">
                 互相关注
               </Badge>
             ) : null}
@@ -241,7 +241,7 @@ export function PublicUserProfilePage() {
                 </p>
                 <HitCard post={activity.post} compact />
                 {activity.comment ? (
-                  <p className="-mt-3 rounded-b-xl border border-t-0 border-line bg-[#faf7f4] px-5 py-3 text-sm text-muted">
+                  <p className="-mt-3 rounded-b-xl border border-t-0 border-line bg-surface-muted px-5 py-3 text-sm text-muted">
                     {activity.comment.comment}
                   </p>
                 ) : null}

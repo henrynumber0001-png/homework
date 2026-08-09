@@ -34,7 +34,7 @@ export function QuestionNavigator({
                 active
                   ? 'border-brand bg-brand text-white'
                   : answered
-                    ? 'border-[#a9c4bb] bg-[#e8f1ee] text-success'
+                    ? 'border-[#a9c4bb] bg-success-soft text-success'
                     : 'border-line bg-white text-muted hover:border-brand',
               )}
               aria-label={`第${index + 1}题${answered ? '，已作答' : ''}`}

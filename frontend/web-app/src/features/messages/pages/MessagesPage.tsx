@@ -183,7 +183,7 @@ function NotificationRow({ notification }: { notification: Notification }) {
           />
         </Link>
       ) : (
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#eee7e1] text-brand">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
           <Bell className="size-4" />
         </span>
       )}
@@ -198,7 +198,7 @@ function NotificationRow({ notification }: { notification: Notification }) {
           {notification.content}
         </p>
         {!notification.postAvailable && notification.postId ? (
-          <p className="mt-2 text-xs text-[#9a8f88]">关联的 Hit 已不可访问</p>
+          <p className="mt-2 text-xs text-placeholder">关联的 Hit 已不可访问</p>
         ) : null}
       </div>
     </div>
@@ -281,8 +281,8 @@ function PrivateMessages() {
                 key={chatbox.chatboxId}
                 type="button"
                 className={cn(
-                  'flex w-full gap-3 border-b border-line/60 px-4 py-4 text-left hover:bg-[#f7f3ef]',
-                  chatbox.chatboxId === chatboxId && 'bg-[#eee7e1]',
+                  'flex w-full gap-3 border-b border-line/60 px-4 py-4 text-left hover:bg-surface-muted',
+                  chatbox.chatboxId === chatboxId && 'bg-brand-soft',
                 )}
                 onClick={() =>
                   setSearchParams({
@@ -328,7 +328,7 @@ function PrivateMessages() {
                 {activeChatbox?.otherDisplayName || '新私信'}
               </h2>
             </div>
-            <div className="flex flex-1 flex-col justify-end gap-3 overflow-y-auto bg-[#faf7f4] p-5">
+            <div className="flex flex-1 flex-col justify-end gap-3 overflow-y-auto bg-surface-muted p-5">
               {messages.length ? (
                 messages.map((message) => {
                   const mine = message.senderUserId !== receiverId
@@ -386,7 +386,7 @@ function PrivateMessages() {
           </>
         ) : (
           <div className="m-auto text-center">
-            <UserRound className="mx-auto size-8 text-[#a69a92]" />
+            <UserRound className="mx-auto size-8 text-placeholder" />
             <p className="mt-3 text-sm text-muted">选择一个会话查看私信</p>
           </div>
         )}

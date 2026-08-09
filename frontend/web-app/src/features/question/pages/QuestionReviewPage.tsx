@@ -56,7 +56,7 @@ export function QuestionReviewPage() {
           {records.map((record, index) => (
             <Card key={record.questionId} className="p-5 sm:p-6">
               <div className="flex items-start gap-3">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#eee7e1] text-xs font-bold text-brand">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-xs font-bold text-brand">
                   {index + 1}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -64,12 +64,12 @@ export function QuestionReviewPage() {
                     <h2 className="font-bold leading-7">{record.title}</h2>
                     {'isCorrect' in record && record.isCorrect != null ? (
                       record.isCorrect ? (
-                        <Badge className="border-[#add0c3] bg-[#f0f7f4] text-success">
+                        <Badge className="border-[#add0c3] bg-success-soft text-success">
                           <CheckCircle2 className="mr-1 size-3.5" />
                           正确
                         </Badge>
                       ) : (
-                        <Badge className="border-[#e3b9b9] bg-[#fbf0f0] text-danger">
+                        <Badge className="border-[#e3b9b9] bg-danger-soft text-danger">
                           <XCircle className="mr-1 size-3.5" />
                           需复习
                         </Badge>
@@ -97,7 +97,7 @@ export function QuestionReviewPage() {
                   {interview &&
                   'aiResult' in record &&
                   record.aiResult?.summary ? (
-                    <div className="mt-4 rounded-xl bg-[#edf3f1] p-4">
+                    <div className="mt-4 rounded-xl bg-accent-soft p-4">
                       <p className="flex items-center gap-2 text-xs font-bold text-accent">
                         <MessageSquareText className="size-4" />
                         AI 反馈摘要

@@ -17,7 +17,8 @@ describe('AppShell', () => {
           data: {
             accountNo: 'HW000001',
             displayName: 'Henry',
-            avatar: null,
+            avatarUrl: null,
+            bannerUrl: null,
           },
         }),
       ),

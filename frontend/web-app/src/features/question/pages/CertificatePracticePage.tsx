@@ -168,7 +168,7 @@ export function CertificatePracticePage() {
               className={cn(
                 'flex size-10 shrink-0 items-center justify-center rounded-xl border transition',
                 favorite
-                  ? 'border-brand bg-[#eee7e1] text-brand'
+                  ? 'border-brand bg-brand-soft text-brand'
                   : 'border-line text-muted hover:border-brand',
               )}
               disabled={favoriteMutation.isPending}
@@ -204,7 +204,7 @@ export function CertificatePracticePage() {
                   className={cn(
                     'flex w-full items-start gap-3 rounded-xl border p-4 text-left text-sm leading-6 transition',
                     active
-                      ? 'border-brand bg-[#f3eeea]'
+                      ? 'border-brand bg-brand-soft'
                       : 'border-line bg-white hover:border-brand',
                     locked && 'cursor-default',
                   )}

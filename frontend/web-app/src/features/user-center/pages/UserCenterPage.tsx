@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowUpRight,
   Bookmark,
@@ -9,13 +9,15 @@ import {
   ImagePlus,
   MessageSquareText,
   NotebookPen,
-  Sparkles,
   Users,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import { getUserCenter } from '@/features/user-center/api'
+import {
+  getUserCenter,
+  replaceUserCenterImage,
+} from '@/features/user-center/api'
+import type { UserImageType } from '@/features/user-center/types'
 import { LearningCalendar } from '@/features/user-center/components/LearningCalendar'
 import { MembershipType } from '@/shared/constants/domain'
 import { formatCount } from '@/shared/lib/format'
@@ -25,18 +27,44 @@ import { Button } from '@/shared/ui/Button'
 import { ErrorState, PageSkeleton } from '@/shared/ui/AsyncState'
 
 export function UserCenterPage() {
-  const [bannerPreview, setBannerPreview] = useState<string | null>(null)
+  const queryClient = useQueryClient()
   const centerQuery = useQuery({
     queryKey: ['user-center'],
     queryFn: getUserCenter,
   })
-
-  useEffect(
-    () => () => {
-      if (bannerPreview) URL.revokeObjectURL(bannerPreview)
+  const imageMutation = useMutation({
+    mutationFn: ({
+      imageType,
+      file,
+    }: {
+      imageType: UserImageType
+      file: File
+    }) => replaceUserCenterImage(imageType, file),
+    onSuccess: async (_upload, { imageType }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['user-center'] }),
+        queryClient.invalidateQueries({ queryKey: ['current-user'] }),
+        queryClient.invalidateQueries({ queryKey: ['membership'] }),
+      ])
+      toast.success(imageType === 'avatar' ? '头像已更新' : '封面已更新')
     },
-    [bannerPreview],
-  )
+    onError: (error) => {
+      toast.error('图片更新失败', {
+        description: error instanceof Error ? error.message : '请稍后重试',
+      })
+    },
+  })
+
+  const submitImage = (imageType: UserImageType, file: File) => {
+    const maxSize = imageType === 'avatar' ? 2 * 1024 * 1024 : 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      toast.error(
+        imageType === 'avatar' ? '头像不能超过 2MB' : '封面不能超过 5MB',
+      )
+      return
+    }
+    imageMutation.mutate({ imageType, file })
+  }
 
   if (centerQuery.isLoading) {
     return (
@@ -56,82 +84,95 @@ export function UserCenterPage() {
 
   const data = centerQuery.data
   const counts = data.countsVO
-  const bannerUrl = bannerPreview || data.graphInfoVO?.url
+  const bannerUrl = data.userInfoVO.bannerUrl
+  const avatarUrl = data.userInfoVO.avatarUrl
+  const updatingImageType = imageMutation.isPending
+    ? imageMutation.variables?.imageType
+    : null
 
   return (
     <div className="app-container py-7 sm:py-9">
-      <section className="relative h-52 overflow-hidden rounded-[1.4rem] bg-[#6d5a53] text-white sm:h-64">
+      <section className="relative h-52 overflow-hidden rounded-[1.4rem] bg-brand-dark text-white sm:h-64">
         {bannerUrl ? (
           <img
             src={bannerUrl}
-            alt={data.graphInfoVO?.name || ''}
+            alt="个人中心封面"
             className="absolute inset-0 size-full object-cover"
           />
         ) : (
           <>
             <span className="absolute -right-12 -top-20 size-64 rounded-full border-[36px] border-white/10" />
-            <span className="absolute bottom-[-5rem] left-[18%] size-52 rounded-full bg-[#879995]/30 blur-2xl" />
+            <span className="absolute bottom-[-5rem] left-[18%] size-52 rounded-full bg-[#4f86b5]/35 blur-2xl" />
           </>
         )}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#302824]/80 via-[#493c37]/45 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#2f2925]/65 to-transparent" />
-        <div className="relative flex h-full flex-col justify-between p-5 sm:p-7">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-white/75">
-                <Sparkles className="size-3.5" />
-                My learning space
-              </p>
-              {data.graphInfoVO?.name ? (
-                <p className="mt-2 max-w-lg text-sm text-white/75">
-                  {data.graphInfoVO.name}
-                </p>
-              ) : null}
-            </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0b2445]/80 via-[#123d69]/40 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#091f3c]/65 to-transparent" />
+        <div className="relative flex h-full items-start justify-end p-5 sm:p-7">
+          <div>
             <label
               htmlFor="profile-banner-upload"
-              className="inline-flex min-h-9 cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/25 bg-black/15 px-3 text-xs font-semibold text-white backdrop-blur-md transition hover:bg-black/25"
+              className="inline-flex min-h-9 cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/25 bg-black/15 px-3 text-xs font-semibold text-white backdrop-blur-md transition hover:bg-black/25 aria-disabled:pointer-events-none aria-disabled:opacity-60"
+              aria-disabled={imageMutation.isPending}
             >
               <ImagePlus className="size-4" />
-              更换封面
+              {updatingImageType === 'banner' ? '上传中…' : '更换封面'}
             </label>
             <input
               id="profile-banner-upload"
               className="sr-only"
               type="file"
               accept="image/png,image/jpeg,image/webp"
+              disabled={imageMutation.isPending}
               onChange={(event) => {
                 const file = event.target.files?.[0]
                 if (!file) return
-                setBannerPreview(URL.createObjectURL(file))
-                toast.info('封面预览已更新', {
-                  description:
-                    '当前后端仅提供 Banner 读取字段，刷新页面后将恢复。',
-                })
+                submitImage('banner', file)
                 event.target.value = ''
               }}
             />
           </div>
-          <p className="mb-7 max-w-xl text-sm leading-6 text-white/80 sm:mb-9">
-            保持好奇，记录每一次进步。今天的积累，会成为下一次从容作答的底气。
-          </p>
         </div>
       </section>
 
-      <section className="relative z-10 mx-3 -mt-7 rounded-2xl bg-surface px-5 py-5 shadow-[0_18px_45px_rgba(58,47,41,0.12)] sm:mx-7 sm:-mt-10 sm:px-7 sm:py-6">
+      <section className="relative z-10 mx-3 -mt-7 rounded-2xl bg-surface px-5 py-5 shadow-[0_18px_45px_rgba(15,31,61,0.12)] sm:mx-7 sm:-mt-10 sm:px-7 sm:py-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <Avatar
-            src={data.userInfoVO.avatar}
-            name={data.userInfoVO.displayName}
-            className="-mt-12 size-20 border-4 border-surface bg-surface shadow-md sm:-mt-14 sm:size-24"
-          />
+          <div className="relative -mt-12 shrink-0 sm:-mt-14">
+            <label
+              htmlFor="profile-avatar-upload"
+              aria-disabled={imageMutation.isPending}
+              title="点击更换头像"
+              className="group block cursor-pointer rounded-full aria-disabled:pointer-events-none aria-disabled:opacity-60"
+            >
+              <Avatar
+                src={avatarUrl}
+                name={data.userInfoVO.displayName}
+                className="size-20 border-4 border-surface bg-surface shadow-md transition group-hover:ring-2 group-hover:ring-brand/35 sm:size-24"
+              />
+            </label>
+            <input
+              id="profile-avatar-upload"
+              className="sr-only"
+              type="file"
+              aria-label={
+                updatingImageType === 'avatar' ? '头像上传中' : '更换头像'
+              }
+              accept="image/png,image/jpeg,image/webp"
+              disabled={imageMutation.isPending}
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (!file) return
+                submitImage('avatar', file)
+                event.target.value = ''
+              }}
+            />
+          </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="truncate text-2xl font-extrabold tracking-tight">
                 {data.userInfoVO.displayName}
               </h1>
               {data.membershipActive ? (
-                <Badge className="border-[#dfc98f] bg-[#fff7dd] text-[#7f5b15]">
+                <Badge className="border-[#dfc98f] bg-premium-soft text-[#77500d]">
                   {data.membershipType === MembershipType.PREMIUM_PLUS
                     ? 'Premium Plus'
                     : 'Premium'}
@@ -293,13 +334,13 @@ function LibraryCard({
   return (
     <Link
       to={to}
-      className="group rounded-2xl bg-surface p-5 shadow-[0_10px_30px_rgba(58,47,41,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_15px_38px_rgba(58,47,41,0.1)]"
+      className="group rounded-2xl bg-surface p-5 shadow-[0_10px_30px_rgba(15,31,61,0.06)] transition-[transform,box-shadow] duration-150 ease-[var(--ease-out-ui)] hover:-translate-y-0.5 hover:shadow-[0_15px_38px_rgba(15,31,61,0.11)]"
     >
       <div className="flex items-start justify-between gap-4">
-        <span className="flex size-10 items-center justify-center rounded-xl bg-[#eee7e1] text-brand">
+        <span className="flex size-10 items-center justify-center rounded-xl bg-brand-soft text-brand">
           <Icon className="size-5" />
         </span>
-        <ArrowUpRight className="size-4 text-[#b3a9a2] transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-brand" />
+        <ArrowUpRight className="size-4 text-placeholder transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-brand" />
       </div>
       <h3 className="mt-5 font-bold group-hover:text-brand">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-muted">{description}</p>

@@ -18,12 +18,12 @@ public enum QuestionImportStatus implements BaseEnum {
 
     @EnumValue
     @JsonValue
-    private final Integer value;
+    private final Integer code;
 
-    private final String label;
+    private final String name;
 
-    QuestionImportStatus(Integer value, String label) {
-        this.value = value;
-        this.label = label;
+    QuestionImportStatus(Integer code, String name) {
+        this.code = code;
+        this.name = name;
     }
 }

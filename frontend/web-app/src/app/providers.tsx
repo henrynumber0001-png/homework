@@ -19,9 +19,9 @@ export function AppProviders({ children }: PropsWithChildren) {
           position="top-center"
           toastOptions={{
             style: {
-              background: '#fffdfb',
-              border: '1px solid #ded5ce',
-              color: '#2f2925',
+              background: '#ffffff',
+              border: '1px solid #d7e0ec',
+              color: '#10213f',
             },
           }}
         />

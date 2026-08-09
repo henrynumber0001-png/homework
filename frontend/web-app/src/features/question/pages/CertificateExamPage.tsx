@@ -198,8 +198,8 @@ export function CertificateExamPage() {
           className={cn(
             'flex items-center gap-2 rounded-xl px-3 py-2 font-mono text-sm font-bold',
             secondsLeft <= 300
-              ? 'bg-[#f8eaea] text-danger'
-              : 'bg-[#eee7e1] text-brand',
+              ? 'bg-danger-soft text-danger'
+              : 'bg-brand-soft text-brand',
           )}
         >
           <Clock3 className="size-4" />
@@ -250,7 +250,7 @@ export function CertificateExamPage() {
                   className={cn(
                     'flex w-full items-start gap-3 rounded-xl border p-4 text-left text-sm leading-6 transition',
                     active
-                      ? 'border-brand bg-[#f3eeea]'
+                      ? 'border-brand bg-brand-soft'
                       : 'border-line bg-white hover:border-brand',
                   )}
                   onClick={() => toggleOption(option)}
@@ -317,7 +317,7 @@ export function CertificateExamPage() {
           </>
         }
       >
-        <div className="flex items-start gap-3 rounded-xl bg-[#fff4e3] p-4 text-sm leading-6 text-warning">
+        <div className="flex items-start gap-3 rounded-xl bg-warning-soft p-4 text-sm leading-6 text-warning">
           <AlertTriangle className="mt-0.5 size-5 shrink-0" />
           请确认所有需要作答的题目已经保存。
         </div>
@@ -342,7 +342,7 @@ function ExamResult({
   return (
     <div className="reading-container py-10">
       <Card className="overflow-hidden">
-        <div className="bg-[#e5eee9] p-8 text-center">
+        <div className="bg-success-soft p-8 text-center">
           <CheckCircle2 className="mx-auto size-10 text-success" />
           <p className="mt-4 text-sm font-semibold text-success">考试已提交</p>
           <h1 className="mt-1 text-4xl font-black text-ink">

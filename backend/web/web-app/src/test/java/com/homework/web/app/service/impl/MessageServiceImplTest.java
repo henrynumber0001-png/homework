@@ -2,6 +2,7 @@ package com.homework.web.app.service.impl;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.homework.common.result.PageResult;
+import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.entity.HitComment;
 import com.homework.model.entity.HitPost;
 import com.homework.model.entity.PrivateMessage;
@@ -47,13 +48,16 @@ class MessageServiceImplTest {
     private HitCommentMapper hitCommentMapper;
     @Mock
     private HitPostMapper hitPostMapper;
+    @Mock
+    private UserImageUrlResolver userImageUrlResolver;
 
     private MessageServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new MessageServiceImpl(userNotificationMapper, privateChatboxMapper,
-                privateMessageMapper, userInfoMapper, userFollowMapper, hitCommentMapper, hitPostMapper);
+                privateMessageMapper, userInfoMapper, userFollowMapper, hitCommentMapper,
+                hitPostMapper, userImageUrlResolver);
     }
 
     @Test

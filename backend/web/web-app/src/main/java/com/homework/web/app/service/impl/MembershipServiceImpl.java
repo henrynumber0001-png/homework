@@ -4,6 +4,7 @@ import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
+import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.entity.*;
 import com.homework.model.enums.*;
 import com.homework.web.app.context.LoginUserHolder;
@@ -40,6 +41,7 @@ public class MembershipServiceImpl implements MembershipService {
     private final MembershipOrderMapper membershipOrderMapper;
     private final UserInfoMapper userInfoMapper;
     private final MembershipAccessService membershipAccessService;
+    private final UserImageUrlResolver userImageUrlResolver;
 
 
     @Override
@@ -57,7 +59,7 @@ public class MembershipServiceImpl implements MembershipService {
         }
         MembershipInfoVO vo = new MembershipInfoVO();
         vo.setDisplayName(userInfo.getDisplayName());
-        vo.setAvatarUrl(userInfo.getAvatar());
+        vo.setAvatarUrl(userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey()));
 
         MembershipAccessSnapshot membership = membershipAccessService.getAccess(userId);
         vo.setMemberStatus(membership.status());

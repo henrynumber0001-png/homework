@@ -23,38 +23,38 @@ import { EmptyState, ErrorState, PageSkeleton } from '@/shared/ui/AsyncState'
 
 const bankSectionTones = {
   interview: {
-    card: 'border-[#dbc5bc]',
-    background: '#f1e5e0',
-    border: '#dbc5bc',
-    divider: 'divide-[#dcc9c2]',
-    row: 'hover:bg-[#e2ccc4] focus-visible:bg-[#e2ccc4] active:bg-[#d4b8ae]',
-    icon: 'bg-[#ad7765] text-white shadow-[#8b5f51]/25',
-    title: 'group-hover:text-[#65483f] group-focus-visible:text-[#65483f]',
+    card: 'border-[#bfd0e4]',
+    background: '#e6eef8',
+    border: '#bfd0e4',
+    divider: 'divide-[#cad8e8]',
+    row: 'hover:bg-[#d8e5f3] focus-visible:bg-[#d8e5f3] active:bg-[#cadbee]',
+    icon: 'bg-[#2f69a4] text-white shadow-[#173f73]/20',
+    title: 'group-hover:text-[#153b68] group-focus-visible:text-[#153b68]',
     accuracy:
-      'border-[#cda99c] bg-[#fff9f6] text-[#73564c] group-hover:border-[#718981] group-hover:bg-[#718981] group-hover:text-white group-focus-visible:border-[#718981] group-focus-visible:bg-[#718981] group-focus-visible:text-white',
-    rail: 'bg-[#718981]',
-    heading: 'bg-[#ad7765]',
+      'border-[#abc3dc] bg-white/75 text-[#234f7d] group-hover:border-[#245d96] group-hover:bg-[#245d96] group-hover:text-white group-focus-visible:border-[#245d96] group-focus-visible:bg-[#245d96] group-focus-visible:text-white',
+    rail: 'bg-[#245d96]',
+    heading: 'bg-[#2f69a4]',
   },
   certification: {
-    card: 'border-[#c4d1d4]',
-    background: '#e6edef',
-    border: '#c4d1d4',
-    divider: 'divide-[#cbd6d8]',
-    row: 'hover:bg-[#cedcdf] focus-visible:bg-[#cedcdf] active:bg-[#bdced2]',
-    icon: 'bg-[#718895] text-white shadow-[#586d78]/25',
-    title: 'group-hover:text-[#425965] group-focus-visible:text-[#425965]',
+    card: 'border-[#cbd5e8]',
+    background: '#edf1fa',
+    border: '#cbd5e8',
+    divider: 'divide-[#d5ddec]',
+    row: 'hover:bg-[#dce4f2] focus-visible:bg-[#dce4f2] active:bg-[#ced9e9]',
+    icon: 'bg-[#536fa4] text-white shadow-[#314b7c]/20',
+    title: 'group-hover:text-[#2d4777] group-focus-visible:text-[#2d4777]',
     accuracy:
-      'border-[#c9b5c1] bg-[#fcf8fb] text-[#715a67] group-hover:border-[#8a7180] group-hover:bg-[#8a7180] group-hover:text-white group-focus-visible:border-[#8a7180] group-focus-visible:bg-[#8a7180] group-focus-visible:text-white',
-    rail: 'bg-[#a87866]',
-    heading: 'bg-[#718895]',
+      'border-[#b8c8e0] bg-white/75 text-[#405985] group-hover:border-[#405d91] group-hover:bg-[#405d91] group-hover:text-white group-focus-visible:border-[#405d91] group-focus-visible:bg-[#405d91] group-focus-visible:text-white',
+    rail: 'bg-[#405d91]',
+    heading: 'bg-[#536fa4]',
   },
 } as const
 
 const hitTones = [
-  { background: '#fffaf8', border: '#ddc8bf' },
-  { background: '#f9fbfc', border: '#c6d4d8' },
-  { background: '#fafcf9', border: '#c8d4c7' },
-  { background: '#fcf9fb', border: '#d5c6cf' },
+  { background: '#f6f9fd', border: '#d5e1ef' },
+  { background: '#f2f7fc', border: '#ccdcec' },
+  { background: '#f5f8fc', border: '#d8e2ef' },
+  { background: '#f3f6fc', border: '#ced9ec' },
 ] as const
 
 export function HomePage() {
@@ -95,20 +95,20 @@ export function HomePage() {
   return (
     <div className="app-container relative isolate overflow-x-clip py-7 sm:py-9">
       <span
-        className="pointer-events-none absolute -right-28 top-72 -z-10 hidden size-72 rounded-full bg-[#cddbd7]/45 blur-3xl sm:block"
+        className="pointer-events-none absolute -right-28 top-72 -z-10 hidden size-72 rounded-full bg-[#cbdcf1]/55 blur-3xl sm:block"
         aria-hidden="true"
       />
       <span
-        className="pointer-events-none absolute -left-32 top-[38rem] -z-10 hidden size-64 rounded-full bg-[#dfc8bf]/35 blur-3xl sm:block"
+        className="pointer-events-none absolute -left-32 top-[38rem] -z-10 hidden size-64 rounded-full bg-[#d9e7f6]/55 blur-3xl sm:block"
         aria-hidden="true"
       />
 
-      <section className="group relative overflow-hidden rounded-3xl border border-[#d2beb5] bg-[linear-gradient(125deg,#e4cec5_0%,#eee3da_52%,#d5e1dd_100%)] px-6 py-7 shadow-[0_18px_46px_rgba(82,65,57,0.10)] transition-all duration-500 hover:-translate-y-0.5 hover:shadow-[0_24px_58px_rgba(82,65,57,0.15)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:px-8 sm:py-9">
+      <section className="group relative overflow-hidden rounded-3xl border border-[#284f7c] bg-[linear-gradient(125deg,#102f59_0%,#174878_55%,#276b9e_100%)] px-6 py-7 text-white shadow-[0_18px_46px_rgba(13,45,86,0.18)] transition-[transform,box-shadow] duration-300 ease-[var(--ease-out-ui)] hover:-translate-y-0.5 hover:shadow-[0_24px_58px_rgba(13,45,86,0.24)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 sm:px-8 sm:py-9">
         <div className="absolute -right-10 -top-20 size-64 rounded-full border-[34px] border-white/25 transition-transform duration-700 group-hover:rotate-12 group-hover:scale-110 motion-reduce:transition-none" />
-        <div className="absolute -bottom-20 right-44 hidden size-44 rounded-full bg-[#8fa49d]/20 blur-sm transition-transform duration-700 group-hover:-translate-x-4 group-hover:-translate-y-2 lg:block" />
+        <div className="absolute -bottom-20 right-44 hidden size-44 rounded-full bg-[#72b7e8]/20 blur-sm transition-transform duration-300 group-hover:-translate-x-4 group-hover:-translate-y-2 lg:block" />
         <div className="relative max-w-2xl">
-          <p className="inline-flex items-center gap-2 rounded-full bg-white/60 px-3 py-1.5 text-xs font-bold text-[#72564c] shadow-sm backdrop-blur">
-            <Sparkles className="size-3.5 text-[#9f6d5b]" />
+          <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold text-[#dbeafe] shadow-sm backdrop-blur">
+            <Sparkles className="size-3.5 text-[#7ec8ff]" />
             今天也向前一点
           </p>
           <h1 className="mt-2 text-2xl font-extrabold tracking-tight sm:text-3xl">
@@ -116,20 +116,20 @@ export function HomePage() {
               ? `${currentUser.data.displayName}，欢迎回来`
               : '欢迎回到 HomeWork'}
           </h1>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-muted sm:text-base">
+          <p className="mt-3 max-w-xl text-sm leading-6 text-blue-100/80 sm:text-base">
             从一道题开始，或者看看大家最近在讨论什么。
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
               to="/banks/interview"
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#9d6d5d] px-4 text-sm font-bold text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#855a4c] hover:shadow-lg active:translate-y-0 active:scale-[0.98] motion-reduce:transition-none"
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-brand-dark shadow-sm transition-[background-color,transform,box-shadow] duration-150 ease-[var(--ease-out-ui)] hover:-translate-y-0.5 hover:bg-[#eef6ff] hover:shadow-lg active:translate-y-0 active:scale-[0.97] motion-reduce:transition-none"
             >
               <BookOpen className="size-4 transition-transform duration-300 group-hover:-rotate-3" />
               开始面试练习
             </Link>
             <Link
               to="/banks/certification"
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#82978f]/35 bg-white/65 px-4 text-sm font-bold text-[#536b63] backdrop-blur transition-all duration-300 hover:-translate-y-0.5 hover:border-[#758b83] hover:bg-[#758b83] hover:text-white hover:shadow-lg active:translate-y-0 active:scale-[0.98] motion-reduce:transition-none"
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 text-sm font-bold text-white backdrop-blur transition-[background-color,border-color,transform,box-shadow] duration-150 ease-[var(--ease-out-ui)] hover:-translate-y-0.5 hover:border-white/45 hover:bg-white/18 hover:shadow-lg active:translate-y-0 active:scale-[0.97] motion-reduce:transition-none"
             >
               <GraduationCap className="size-4" />
               浏览认证题库
@@ -159,7 +159,7 @@ export function HomePage() {
         />
       </div>
 
-      <section className="relative mt-8 overflow-hidden rounded-3xl border border-[#c7d4d0] bg-[#e4ebe8]/80 p-4 shadow-[0_14px_38px_rgba(71,91,84,0.07)] sm:p-5">
+      <section className="relative mt-8 overflow-hidden rounded-3xl border border-[#c6d8ea] bg-[#eaf2fa]/85 p-4 shadow-[0_14px_38px_rgba(15,47,82,0.07)] sm:p-5">
         <span
           className="pointer-events-none absolute -right-12 -top-16 size-44 rounded-full border-[28px] border-white/30"
           aria-hidden="true"
@@ -168,7 +168,7 @@ export function HomePage() {
           <SectionHeading
             title="最新 Hit"
             moreTo="/hits"
-            headingTone="bg-[#778e86]"
+            headingTone="bg-[#2b6097]"
           />
           {data.hotPostList.length ? (
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -187,7 +187,7 @@ export function HomePage() {
               ))}
             </div>
           ) : (
-            <Card className="mt-4 border-[#cad5d1] bg-white/65">
+            <Card className="mt-4 border-[#ccdceb] bg-white/70">
               <EmptyState
                 title="还没有 Hit"
                 description="第一条学习动态，或许就从你开始。"
@@ -208,7 +208,7 @@ export function HomePage() {
         <div className="grid gap-3 sm:grid-cols-2">
           <button
             type="button"
-            className="rounded-xl border border-line p-4 text-left transition hover:border-brand hover:bg-[#f8f4f0]"
+            className="rounded-xl border border-line p-4 text-left transition-colors hover:border-brand hover:bg-brand-soft"
             onClick={() =>
               navigate(
                 `/banks/certification/${certificateBank?.bankId}/practice`,
@@ -224,7 +224,7 @@ export function HomePage() {
           <button
             type="button"
             disabled={examMutation.isPending}
-            className="rounded-xl border border-line p-4 text-left transition hover:border-brand hover:bg-[#f8f4f0]"
+            className="rounded-xl border border-line p-4 text-left transition-colors hover:border-brand hover:bg-brand-soft"
             onClick={() => {
               if (certificateBank) examMutation.mutate(certificateBank.bankId)
             }}
@@ -274,7 +274,7 @@ function BankSection({
       />
       <Card
         className={cn(
-          'mt-4 overflow-hidden shadow-[0_12px_30px_rgba(69,58,52,0.07)]',
+          'mt-4 overflow-hidden shadow-[0_12px_30px_rgba(15,31,61,0.08)]',
           theme.card,
         )}
         style={{

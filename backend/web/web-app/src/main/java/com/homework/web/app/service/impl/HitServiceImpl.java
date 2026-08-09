@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
+import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.entity.*;
 import com.homework.model.enums.*;
 import com.homework.web.app.context.LoginUserHolder;
@@ -50,6 +51,7 @@ public class HitServiceImpl implements HitService {
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
     private final CommunityAccessService communityAccessService;
+    private final UserImageUrlResolver userImageUrlResolver;
 
     /**
      * 匹配以 # 开头的标签。
@@ -134,7 +136,8 @@ public class HitServiceImpl implements HitService {
             vo.setRepostCount(post.getRepostCount());
             vo.setContent(post.getContent());
             vo.setCreatedTime(post.getCreatedTime());
-            vo.setAvatar(userInfo == null ? null : userInfo.getAvatar());
+            vo.setAvatar(userInfo == null ? null
+                    : userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey()));
             vo.setDisplayName(userInfo == null ? "该用户已注销" : userInfo.getDisplayName());
             vo.setLiked(hitActionTypeSet.contains(HitActionType.LIKE));
             vo.setFavorited(hitActionTypeSet.contains(HitActionType.FAVORITE));
@@ -211,7 +214,7 @@ public class HitServiceImpl implements HitService {
             if (userInfo == null) {
                 vo.setAvatar(null);
             } else {
-                vo.setAvatar(userInfo.getAvatar());
+                vo.setAvatar(userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey()));
             }
             vo.setDisplayName(userInfo == null ? "该用户已注销" : userInfo.getDisplayName());
             hitCommentVOs.add(vo);
@@ -386,7 +389,7 @@ public class HitServiceImpl implements HitService {
         }
 
         // 查询有效或已取消的历史记录，并在当前事务内锁定它。
-        HitAction existing = hitActionMapper.selectIncludingDeletedForUpdate(postId, actionUserId, actionType.getValue());
+        HitAction existing = hitActionMapper.selectIncludingDeletedForUpdate(postId, actionUserId, actionType.getCode());
 
         boolean changed = false;
         if (existing != null && Boolean.TRUE.equals(existing.getDeleted())) {

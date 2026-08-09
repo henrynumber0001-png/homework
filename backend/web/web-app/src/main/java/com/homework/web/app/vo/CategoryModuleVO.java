@@ -17,7 +17,5 @@ public class CategoryModuleVO  {
     private String moduleName;
 
     private Integer sortOrder;
-    /** 模块背景图片 URL。 */
-    private GraphInfoVO graphInfoVo;
 
 }

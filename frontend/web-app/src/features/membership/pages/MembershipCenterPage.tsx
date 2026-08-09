@@ -43,7 +43,7 @@ export function MembershipCenterPage() {
         <h1 className="mt-1 text-3xl font-extrabold">会员中心</h1>
       </header>
       <Card className="mt-6 overflow-hidden">
-        <div className={active ? 'bg-[#fff6da] p-7' : 'bg-[#eee7e1] p-7'}>
+        <div className={active ? 'bg-premium-soft p-7' : 'bg-brand-soft p-7'}>
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <Avatar
               src={membership.avatarUrl}

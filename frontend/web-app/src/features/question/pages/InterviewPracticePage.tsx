@@ -210,7 +210,7 @@ export function InterviewPracticePage() {
                 className={cn(
                   'flex size-10 shrink-0 items-center justify-center rounded-xl border transition',
                   favorite
-                    ? 'border-brand bg-[#eee7e1] text-brand'
+                    ? 'border-brand bg-brand-soft text-brand'
                     : 'border-line text-muted hover:border-brand',
                 )}
                 disabled={favoriteMutation.isPending}

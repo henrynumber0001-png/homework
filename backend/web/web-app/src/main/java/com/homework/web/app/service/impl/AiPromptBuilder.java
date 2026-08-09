@@ -50,7 +50,7 @@ public class AiPromptBuilder {
         String historyText = history == null || history.isEmpty()
                 ? "暂无历史对话。"
                 : history.stream()
-                .map(message -> message.getSenderType().getLabel() + "：" + message.getMessageContent())
+                .map(message -> message.getSenderType().getName() + "：" + message.getMessageContent())
                 .collect(Collectors.joining("\n"));
 
         return """

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ReceiptText } from 'lucide-react'
+import { ArrowLeft, ReceiptText } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { getMembershipOrderHistory } from '@/features/membership/api'
 import {
@@ -39,6 +39,12 @@ export function MembershipOrdersPage() {
   return (
     <div className="reading-container py-8">
       <header>
+        <Button asChild variant="ghost" size="sm" className="-ml-3 mb-4">
+          <Link to="/membership/center">
+            <ArrowLeft className="size-4" />
+            返回会员中心
+          </Link>
+        </Button>
         <p className="text-sm font-semibold text-brand">Membership</p>
         <h1 className="mt-1 text-3xl font-extrabold">订单历史</h1>
       </header>
@@ -49,7 +55,7 @@ export function MembershipOrdersPage() {
             <Card key={order.orderNo} className="p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-xl bg-[#eee7e1] text-brand">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-brand-soft text-brand">
                     <ReceiptText className="size-4" />
                   </span>
                   <div>
@@ -102,19 +108,19 @@ function StatusBadge({ status }: { status: number }) {
   const copy = {
     [MembershipOrderStatus.PENDING]: [
       '待支付',
-      'text-warning bg-[#fff4e3] border-[#edcf9b]',
+      'text-warning bg-warning-soft border-[#edcf9b]',
     ],
     [MembershipOrderStatus.PAID]: [
       '已支付',
-      'text-success bg-[#f0f7f4] border-[#add0c3]',
+      'text-success bg-success-soft border-[#add0c3]',
     ],
     [MembershipOrderStatus.EXPIRED]: [
       '已超时',
-      'text-muted bg-[#f3efec] border-line',
+      'text-muted bg-surface-muted border-line',
     ],
     [MembershipOrderStatus.PAY_FAILED]: [
       '支付失败',
-      'text-danger bg-[#fbf0f0] border-[#e3b9b9]',
+      'text-danger bg-danger-soft border-[#e3b9b9]',
     ],
   } as const
   const [label, className] = copy[status as keyof typeof copy] || [

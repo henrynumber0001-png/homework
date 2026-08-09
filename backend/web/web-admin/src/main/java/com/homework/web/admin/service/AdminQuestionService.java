@@ -573,16 +573,16 @@ public class AdminQuestionService {
         auditService.record("QUESTION", action.name(), "QUESTION", questionId, dto.getReason(), before, updated);
         ActionResultVO result = new ActionResultVO();
         result.setTargetId(questionId);
-        result.setAction(action.getValue());
+        result.setAction(action.getCode());
 
         // updated 可能是面试题，也可能是认证题。先判断实际类型，再读取对应实体的最新状态。
         if (updated instanceof InterviewQuestionInfo question) {
             // 状态已经由 action 分支写入题目表，直接返回数据库中的最终状态，不再临时推算。
-            result.setStatus(question.getStatus().getValue());
+            result.setStatus(question.getStatus().getCode());
             result.setVersion(question.getVersion());
             result.setUpdatedTime(question.getUpdatedTime());
         } else if (updated instanceof CertificateQuestionInfo question) {
-            result.setStatus(question.getStatus().getValue());
+            result.setStatus(question.getStatus().getCode());
             result.setVersion(question.getVersion());
             result.setUpdatedTime(question.getUpdatedTime());
         }
@@ -655,7 +655,7 @@ public class AdminQuestionService {
             }
             //计算需要移动的题目数量
             //当被移动题目和目标题目确定之后，不论方向是正是反，中间经过的题目总数是不变的
-            int questionCountToMove = lastQuestionNoToMove - targetQuestionNo;
+            int questionCountToMove = lastQuestionNoToMove - firstQuestionNoToMove + 1;
 
             if (groupType == GroupType.INTERVIEW) {
                 // 第一步：先把被移动题目的序号暂存为 0，为其他题目让出位置。

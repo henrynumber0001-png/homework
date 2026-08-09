@@ -77,7 +77,6 @@ public class GoogleAuthHandler implements ThirdPartyAuthHandler {
         user.setExternalUserId(payload.getSubject());
         user.setEmail(payload.getEmail());
         user.setDisplayName((String) payload.get("name"));
-        user.setAvatar((String) payload.get("picture"));
 
         return user;
     }

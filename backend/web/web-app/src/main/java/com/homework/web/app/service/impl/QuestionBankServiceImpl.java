@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.model.entity.*;
-import com.homework.model.enums.ItemType;
 import com.homework.model.enums.QuestionBankStatus;
 import com.homework.model.enums.SortType;
 import com.homework.web.app.mapper.*;
@@ -28,7 +27,6 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
     private final CategoryModuleMapper categoryModuleMapper;
     private final CategorySubModuleMapper categorySubModuleMapper;
     private final QuestionBankMapper questionBankMapper;
-    private final GraphInfoMapper graphInfoMapper;
     private final BankTagMapper bankTagMapper;
     private final UserBankCorrectRateMapper userBankCorrectRate;
 
@@ -279,9 +277,6 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         vo.setId(entity.getId());
         vo.setModuleName(entity.getModuleName());
         vo.setSortOrder(entity.getSortOrder());
-        GraphInfoVO graphInfoVo = getGraphInfoVo(entity.getId());
-        vo.setGraphInfoVo(graphInfoVo);
-
         return vo;
     }
 
@@ -309,20 +304,4 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         return vo;
     }
 
-    private GraphInfoVO getGraphInfoVo(Long moduleId) {
-        LambdaQueryWrapper<GraphInfo> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(GraphInfo::getItemType, ItemType.MODULE)
-                .eq(GraphInfo::getItemId, moduleId);
-
-
-        GraphInfo graphInfo = graphInfoMapper.selectOne(queryWrapper);
-        if (graphInfo == null) {
-            return null; //是允许返回null的，就表示没有图片
-        }
-        String url = graphInfo.getUrl();
-        GraphInfoVO graphInfoVo = new GraphInfoVO();
-        graphInfoVo.setUrl(url);
-
-        return graphInfoVo;
-    }
 }

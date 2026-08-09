@@ -1,6 +1,7 @@
 package com.homework.web.app.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.entity.UserInfo;
 import com.homework.model.enums.UserInfoStatus;
 import com.homework.web.app.mapper.*;
@@ -28,6 +29,7 @@ class PublicUserProfileServiceImplTest {
     @Mock private HitActionMapper actionMapper;
     @Mock private HitCommentLikeMapper commentLikeMapper;
     @Mock private UserCenterService userCenterService;
+    @Mock private UserImageUrlResolver userImageUrlResolver;
 
     private PublicUserProfileServiceImpl service;
 
@@ -35,7 +37,7 @@ class PublicUserProfileServiceImplTest {
     void setUp() {
         service = new PublicUserProfileServiceImpl(userInfoMapper, followMapper, chatboxMapper,
                 profileMapper, postMapper, commentMapper, actionMapper, commentLikeMapper,
-                userCenterService, new ObjectMapper());
+                userCenterService, new ObjectMapper(), userImageUrlResolver);
     }
 
     @Test

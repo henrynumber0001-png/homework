@@ -3,6 +3,7 @@ package com.homework.web.app.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.entity.*;
 import com.homework.model.enums.*;
 import com.homework.web.app.mapper.*;
@@ -30,6 +31,7 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
     private final HitCommentLikeMapper commentLikeMapper;
     private final UserCenterService userCenterService;
     private final ObjectMapper objectMapper;
+    private final UserImageUrlResolver userImageUrlResolver;
 
     /**
      * 一次性完成主页用户校验、统计数据和当前用户关系的组装，
@@ -163,7 +165,7 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
                 postVO.setPostId(post.getId());
                 postVO.setUserId(post.getPostUserId());
                 postVO.setDisplayName(postAuthor == null ? "该用户已注销" : postAuthor.getDisplayName());
-                postVO.setAvatar(postAuthor == null ? null : postAuthor.getAvatar());
+                postVO.setAvatar(postAuthor == null ? null : resolveAvatar(postAuthor));
                 postVO.setContent(post.getContent());
 
                 // 标签字段是 JSON；脏数据不应阻断整页动态，因此解析失败时按无标签展示。
@@ -202,7 +204,7 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
                     commentVO.setCommentUserId(comment.getCommentUserId());
                     commentVO.setDisplayName(commentAuthor == null
                             ? "该用户已注销" : commentAuthor.getDisplayName());
-                    commentVO.setAvatar(commentAuthor == null ? null : commentAuthor.getAvatar());
+                    commentVO.setAvatar(commentAuthor == null ? null : resolveAvatar(commentAuthor));
                     commentVO.setParentCommentId(comment.getParentCommentId());
                     commentVO.setComment(comment.getComment());
                     commentVO.setLikeCount(comment.getLikeCount() == null ? 0 : comment.getLikeCount());
@@ -241,9 +243,12 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
                     vo.setUserId(user.getId());
                     vo.setAccountNo(user.getAccountNo());
                     vo.setDisplayName(user.getDisplayName());
-                    vo.setAvatar(user.getAvatar());
+                    vo.setAvatar(resolveAvatar(user));
                     return vo;
                 })
                 .toList();
+    }
+    private String resolveAvatar(UserInfo userInfo) {
+        return userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey());
     }
 }

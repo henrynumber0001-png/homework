@@ -64,7 +64,7 @@ export function HitCard({
               {post.displayName}
             </Link>
             <time
-              className="text-xs text-[#91867f]"
+              className="text-xs text-placeholder"
               dateTime={post.createdTime}
               title={post.createdTime}
             >
@@ -77,7 +77,10 @@ export function HitCard({
           {post.tags.length ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {post.tags.map((tag) => (
-                <Badge key={tag} className="border-0 bg-[#edf3f1] text-accent">
+                <Badge
+                  key={tag}
+                  className="border-0 bg-accent-soft text-accent"
+                >
                   #{tag}
                 </Badge>
               ))}

@@ -1,6 +1,7 @@
 package com.homework.web.app.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.enums.UserInfoStatus;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
@@ -9,10 +10,14 @@ import com.homework.model.entity.UserInfo;
 import com.homework.web.app.mapper.UserInfoMapper;
 import com.homework.web.app.service.UserInfoService;
 import com.homework.web.app.vo.UserInfoVO;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> implements UserInfoService {
+
+    private final UserImageUrlResolver userImageUrlResolver;
 
     @Override
     public UserInfoVO getUserInfo() {
@@ -34,7 +39,8 @@ public class UserInfoServiceImpl extends ServiceImpl<UserInfoMapper, UserInfo> i
 
         UserInfoVO userInfoVo = new UserInfoVO();
         userInfoVo.setAccountNo(userInfo.getAccountNo());
-        userInfoVo.setAvatar(userInfo.getAvatar());
+        userInfoVo.setAvatarUrl(userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey()));
+        userInfoVo.setBannerUrl(userImageUrlResolver.resolveBanner(userInfo.getBannerObjectKey()));
         userInfoVo.setDisplayName(userInfo.getDisplayName());
 
         return userInfoVo;

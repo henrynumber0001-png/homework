@@ -34,7 +34,7 @@ public class HitActionTypeJsonDeserializer extends JsonDeserializer<HitActionTyp
 
         for (HitActionType type : HitActionType.values()) {
 
-            if (type.getValue().equals(value)) {
+            if (type.getCode().equals(value)) {
                 return type;
             }
         }

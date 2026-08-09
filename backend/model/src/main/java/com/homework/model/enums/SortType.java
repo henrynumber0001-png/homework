@@ -12,11 +12,11 @@ public enum SortType implements BaseEnum {
 
     @EnumValue
     @JsonValue
-    private final Integer value;
-    private final String label;
+    private final Integer code;
+    private final String name;
 
-    SortType(Integer value, String label) {
-        this.value = value;
-        this.label = label;
+    SortType(Integer code, String name) {
+        this.code = code;
+        this.name = name;
     }
 }

@@ -17,13 +17,13 @@ public enum ActionStatus implements BaseEnum {
 
     /** 前后端接口中传递的固定数字值。 */
     @JsonValue
-    private final Integer value;
+    private final Integer code;
 
     /** 供界面、日志和文档使用的动作说明。 */
-    private final String label;
+    private final String name;
 
-    ActionStatus(Integer value, String label) {
-        this.value = value;
-        this.label = label;
+    ActionStatus(Integer code, String name) {
+        this.code = code;
+        this.name = name;
     }
 }

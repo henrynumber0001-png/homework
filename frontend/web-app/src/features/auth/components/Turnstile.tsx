@@ -71,7 +71,7 @@ export function Turnstile({ onTokenChange }: TurnstileProps) {
 
   if (!siteKey) {
     return (
-      <p className="rounded-xl bg-[#f2ece7] px-3 py-2 text-xs text-muted">
+      <p className="rounded-xl bg-brand-soft px-3 py-2 text-xs text-muted">
         当前环境尚未配置人机验证 Site Key。
       </p>
     )

@@ -95,8 +95,8 @@ export function CertificateAnswerPanel({
       <Card
         className={
           answer.correct
-            ? 'border-[#add0c3] bg-[#f0f7f4] p-5'
-            : 'border-[#e3b9b9] bg-[#fbf0f0] p-5'
+            ? 'border-[#add0c3] bg-success-soft p-5'
+            : 'border-[#e3b9b9] bg-danger-soft p-5'
         }
       >
         <div className="flex items-center gap-2 font-bold">

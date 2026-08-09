@@ -2,6 +2,7 @@ package com.homework.web.admin.config;
 
 import com.homework.common.storage.CosReadUrlSigner;
 import com.homework.common.storage.TencentCosProperties;
+import com.homework.common.storage.UserImageUrlResolver;
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.ClientConfig;
 import com.qcloud.cos.auth.BasicCOSCredentials;
@@ -37,5 +38,10 @@ public class TencentCosConfig {
                 properties.getBucket(),
                 properties.getReadUrlTtlSeconds()
         );
+    }
+
+    @Bean
+    public UserImageUrlResolver userImageUrlResolver(CosReadUrlSigner readUrlSigner) {
+        return new UserImageUrlResolver(readUrlSigner);
     }
 }

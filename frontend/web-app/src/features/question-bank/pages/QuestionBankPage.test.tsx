@@ -37,7 +37,6 @@ describe('QuestionBankPage', () => {
               id: 1,
               moduleName: '前端开发',
               sortOrder: 10,
-              graphInfoVo: null,
             },
             firstSubModule: {
               id: 11,
@@ -50,25 +49,21 @@ describe('QuestionBankPage', () => {
                 id: 1,
                 moduleName: '前端开发',
                 sortOrder: 10,
-                graphInfoVo: null,
               },
               {
                 id: 2,
                 moduleName: '后端开发',
                 sortOrder: 20,
-                graphInfoVo: null,
               },
               {
                 id: 3,
                 moduleName: '测试',
                 sortOrder: 30,
-                graphInfoVo: null,
               },
               {
                 id: 4,
                 moduleName: '运维',
                 sortOrder: 40,
-                graphInfoVo: null,
               },
             ],
             subModules: [

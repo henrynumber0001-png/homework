@@ -1,6 +1,10 @@
 spring:
   application:
     name: homework-backend
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:home_work}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Singapore&useSSL=false&allowPublicKeyRetrieval=true

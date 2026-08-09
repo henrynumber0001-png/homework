@@ -51,10 +51,10 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen">
-      <header className="fixed inset-x-0 top-0 z-40 h-16 border-b border-line/90 bg-surface/95 backdrop-blur">
+      <header className="fixed inset-x-0 top-0 z-40 h-16 border-b border-[#31577f] bg-brand-dark/95 text-white shadow-[0_8px_24px_rgba(9,31,61,0.14)] backdrop-blur">
         <div className="app-container flex h-full items-center">
           <NavLink to="/home" className="flex shrink-0 items-center gap-2">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-brand text-lg font-black text-white">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-white text-lg font-black text-brand-dark shadow-sm">
               H
             </span>
             <span className="hidden text-lg font-extrabold tracking-tight sm:block">
@@ -72,9 +72,9 @@ export function AppShell() {
                 to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    'relative flex h-full items-center px-3 text-sm font-semibold text-muted transition hover:text-ink',
+                    'relative flex h-full items-center px-3 text-sm font-semibold text-white/65 transition-colors hover:text-white',
                     isActive &&
-                      'text-brand after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-brand',
+                      'text-white after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-[#78b8f2]',
                   )
                 }
               >
@@ -89,7 +89,7 @@ export function AppShell() {
               aria-label={
                 unreadTotal ? `我的消息，${unreadTotal}条未读` : '我的消息'
               }
-              className="relative flex size-10 items-center justify-center rounded-xl text-muted transition hover:bg-[#eee7e1] hover:text-ink"
+              className="relative flex size-10 items-center justify-center rounded-xl text-white/70 transition-colors hover:bg-white/10 hover:text-white"
             >
               <Bell className="size-5" />
               {unreadTotal ? (
@@ -105,22 +105,22 @@ export function AppShell() {
             />
 
             <DropdownMenu.Root>
-              <DropdownMenu.Trigger className="flex items-center gap-2 rounded-xl p-1.5 text-left transition hover:bg-[#eee7e1]">
+              <DropdownMenu.Trigger className="flex items-center gap-2 rounded-xl p-1.5 text-left transition-colors hover:bg-white/10">
                 <Avatar
-                  src={userQuery.data?.avatar}
+                  src={userQuery.data?.avatarUrl}
                   name={userQuery.data?.displayName}
                   className="size-8"
                 />
                 <span className="hidden max-w-28 truncate text-sm font-semibold lg:block">
                   {userQuery.data?.displayName || '加载中…'}
                 </span>
-                <Menu className="hidden size-4 text-muted lg:block" />
+                <Menu className="hidden size-4 text-white/60 lg:block" />
               </DropdownMenu.Trigger>
               <DropdownMenu.Portal>
                 <DropdownMenu.Content
                   align="end"
                   sideOffset={8}
-                  className="z-50 min-w-48 rounded-xl border border-line bg-surface p-1.5 shadow-xl"
+                  className="z-50 min-w-48 rounded-xl border border-line bg-surface p-1.5 text-ink shadow-xl"
                 >
                   <MenuLink to="/me">个人中心</MenuLink>
                   <MenuLink to="/membership/center">会员中心</MenuLink>
@@ -129,7 +129,7 @@ export function AppShell() {
                   <DropdownMenu.Separator className="my-1 h-px bg-line" />
                   <DropdownMenu.Item
                     onSelect={logout}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-danger outline-none hover:bg-[#f8eaea]"
+                    className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-danger outline-none hover:bg-danger-soft"
                   >
                     <LogOut className="size-4" />
                     退出登录
@@ -146,7 +146,7 @@ export function AppShell() {
       </main>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 grid h-[4.5rem] grid-cols-5 border-t border-line bg-surface/97 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid h-[4.5rem] grid-cols-5 border-t border-line bg-surface/97 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgba(15,31,61,0.06)] backdrop-blur md:hidden"
         aria-label="移动端主导航"
       >
         {navItems.map((item) => {
@@ -177,7 +177,7 @@ function MenuLink({ to, children }: { to: string; children: React.ReactNode }) {
   return (
     <DropdownMenu.Item
       onSelect={() => navigate(to)}
-      className="cursor-pointer rounded-lg px-3 py-2 text-sm text-ink outline-none hover:bg-[#eee7e1]"
+      className="cursor-pointer rounded-lg px-3 py-2 text-sm text-ink outline-none hover:bg-brand-soft"
     >
       {children}
     </DropdownMenu.Item>
@@ -193,13 +193,13 @@ function MembershipBadge({
 }) {
   if (isLoading) {
     return (
-      <span className="h-7 w-16 animate-pulse rounded-full bg-[#eee7e1] sm:w-20" />
+      <span className="h-7 w-16 animate-pulse rounded-full bg-white/15 sm:w-20" />
     )
   }
 
   if (status === 2) {
     return (
-      <Badge className="border-[#d4b46d] bg-[#fff7dd] text-[#7f5b15]">
+      <Badge className="border-[#d4b46d] bg-premium-soft text-[#77500d]">
         Premium Plus
       </Badge>
     )
@@ -207,7 +207,7 @@ function MembershipBadge({
 
   if (status === 1) {
     return (
-      <Badge className="border-[#dfc98f] bg-[#fff8e8] text-premium">
+      <Badge className="border-[#dfc98f] bg-premium-soft text-premium">
         Premium
       </Badge>
     )

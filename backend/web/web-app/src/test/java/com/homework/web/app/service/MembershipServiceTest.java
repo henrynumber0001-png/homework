@@ -2,6 +2,7 @@ package com.homework.web.app.service;
 
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
+import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.entity.BaseVipRecord;
 import com.homework.model.entity.MembershipOrder;
 import com.homework.model.entity.MembershipPlan;
@@ -61,10 +62,13 @@ class MembershipServiceTest {
 
     @Mock
     private UserInfoMapper userInfoMapper;
+    @Mock
+    private UserImageUrlResolver userImageUrlResolver;
 
     @BeforeEach
     void setUp() {
-        service = new MembershipServiceImpl(planMapper, baseVipMapper, svipMapper, orderMapper,userInfoMapper,membershipAccessService);
+        service = new MembershipServiceImpl(planMapper, baseVipMapper, svipMapper, orderMapper,
+                userInfoMapper, membershipAccessService, userImageUrlResolver);
         LoginUserHolder.setUserId(7L);
     }
 
