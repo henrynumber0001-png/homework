@@ -28,11 +28,54 @@ public class AiPromptBuilder {
     //返回的是 当前用户停留题目的题目内容 + 答案解析（字符串）
     public String buildQuestionContext(AiFollowUpDTO dto) {
         if (dto.getGroupType() == GroupType.INTERVIEW) {
-            return buildInterviewQuestionContext(dto);
+            InterviewQuestionInfo question = interviewQuestionInfoMapper.selectOne(
+                    new LambdaQueryWrapper<InterviewQuestionInfo>()
+                            .eq(InterviewQuestionInfo::getId, dto.getQuestionId())
+                            .eq(InterviewQuestionInfo::getBankId, dto.getBankId())
+                            .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
+            );
+
+            if (question == null) {
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
+
+            return """
+                题库类型：面试题库
+                题目：%s
+                参考解析：%s
+                """.formatted(question.getTitle(), question.getAnalysis());
+            /*
+            这里return的，其实就是question.getTitle() 和 question.getAnalysis()
+            为什么要格式化？
+            因为这个字符串不是给前端看的，也不是普通业务字段，而是给 AI 模型看的 prompt 上下文。
+
+            带标签有几个好处：
+            1）AI 知道哪一段是题目，哪一段是参考答案，否则标题和解析拼在一起，模型可能混淆。
+            2）AI 知道当前题库类型，面试题和认证题回答方式不一样。面试题更适合讲思路、表达、知识点；认证题更适合解释选项、考点、为什么选这个。
+            3）后面扩展方便，比如以后你想加一些新的字段。
+            4）可读性好，你自己调试 prompt 时，一眼能看出最终喂给 AI 的上下文长什么样。
+         */
         }
         if (dto.getGroupType() == GroupType.CERTIFICATION) {
-            return buildCertificateQuestionContext(dto);
+            CertificateQuestionInfo question = certificateQuestionInfoMapper.selectOne(
+                    new LambdaQueryWrapper<CertificateQuestionInfo>()
+                            .eq(CertificateQuestionInfo::getId, dto.getQuestionId())
+                            .eq(CertificateQuestionInfo::getBankId, dto.getBankId())
+                            .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
+            );
+
+            if (question == null) {
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
+
+            return """
+                题库类型：认证题库
+                题目：%s
+                正确答案：%s
+                答案解析：%s
+                """.formatted(question.getTitle(), question.getCorrectAnswer(), question.getAnalysis());
         }
+
         throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
     }
 
@@ -67,58 +110,5 @@ public class AiPromptBuilder {
                 用户最新问题：
                 %s
                 """.formatted(questionContext, historyText, currentQuestion);
-    }
-
-    //返回的是 当前用户停留题目的题目内容 + 答案解析（字符串）
-    private String buildInterviewQuestionContext(AiFollowUpDTO dto) {
-        // 变更：关系表已删除，AI上下文查询直接用题目实体的 bank_id + id 校验归属。
-        InterviewQuestionInfo question = interviewQuestionInfoMapper.selectOne(
-                new LambdaQueryWrapper<InterviewQuestionInfo>()
-                        .eq(InterviewQuestionInfo::getId, dto.getQuestionId())
-                        .eq(InterviewQuestionInfo::getBankId, dto.getBankId())
-                        .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
-        );
-
-        if (question == null) {
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
-        }
-
-        return """
-                题库类型：面试题库
-                题目：%s
-                参考解析：%s
-                """.formatted(question.getTitle(), question.getAnalysis());
-        /*
-        这里return的，其实就是question.getTitle() 和 question.getAnalysis()
-        为什么要格式化？
-        因为这个字符串不是给前端看的，也不是普通业务字段，而是给 AI 模型看的 prompt 上下文。
-
-        带标签有几个好处：
-        1）AI 知道哪一段是题目，哪一段是参考答案，否则标题和解析拼在一起，模型可能混淆。
-        2）AI 知道当前题库类型，面试题和认证题回答方式不一样。面试题更适合讲思路、表达、知识点；认证题更适合解释选项、考点、为什么选这个。
-        3）后面扩展方便，比如以后你想加一些新的字段。
-        4）可读性好，你自己调试 prompt 时，一眼能看出最终喂给 AI 的上下文长什么样。
-         */
-    }
-
-    private String buildCertificateQuestionContext(AiFollowUpDTO dto) {
-        // 变更：认证题 AI 上下文也直接在题目查询中校验 bank_id。
-        CertificateQuestionInfo question = certificateQuestionInfoMapper.selectOne(
-                new LambdaQueryWrapper<CertificateQuestionInfo>()
-                        .eq(CertificateQuestionInfo::getId, dto.getQuestionId())
-                        .eq(CertificateQuestionInfo::getBankId, dto.getBankId())
-                        .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
-        );
-
-        if (question == null) {
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
-        }
-
-        return """
-                题库类型：认证题库
-                题目：%s
-                正确答案：%s
-                答案解析：%s
-                """.formatted(question.getTitle(), question.getCorrectAnswer(), question.getAnalysis());
     }
 }

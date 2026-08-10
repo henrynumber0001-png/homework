@@ -1,12 +1,14 @@
 package com.homework.web.app.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.web.app.dto.AiEvaluationResult;
 import com.homework.web.app.service.AiEvaluationService;
 import com.homework.web.app.service.LlmClient;
+import com.homework.web.app.service.LlmResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -51,7 +53,7 @@ public class AiEvaluationServiceImpl implements AiEvaluationService {
                 5. innovativeComment 写用户答案中有启发性的地方，没有则写空字符串
                 6. summary 用一小段话总结改进建议
 
-                只返回 JSON，不要返回 Markdown，不要解释。
+                只返回 JSON，不要返回 Markdown，不要解释，也不要增加其他字段。
 
                 JSON 格式：
                 {
@@ -60,8 +62,7 @@ public class AiEvaluationServiceImpl implements AiEvaluationService {
                   "innovativeComment": "",
                   "missingComment": "",
                   "wrongComment": "",
-                  "summary": "",
-                  "modelName": ""
+                  "summary": ""
                 }
 
                 题目：
@@ -74,22 +75,40 @@ public class AiEvaluationServiceImpl implements AiEvaluationService {
                 %s
                 """.formatted(title, analysis, content);
 
-        String aiResponse = llmClient.chat(prompt);
+        LlmResponse llmResponse = llmClient.chatJson(prompt);
+        if (llmResponse == null || !StringUtils.hasText(llmResponse.content())) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
 
         try {
-            AiEvaluationResult result = objectMapper.readValue(aiResponse, AiEvaluationResult.class);
+            //把llmResponse的 content 也就是Json字符串，反序列化为 AiEvaluationResult 对象
+            //注意是把 llmResponse 中的 content，而不是把 llmResponse 反序列化
+            AiEvaluationResult result = objectMapper.readerFor(AiEvaluationResult.class)
+                    .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                    .readValue(llmResponse.content());
+            validateRequiredFields(result);
             normalizeScore(result);
+            // 模型名称来自厂商 HTTP 响应，不能由模型在评分 JSON 中自行声明。
+            result.setModelName(llmResponse.modelName());
             return result;
         } catch (JsonProcessingException e) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR, e);
+        }
+    }
+
+    private void validateRequiredFields(AiEvaluationResult result) {
+        if (result == null
+                || result.getScoreRate() == null
+                || result.getAccurateComment() == null
+                || result.getInnovativeComment() == null
+                || result.getMissingComment() == null
+                || result.getWrongComment() == null
+                || result.getSummary() == null) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
     }
 
     private void normalizeScore(AiEvaluationResult result) {
-        if (result.getScoreRate() == null) {
-            result.setScoreRate(BigDecimal.ZERO);
-        }
-
         if (result.getScoreRate().compareTo(BigDecimal.ZERO) < 0) {
             result.setScoreRate(BigDecimal.ZERO);
         }

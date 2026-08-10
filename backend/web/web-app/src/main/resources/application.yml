@@ -103,3 +103,11 @@ oauth:
     openid-url: https://graph.qq.com/oauth2.0/me
     user-info-url: https://graph.qq.com/user/get_user_info
     scope: get_user_info
+
+llm:
+  provider: ${LLM_PROVIDER:mock} # 本地没有设置时使用 Mock；生产设置为 qwen。
+  base-url: ${LLM_BASE_URL:} # OpenAI 兼容接口 Base URL，不包含 /chat/completions。
+  api-key: ${LLM_API_KEY:} # 只从环境变量读取，禁止设置默认密钥。
+  model: ${LLM_MODEL:}
+  connect-timeout: ${LLM_CONNECT_TIMEOUT:5s}
+  read-timeout: ${LLM_READ_TIMEOUT:60s}

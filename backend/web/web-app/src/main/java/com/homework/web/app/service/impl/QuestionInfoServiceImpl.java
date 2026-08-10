@@ -11,6 +11,7 @@ import com.homework.web.app.dto.*;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.AiEvaluationService;
 import com.homework.web.app.service.LlmClient;
+import com.homework.web.app.service.LlmResponse;
 import com.homework.web.app.service.MembershipAccessService;
 import com.homework.web.app.service.MembershipAccessSnapshot;
 import com.homework.web.app.service.QuestionInfoService;
@@ -31,6 +32,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Service
 public class QuestionInfoServiceImpl implements QuestionInfoService {
+    private static final String RULE_WELCOME_MODEL = "rule-welcome";
+
     private final InterviewQuestionInfoMapper interviewQuestionInfoMapper;
     private final UserQuestionAnswerMapper userQuestionAnswerMapper;
     private final AiEvaluationService aiEvaluationService;
@@ -139,9 +142,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
         // Premium Plus 才返回 AI 评价；Premium 仍可查看题目解析。
         boolean premiumPlus = membershipAccessSnapshot.status() == MembershipStatus.PREMIUM_PLUS;
-        AiEvaluationResult aiResult = premiumPlus
-                ? aiEvaluationService.evaluateInterviewAnswer(title, content, analysis)
-                : null;
+        AiEvaluationResult aiResult = premiumPlus ? aiEvaluationService.evaluateInterviewAnswer(title, content, analysis) : null;
 
         //返回给前端
         InterViewAnswerPageVO answer = new InterViewAnswerPageVO();
@@ -979,7 +980,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             welcomeMessage.setGroupType(groupType);
             welcomeMessage.setMessageContent("你好，有关于这道题的知识点想深入了解吗？");
             welcomeMessage.setSenderType(AiChatMessageSenderType.AI);
-            welcomeMessage.setModelName("mock-llm");
+            welcomeMessage.setModelName(RULE_WELCOME_MODEL);
             aiChatMessageMapper.insert(welcomeMessage);
         }
 
@@ -1000,7 +1001,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             welcomeMessage.setGroupType(groupType);
             welcomeMessage.setMessageContent("你好，有关于这道题的知识点想深入了解吗？");
             welcomeMessage.setSenderType(AiChatMessageSenderType.AI);
-            welcomeMessage.setModelName("mock-llm");
+            welcomeMessage.setModelName(RULE_WELCOME_MODEL);
             aiChatMessageMapper.insert(welcomeMessage);
         }
 
@@ -1089,8 +1090,8 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         userMessage.setMessageContent(dto.getMessage()); //一条来自用户输入的信息，保存到ai_chat_message表
         aiChatMessageMapper.insert(userMessage);
 
-        // 7. 调用大模型生成回复。
-        String aiReply = llmClient.chat(prompt);
+        // 7. 调用大模型生成回复（真正使用AI生成回复的地方）
+        LlmResponse llmResponse = llmClient.chat(prompt);
 
         // 8. 保存 AI 回复。这样下一次打开“追问AI”弹窗时，可以恢复完整上下文。
         AiChatMessage aiMessage = new AiChatMessage();
@@ -1098,8 +1099,8 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         aiMessage.setQuestionId(dto.getQuestionId());
         aiMessage.setGroupType(dto.getGroupType());
         aiMessage.setSenderType(AiChatMessageSenderType.AI);
-        aiMessage.setMessageContent(aiReply); //一条来自AI回复的消息，也保存到ai_chat_message表
-        aiMessage.setModelName("mock-llm");
+        aiMessage.setMessageContent(llmResponse.content()); //一条来自AI回复的消息，也保存到ai_chat_message表
+        aiMessage.setModelName(llmResponse.modelName());
         aiChatMessageMapper.insert(aiMessage);
 
         // 9. 返回最新完整会话，前端可以直接用 messages 渲染弹窗。
