@@ -167,6 +167,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         }
         userAnswer.setAnsweredTime(LocalDateTime.now());
 
+        //因为同一个用户，对于同一题库中的题目可能反复的做，所以使用从（UserQuestionAnswer）逻辑删除中恢复回这个题目Id，并更新其中的字段，实现clear之后重新作答
         Long answerId = saveOrUpdateLatestAnswer(userAnswer);
         //UserQuestionAnswer 负责记录：用户每次提交的答案
         //QuestionAiEvaluation 负责记录：AI 对这个用户这次答案的评价
@@ -574,6 +575,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
         //如果答了，那么就开始遍历
         List<InterviewQuestionReviewVO> questionReviewVos = new ArrayList<>();
+        //遍历的是 userQuestionAnswers
         userQuestionAnswers.forEach(userQuestionAnswer -> {
             InterviewQuestionReviewVO questionReviewVo = new InterviewQuestionReviewVO();
             InterviewQuestionInfo interviewQuestionInfo = questionInfoMap.get(userQuestionAnswer.getQuestionId());
@@ -605,10 +607,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         提交答案：更新 answeredMap
         退出后重新进入或刷新：再次请求后端恢复 answeredMap
 
-        排序在
          */
     }
 
+    @Transactional
     @Override
     public void clearRecord(Long bankId, GroupType groupType) {
         membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
@@ -804,6 +806,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (groupType.equals(GroupType.INTERVIEW)) {
             List<InterviewQuestionReviewVO> interviewQuestionReviewVos = getInterviewQuestionReview(bankId);
             finishVO.setInterviewQuestionReviewVos(interviewQuestionReviewVos);
+            //完成次数+1
             int count = interviewQuestionInfoMapper.bankCompletionCount(bankId);
             if(count != 1){
                 throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
@@ -819,7 +822,6 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             }
 
         }
-
         QuestionCountVO questionCountVO = buildQuestionCountVO(bankId, groupType);
         finishVO.setQuestionCount(questionCountVO);
 
@@ -1131,23 +1133,32 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     }
 
 
-    //查到数据，覆盖；没查到数据，插入
+    // 查到数据就覆盖（包括已逻辑删除的数据），没查到数据才插入。
+    // user_question_answer 的唯一索引不包含 is_deleted，所以清空记录后必须恢复原行，不能再次 insert。
     private Long saveOrUpdateLatestAnswer(UserQuestionAnswer userQuestionAnswer) {
-        LambdaQueryWrapper<UserQuestionAnswer> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(UserQuestionAnswer::getUserId, userQuestionAnswer.getUserId())
-                .eq(UserQuestionAnswer::getBankId, userQuestionAnswer.getBankId())
-                .eq(UserQuestionAnswer::getQuestionId, userQuestionAnswer.getQuestionId());
-
-        UserQuestionAnswer userAnswer = userQuestionAnswerMapper.selectOne(queryWrapper);
+        UserQuestionAnswer userAnswer = userQuestionAnswerMapper.selectIncludingDeletedForUpdate(
+                userQuestionAnswer.getUserId(),
+                userQuestionAnswer.getBankId(),
+                userQuestionAnswer.getQuestionId()
+        );
         if (userAnswer == null) {
             userQuestionAnswerMapper.insert(userQuestionAnswer);
             return userQuestionAnswer.getId(); //MyBatis-Plus 的 insert(entity) 在自增主键场景下，通常会把数据库生成的 id 自动回填到 entity 里。
         }
 
+        if (Boolean.TRUE.equals(userAnswer.getDeleted()) && userQuestionAnswerMapper.restoreById(userAnswer.getId()) != 1) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
         //MyBatis-Plus 的 update 方法没有自动回填 id 功能，所以要手动 set一下
         //根据 where 条件更新已有行，但数据库不会“生成新 id”，MyBatis-Plus 也不会自动查询旧 id 回填
         userQuestionAnswer.setId(userAnswer.getId());
-        userQuestionAnswerMapper.updateById(userQuestionAnswer);
+        int result = userQuestionAnswerMapper.overwriteAllUpdate(userQuestionAnswer);
+        if(result != 1){
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
+
+
         return userQuestionAnswer.getId();
     }
 

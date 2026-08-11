@@ -3,6 +3,20 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.homework.web.app.mapper.UserQuestionAnswerMapper">
+    <update id="overwriteAllUpdate">
+        UPDATE user_question_answer
+        SET question_type = #{userQuestionAnswer.questionType}, <!-- 这些是内容字段，是可能更改的 -->
+            content = #{userQuestionAnswer.content},
+            chosen_options = #{userQuestionAnswer.chosenOptions},
+            is_correct = #{userQuestionAnswer.isCorrect},
+            ai_score_rate = #{userQuestionAnswer.aiScoreRate},
+            is_deleted = 0,
+            updated_time = CURRENT_TIMESTAMP(3)
+        WHERE id = #{userQuestionAnswer.id} <!-- 这些是业务字段，如果这些字段都改了，你还更新什么，那就变成插入了 -->
+        AND bank_id = #{userQuestionAnswer.bankId}
+        AND question_id = #{userQuestionAnswer.questionId}
+        AND user_id = #{userQuestionAnswer.userId}
+    </update>
 
 
     <select id="getWrongQuestionBanks" resultType="com.homework.web.app.vo.WrongQuestionBankVO">

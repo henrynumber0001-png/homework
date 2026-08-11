@@ -2,6 +2,7 @@ package com.homework.web.app.service.impl;
 
 import com.homework.common.storage.CosReadUrlSigner;
 import com.homework.model.entity.InterviewQuestionInfo;
+import com.homework.model.entity.UserQuestionAnswer;
 import com.homework.model.enums.MembershipStatus;
 import com.homework.model.enums.MembershipType;
 import com.homework.model.entity.UserFavoriteQuestion;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 
@@ -56,6 +58,8 @@ class QuestionInfoServiceImplTest {
     private AiPromptBuilder aiPromptBuilder;
     @Mock
     private UserFavoriteQuestionMapper userFavoriteQuestionMapper;
+    @Mock
+    private UserBankCorrectRateMapper userBankCorrectRateMapper;
     @Mock
     private MembershipAccessService membershipAccessService;
     @Mock
@@ -146,6 +150,36 @@ class QuestionInfoServiceImplTest {
         verify(userFavoriteQuestionMapper, never()).insert(any(UserFavoriteQuestion.class));
         verify(userFavoriteQuestionMapper, never()).restoreById(anyLong());
         verify(userFavoriteQuestionMapper, never()).deactivateById(anyLong());
+    }
+
+    @Test
+    void submittingAfterClearRestoresDeletedAnswerInsteadOfInsertingDuplicate() {
+        reset(membershipAccessService);
+        UserQuestionAnswer deletedAnswer = new UserQuestionAnswer();
+        deletedAnswer.setId(99L);
+        deletedAnswer.setDeleted(true);
+        when(userQuestionAnswerMapper.selectIncludingDeletedForUpdate(7L, 11L, 22L))
+                .thenReturn(deletedAnswer);
+        when(userQuestionAnswerMapper.restoreById(99L)).thenReturn(1);
+        when(userQuestionAnswerMapper.overwriteAllUpdate(any(UserQuestionAnswer.class))).thenReturn(1);
+
+        UserQuestionAnswer newAnswer = new UserQuestionAnswer();
+        newAnswer.setUserId(7L);
+        newAnswer.setBankId(11L);
+        newAnswer.setQuestionId(22L);
+        newAnswer.setContent("重新作答");
+
+        Long answerId = ReflectionTestUtils.invokeMethod(
+                service,
+                "saveOrUpdateLatestAnswer",
+                newAnswer
+        );
+
+        assertEquals(99L, answerId);
+        assertEquals(99L, newAnswer.getId());
+        verify(userQuestionAnswerMapper).restoreById(99L);
+        verify(userQuestionAnswerMapper).overwriteAllUpdate(newAnswer);
+        verify(userQuestionAnswerMapper, never()).insert(any(UserQuestionAnswer.class));
     }
 
     @Test

@@ -361,7 +361,7 @@ public class AdminQuestionBankService {
         }
 
         // 删除当前题库原有的全部标签，后面按请求内容重新建立。
-        bankTagMapper.delete(new LambdaQueryWrapper<BankTag>().eq(BankTag::getBankId, bankId));
+        bankTagMapper.deleteAllTags(bankId);
         // 默认使用空标签列表，表示请求未传标签时题库更新后没有标签。
         List<String> tags = List.of();
         // 前端传入标签时执行清洗和去重。
