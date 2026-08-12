@@ -93,15 +93,15 @@ public class AdminUserService {
                         .eq(UserAuthIdentity::getUserId, userId))) {
             UserIdentityVO identityVO = new UserIdentityVO();
             identityVO.setProvider(identity.getProvider());
-            String identifier = identity.getIdentifier();
-            if (identifier == null || identifier.length() <= 4) {
+            String account = identity.getAccount();
+            if (account == null || account.length() <= 4) {
                 identityVO.setMaskedIdentifier("****");
-            } else if (identifier.contains("@")) {
-                int at = identifier.indexOf('@');
-                identityVO.setMaskedIdentifier(identifier.substring(0, 1) + "***" + identifier.substring(at));
+            } else if (account.contains("@")) {
+                int at = account.indexOf('@');
+                identityVO.setMaskedIdentifier(account.substring(0, 1) + "***" + account.substring(at));
             } else {
-                identityVO.setMaskedIdentifier(identifier.substring(0, 2)
-                        + "***" + identifier.substring(identifier.length() - 2));
+                identityVO.setMaskedIdentifier(account.substring(0, 2)
+                        + "***" + account.substring(account.length() - 2));
             }
             identityVO.setStatus(identity.getStatus());
             identityVO.setLastUsedTime(identity.getLastUsedTime());

@@ -1,22 +1,31 @@
 package com.homework.web.app.dto;
 
-import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
 public class EmailRegisterDTO {
 
 
-    @Schema(description = "注册类型对应的注册id,这里是邮箱")
+    @NotBlank
+    @Email
+    @Size(max = 50)
     private String email;
 
+    @NotBlank
+    @Size(min = 8, max = 16)
     private String password;
 
+    @NotBlank
+    @Size(min = 8, max = 16)
     private String passwordConfirm;
 
-    @Schema(description = "nickName")
-    private String displayName;
+    @NotBlank
+    private String secureTicket;
 
-    @Schema(description = "turnstile token")
-    private String turnstileToken;
+    @NotBlank
+    @Size(max = 20)
+    private String displayName;
 }

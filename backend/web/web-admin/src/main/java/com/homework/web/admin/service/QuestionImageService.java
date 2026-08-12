@@ -193,6 +193,8 @@ https://bucket.cos.../admin-temp/questions/2026-07-27/abc.jpg?signature=...&expi
 
 
 /*
+前端拿着这个 presignUrl 再次请求COS服务器的存储桶，最终获得二进制图片，给到浏览器（这一步不经过后端了）
+下面是对 前端如何根据 presignUrl 请求对象服务器最终获得 二进制图片的 流程描述
 私有读写，只携带COS Public URL + objectKey，无法读取服务器上的图片，因为权限校验失败：
    浏览器
      │

@@ -53,7 +53,7 @@ public class ThirdPartyAuthServiceImpl implements ThirdPartyAuthService {
     externalUserId：是 id_token 的 userId 字段, 即：idToken.getPayload().getSubject()
     id_token = 一份带签名的 JWT 身份证明
     subject = 这份证明里面的用户唯一 ID
-    最终我的数据库表 UserAuthIdentity 将 externalUserId 作为 identifier 字段存入，等效于 email 和 phone
+    最终 UserAuthIdentity 将 externalUserId 规范化后存入 account 字段，等效于邮箱登录身份的 account
      */
 
     /*

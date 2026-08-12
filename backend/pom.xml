@@ -33,6 +33,7 @@
         <lombok.version>1.18.36</lombok.version>
         <hutool.version>5.8.46</hutool.version>
         <mybatis-plus.version>3.5.10.1</mybatis-plus.version>
+
     </properties>
 
     <dependencyManagement>

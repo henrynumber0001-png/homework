@@ -4,8 +4,10 @@ package com.homework.web.app.controller.login;
 import com.homework.common.result.Result;
 import com.homework.web.app.dto.*;
 import com.homework.web.app.service.UserAuthIdentityService;
+import com.homework.web.app.service.impl.EmailCodeService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,11 +21,25 @@ public class AuthController {
 
     @Autowired
     private UserAuthIdentityService userAuthIdentityService;
+    @Autowired
+    private EmailCodeService emailCodeService;
 
+
+    @PostMapping("/register/email/code/send")
+    public Result<Void> sendEmailCode(@Valid @RequestBody EmailSendDTO emailSendDTO,HttpServletRequest request) {
+        emailCodeService.sendEmailCode(emailSendDTO,request);
+        return Result.success();
+    }
+
+    @PostMapping("/register/email/code/send/verify")
+    public Result<String> verifyEmailCode(@Valid @RequestBody EmailVerifyDTO emailVerifyDTO) {
+        String secureTicket = emailCodeService.verifyEmailCode(emailVerifyDTO);
+        return Result.success(secureTicket);
+    }
 
     @Operation(summary = "Email Register")
     @PostMapping("/register/email")
-    public Result<String> registerByEmail(@RequestBody EmailRegisterDTO emailRegisterDTO, HttpServletRequest request) {
+    public Result<String> registerByEmail(@Valid @RequestBody EmailRegisterDTO emailRegisterDTO, HttpServletRequest request) {
         String token = userAuthIdentityService.registerByEmail(emailRegisterDTO,request);
         return Result.success(token);
     }

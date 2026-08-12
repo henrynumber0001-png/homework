@@ -15,14 +15,10 @@ public class UserAuthIdentity extends BaseEntity {
 
     private Long userId;
 
-    /** 1.email_password;2.phone_otp;3.google;4.wechat;5.qq */
     private UserAuthIdentityProvider provider;
 
-    /** Original or display login identifier: email, phone, openid. */
-    private String identifier;
-
-    /** Normalized identifier used for login lookup and uniqueness. */
-    private String identifierNormalized;
+    //normalized之后的
+    private String account;
 
     private String passwordHash;
 

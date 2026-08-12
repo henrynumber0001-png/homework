@@ -10,6 +10,21 @@ spring:
     url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:home_work}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Singapore&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:123456}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 3s
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+    locations: classpath:db/migration
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+    baseline-version: 1
+    validate-on-migrate: true
+    user: ${FLYWAY_DB_USERNAME:${DB_USERNAME:root}}
+    password: ${FLYWAY_DB_PASSWORD:${DB_PASSWORD:123456}}
 
 mybatis-plus:
   configuration:
@@ -24,7 +39,23 @@ mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
 
 server:
+  address: ${SERVER_ADDRESS:0.0.0.0}
   port: ${SERVER_PORT:8080}
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:framework}
+
+management:
+  health:
+    redis:
+      enabled: ${REDIS_HEALTH_ENABLED:false}
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
 
 tencent-cos:
   region: ${TENCENT_COS_REGION:}
@@ -111,3 +142,10 @@ llm:
   model: ${LLM_MODEL:}
   connect-timeout: ${LLM_CONNECT_TIMEOUT:5s}
   read-timeout: ${LLM_READ_TIMEOUT:60s}
+
+tencent-ses:
+  secret-id: ${TENCENT_SES_SECRET_ID:}
+  secret-key: ${TENCENT_SES_SECRET_KEY:}
+  region: ${TENCENT_SES_REGION:ap-hongkong}
+  from-email: ${TENCENT_SES_FROM_EMAIL:}
+  template-id: ${TENCENT_SES_TEMPLATE_ID:}

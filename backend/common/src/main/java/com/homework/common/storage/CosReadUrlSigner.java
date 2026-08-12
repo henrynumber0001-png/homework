@@ -34,5 +34,7 @@ public class CosReadUrlSigner {
         //然后再利用我的COS子账户的 SecretKey，使用HMAC-SHA1/SHA256算法，最终得到一个签名（比如2AE8F9C7D5....）
         //generatePresignedUrl 最终生成的不只是一个签名，而是一整个URL（Presigned URL），包含：COS Public URL + objectKey + 算法 + 签发AKID + 签名有效期（根据ttl）+ SecretKey生效时间 + 签名本身
         //Presigned URL 指向的是 COS 中的 Object（也就是说，URL实际上是Object的引用），而当浏览器通过这个 URL 发起 GET 请求时，COS 返回的是 Object 的 Binary Content（以及相关 Metadata）。
+
+        //虽然SHA-256 是确定性算法，但同一个 objectKey，生成的 presignedUrl 是不一样的，因为过期时间会变化，签名也会变化
     }
 }

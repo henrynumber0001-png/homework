@@ -8,11 +8,10 @@ import lombok.Getter;
 public enum UserAuthIdentityProvider implements BaseEnum {
 
     EMAIL_PASSWORD(1, "email_password"),
-    PHONE_OTP(2, "phone_otp"),
-    GOOGLE(3, "google"),
-    APPLE(4, "apple"),
-    WECHAT(5, "wechat"),
-    QQ(6, "qq");
+    GOOGLE(2, "google"),
+    APPLE(3, "apple"),
+    WECHAT(4, "wechat"),
+    QQ(5, "qq");
 
     @EnumValue
     @JsonValue

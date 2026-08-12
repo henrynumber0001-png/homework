@@ -3,6 +3,7 @@ package com.homework.web.app.service.impl;
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.homework.common.redisConstant.RedisConstant;
 import com.homework.model.enums.UserAuthIdentityProvider;
 import com.homework.model.enums.UserAuthIdentityStatus;
 import com.homework.model.enums.UserInfoStatus;
@@ -20,11 +21,13 @@ import com.homework.web.app.service.UserAuthIdentityService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -48,12 +51,14 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
 
     @Autowired
     private ThirdPartyAuthService thirdPartyAuthService;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
 
     @Transactional(rollbackFor = Exception.class)
     @Override
     public String registerByEmail(EmailRegisterDTO emailRegisterDTO, HttpServletRequest request) {
 
-        if(emailRegisterDTO == null){
+        if(emailRegisterDTO == null || !StringUtils.hasText(emailRegisterDTO.getSecureTicket())){
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
@@ -61,33 +66,41 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_EMAIL_EMPTY);
         }
 
+        //先验证 secureTicket
+        String secureTicketKey = RedisConstant.EMAIL_SECURE_TICKET + emailRegisterDTO.getSecureTicket();
+        //你验证了emailRegisterDTO.getSecureTicket() 非空非null，只能保证secureTicketKey非null，
+        //但你无法保证 作为 redis键值对的 secureTicketKey 的 value 不为 null，至少在当前方法里不能保证
+        String redisEmail = stringRedisTemplate.opsForValue().getAndDelete(secureTicketKey);
+        String account = normalizeEmail(emailRegisterDTO.getEmail());
+
+        //所以 equals 要反过来用，因为 account 是已经在方法里声明过 emailRegisterDTO.getEmail() == null 会抛异常的
+        if(!account.equals(redisEmail)){
+            throw new HomeworkException(ResultCodeEnum.EMAIL_SECURE_TICKET_ERROR);
+        }
+
+        //接下来校验密码和密码格式
         if(!StringUtils.hasText(emailRegisterDTO.getPassword()) || !StringUtils.hasText(emailRegisterDTO.getPasswordConfirm())){
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_PASSWORD_EMPTY);
         }
-
         if(!emailRegisterDTO.getPassword().equals(emailRegisterDTO.getPasswordConfirm())){
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_PASSWORD_CONFIRM_ERROR);
         }
+
+        validatePasswordLength(emailRegisterDTO.getPassword());
+        validatePasswordLength(emailRegisterDTO.getPasswordConfirm());
+
 
         if(!StringUtils.hasText(emailRegisterDTO.getDisplayName())){
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_DISPLAY_NAME_EMPTY);
         }
 
-        String remoteIp = request == null ? null : request.getRemoteAddr();
-        Boolean result = turnstileService.verify(emailRegisterDTO.getTurnstileToken(), remoteIp);
-        if(!result){
-            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_TURNSTILE_VERIFY_ERROR);
-        }
+        LambdaQueryWrapper<UserAuthIdentity> authQueryWrapper = new LambdaQueryWrapper<>();
+        authQueryWrapper.eq(UserAuthIdentity::getProvider, UserAuthIdentityProvider.EMAIL_PASSWORD)
+                .eq(UserAuthIdentity::getAccount, account);
 
-        String identifier = identifierOfEmail(emailRegisterDTO.getEmail());
-        String identifierNormalized = normalizeEmail(identifier); //应该按照normalized之后的查，扩大查重范围，否则大小写同名邮箱会被认为是不重复；
-        LambdaQueryWrapper<UserAuthIdentity> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(UserAuthIdentity::getIdentifierNormalized, identifierNormalized);
-
-        if(this.getOne(queryWrapper) != null){
+        if(this.getOne(authQueryWrapper) != null){
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_EMAIL_EXIST);
         }
-
 
         UserInfo userInfo = new UserInfo();
         UserAuthIdentity userAuthIdentity = new UserAuthIdentity();
@@ -98,8 +111,7 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
 
         userAuthIdentity.setUserId(userInfo.getId());
         userAuthIdentity.setProvider(UserAuthIdentityProvider.EMAIL_PASSWORD);
-        userAuthIdentity.setIdentifier(identifier);
-        userAuthIdentity.setIdentifierNormalized(identifierNormalized);
+        userAuthIdentity.setAccount(account);
         userAuthIdentity.setStatus(UserAuthIdentityStatus.VERIFIED);
         userAuthIdentity.setPasswordHash(bCryptPasswordEncoder.encode(emailRegisterDTO.getPassword()));
         userAuthIdentity.setVerifiedTime(LocalDateTime.now());
@@ -127,12 +139,11 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
         //在 registerByOAuth中，只有 ThirdPartyUser
         //ThirdPartyUser -> ThirdPartyAuthHandler -> ThirdPartyAuthHandlerImpl -> GoogleAuthHandler -> GoogleIdToken
 
-        String identifier = thirdPartyUser.getExternalUserId();
-        String identifierNormalized = identifier.trim(); //没有什么实际的业务意义，因为第三方返回的不可能带空格，所以主要是用来和邮箱/手机号的identifierNormalized保持统一
+        String account = thirdPartyUser.getExternalUserId().trim();
 
         LambdaQueryWrapper<UserAuthIdentity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserAuthIdentity::getProvider, thirdPartyRegisterDTO.getIdentityProvider())
-                .eq(UserAuthIdentity::getIdentifierNormalized, identifierNormalized);
+                .eq(UserAuthIdentity::getAccount, account);
 
         if (this.getOne(wrapper) != null) {
             throw new HomeworkException(ResultCodeEnum.REPEAT_SUBMIT); // 或者定义 THIRD_PARTY_ACCOUNT_EXIST
@@ -155,8 +166,7 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
 
         userAuthIdentity.setUserId(userInfo.getId());
         userAuthIdentity.setProvider(thirdPartyUser.getProvider()); // ThirdPartyUser 是服务端验证成功后生成的结果，更可信。
-        userAuthIdentity.setIdentifier(identifier);
-        userAuthIdentity.setIdentifierNormalized(identifierNormalized);
+        userAuthIdentity.setAccount(account);
         userAuthIdentity.setStatus(UserAuthIdentityStatus.VERIFIED);
         userAuthIdentity.setVerifiedTime(LocalDateTime.now());
         userAuthIdentity.setLastUsedTime(LocalDateTime.now());
@@ -187,14 +197,13 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_TURNSTILE_VERIFY_ERROR);
         }
 
-
         //前置校验通过后，开始查询用户身份信息
         //先查用户信息是否存在，如果存在，再用前端传来的密码和数据库中保存的密码进行匹配
-        String identifier = identifierOfEmail(emailLoginDTO.getEmail());
-        String identifierNormalized = normalizeEmail(identifier);
+        String account = normalizeEmail(emailLoginDTO.getEmail());
 
         LambdaQueryWrapper<UserAuthIdentity> userAuthIdentityWrapper = new LambdaQueryWrapper<>();
-        userAuthIdentityWrapper.eq(UserAuthIdentity::getIdentifierNormalized,identifierNormalized)
+        userAuthIdentityWrapper.eq(UserAuthIdentity::getProvider, UserAuthIdentityProvider.EMAIL_PASSWORD)
+                .eq(UserAuthIdentity::getAccount, account)
                 .select(UserAuthIdentity::getUserId,UserAuthIdentity::getPasswordHash,UserAuthIdentity::getStatus);//只查需要的字段，提高查询性能
 
         UserAuthIdentity fetchedUserAuthIdentity = this.getOne(userAuthIdentityWrapper);
@@ -242,12 +251,11 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_TURNSTILE_VERIFY_ERROR);
         }
 
-        String identifier = thirdPartyUser.getExternalUserId();
-        String identifierNormalized = identifier.trim();
+        String account = thirdPartyUser.getExternalUserId().trim();
 
         LambdaQueryWrapper<UserAuthIdentity> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(UserAuthIdentity::getProvider, thirdPartyLoginDTO.getIdentityProvider())
-                .eq(UserAuthIdentity::getIdentifierNormalized, identifierNormalized)
+                .eq(UserAuthIdentity::getAccount, account)
                 .select(UserAuthIdentity::getUserId,UserAuthIdentity::getStatus);
 
         UserAuthIdentity fetchedAuthIdentity = this.getOne(queryWrapper);
@@ -271,8 +279,7 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
 
             userAuthIdentity.setUserId(userInfo.getId());
             userAuthIdentity.setProvider(thirdPartyUser.getProvider());
-            userAuthIdentity.setIdentifier(identifier);
-            userAuthIdentity.setIdentifierNormalized(identifierNormalized);
+            userAuthIdentity.setAccount(account);
             userAuthIdentity.setStatus(UserAuthIdentityStatus.VERIFIED);
             userAuthIdentity.setVerifiedTime(LocalDateTime.now());
             userAuthIdentity.setLastUsedTime(LocalDateTime.now());
@@ -291,20 +298,27 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
         return token;
     }
 
-    private String identifierOfEmail(String email){
+    private String normalizeEmail(String email){
         if(!StringUtils.hasText(email)){
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_EMAIL_EMPTY);
         }
-        String identifier = email.trim();
-        if(!EMAIL_PATTERN.matcher(identifier).matches()){
+        String normalizedEmail = email.trim();
+        if(!EMAIL_PATTERN.matcher(normalizedEmail).matches()){
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
-        return identifier;
+
+        String standardEmail = normalizedEmail.toLowerCase(Locale.ROOT);
+        return standardEmail;
     }
 
-    public String normalizeEmail(String identifier){
-        String identifierNormalized = identifier.toLowerCase(Locale.ROOT);
-        return identifierNormalized;
+    private void validatePasswordLength(String password){
+        if(password.length() < 8){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_PASSWORD_LENGTH_ERROR);
+        }
+
+        if(password.getBytes(StandardCharsets.UTF_8).length > 72){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_PASSWORD_LENGTH_ERROR);
+        }
     }
 
     private void insertUserInfoWithAccountNo(UserInfo userInfo){

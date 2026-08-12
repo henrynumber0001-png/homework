@@ -22,16 +22,21 @@ public enum ResultCodeEnum {
     APP_LOGIN_PASSWORD_EMPTY(503, "密码为空"),
     APP_LOGIN_PASSWORD_CONFIRM_ERROR(504, "密码不一致"),
     APP_LOGIN_PASSWORD_ERROR(505,"密码错误"),
+    APP_LOGIN_PASSWORD_LENGTH_ERROR(519,"密码长度必须在8到16个字符之间"),
     APP_LOGIN_TURNSTILE_VERIFY_ERROR(506, "人机验证失败，请重试"),
     APP_LOGIN_DISPLAY_NAME_EMPTY(507,"昵称为空"),
-    APP_LOGIN_USER_NOT_EXIST(509, "用户不存在"),
+    APP_LOGIN_USER_NOT_EXIST(508, "用户不存在"),
     APP_ACCOUNT_DISABLED_ERROR(509, "该用户已被禁用"),
     APP_ACCOUNT_STATUS_ERROR(510, "账户状态异常"),
-
-
+    APP_LOGIN_EMAIL_RESEND_LOCK(512, "邮箱验证码发送过于频繁，请稍后再试"),
     APP_AI_EVALUATION_EMPTY_SCORE(513, "该用户并未作答"),
+    EMAIL_CODE_SEND_FAILED(514, "邮箱验证码发送失败"),
+    EMAIL_CODE_EXPIRED(515, "邮箱验证码已过期"),
+    EMAIL_CODE_ERROR(516,"邮箱验证码错误"),
+    EMAIL_SECURE_TICKET_ERROR(517, "SecureTicket错误"),
+    EMAIL_CODE_RATE_LIMITED(518, "邮箱验证码发送过于频繁，请稍后再试"),
 
-    EXAM_EXPIRED(514, "考试已到期，系统已自动交卷"),
+    EXAM_EXPIRED(914, "考试已到期，系统已自动交卷"),
 
     TOKEN_EXPIRED(601, "token过期"),
     TOKEN_INVALID(602, "token非法"),

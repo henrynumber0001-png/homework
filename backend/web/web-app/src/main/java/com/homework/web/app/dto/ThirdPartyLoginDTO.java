@@ -8,7 +8,7 @@ import lombok.Data;
 public class ThirdPartyLoginDTO {
     @Schema(description = "第三方渠道类型")
     private UserAuthIdentityProvider identityProvider;
-    //没有 identifier：Google验证 authCode 后自动发的id_token中的sub/union id/open_id，不说从前端拿的
+    // account 不从前端接收；服务端验证 authCode 后从 id_token 的 sub/unionid/openid 中取得。
 
     @Schema(description = "授权码")
     private String authCode;

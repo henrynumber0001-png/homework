@@ -6,6 +6,14 @@ spring:
     url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:home_work}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Singapore&allowPublicKeyRetrieval=true&useSSL=false
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:123456}
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+    locations: classpath:db/migration
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+    baseline-version: 1
+    validate-on-migrate: true
+    user: ${FLYWAY_DB_USERNAME:${DB_USERNAME:root}}
+    password: ${FLYWAY_DB_PASSWORD:${DB_PASSWORD:123456}}
   servlet:
     multipart:
       max-file-size: 10MB
@@ -23,7 +31,23 @@ mybatis-plus:
       logic-not-delete-value: 0
 
 server:
+  address: ${SERVER_ADDRESS:0.0.0.0}
   port: ${ADMIN_SERVER_PORT:8081}
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:framework}
+
+management:
+  health:
+    redis:
+      enabled: ${REDIS_HEALTH_ENABLED:false}
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
 
 admin:
   jwt:
