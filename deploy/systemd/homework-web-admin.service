@@ -1,0 +1,35 @@
+[Unit]
+Description=HomeWork administration API
+Wants=network-online.target
+After=network-online.target homework-web-app.service
+
+[Service]
+Type=simple
+User=homework
+Group=homework
+WorkingDirectory=/opt/homework/current
+EnvironmentFile=/etc/homework/web-admin.env
+ExecStart=/usr/bin/java $JAVA_OPTS -jar /opt/homework/current/backend/web-admin.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+KillSignal=SIGTERM
+UMask=0027
+LimitNOFILE=65535
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+ReadWritePaths=/var/lib/homework
+
+[Install]
+WantedBy=multi-user.target

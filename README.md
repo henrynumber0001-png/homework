@@ -38,6 +38,13 @@ Additional topic-specific documentation remains available in `docs/`, including
 detailed rules for administration, messaging, membership payments, and file
 storage.
 
+## Production Deployment
+
+The Tencent Cloud light-server deployment assets and the step-by-step runbook
+are in [`deploy/README.md`](deploy/README.md). The supported layout uses Nginx,
+two systemd-managed Spring Boot services, Flyway migrations, versioned release
+directories, health checks, and application rollback.
+
 ## Requirements
 
 - JDK 21

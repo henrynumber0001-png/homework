@@ -60,11 +60,11 @@
             <version>${wechatpay-java.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>com.tencentcloudapi</groupId>
-            <artifactId>tencentcloud-sdk-java</artifactId>
-            <version>3.2.7</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.tencentcloudapi</groupId>-->
+<!--            <artifactId>tencentcloud-sdk-java</artifactId>-->
+<!--            <version>3.2.8</version>-->
+<!--        </dependency>-->
 
     </dependencies>
 

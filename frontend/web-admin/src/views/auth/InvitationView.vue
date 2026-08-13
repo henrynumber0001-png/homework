@@ -28,7 +28,7 @@ async function loadPreview(): Promise<void> {
 }
 
 async function submit(): Promise<void> {
-  if (form.password.length < 12 || form.password !== form.confirmPassword) return
+  if (form.password.length < 8 || form.password.length > 24 || form.password !== form.confirmPassword) return
   submitting.value = true
   try {
     await acceptInvitation(token, form)
@@ -56,18 +56,25 @@ async function submit(): Promise<void> {
         />
         <el-form label-position="top" class="form" @submit.prevent="submit">
           <el-form-item label="设置密码">
-            <el-input v-model="form.password" type="password" show-password />
-            <div class="form-tip">密码长度为 12–72 位。</div>
+            <el-input v-model="form.password" type="password" minlength="8" maxlength="24" show-password />
+            <div class="form-tip">密码长度为 8–24 位。</div>
           </el-form-item>
           <el-form-item label="确认密码">
-            <el-input v-model="form.confirmPassword" type="password" show-password @keyup.enter="submit" />
+            <el-input
+              v-model="form.confirmPassword"
+              type="password"
+              minlength="8"
+              maxlength="24"
+              show-password
+              @keyup.enter="submit"
+            />
           </el-form-item>
           <el-button
             type="primary"
             size="large"
             class="full"
             :loading="submitting"
-            :disabled="form.password.length < 12 || form.password !== form.confirmPassword"
+            :disabled="form.password.length < 8 || form.password.length > 24 || form.password !== form.confirmPassword"
             @click="submit"
           >
             激活管理员账号

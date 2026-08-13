@@ -9,9 +9,10 @@ import lombok.Data;
 public class AdminInvitationAcceptDTO {
 
     @NotBlank
-    @Size(min = 12, max = 72)
+    @Size(min = 8, max = 24)
     private String password;
 
     @NotBlank
+    @Size(min = 8, max = 24)
     private String confirmPassword;
 }

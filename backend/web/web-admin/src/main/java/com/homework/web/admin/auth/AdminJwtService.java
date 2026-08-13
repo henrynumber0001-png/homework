@@ -1,5 +1,7 @@
 package com.homework.web.admin.auth;
 
+import com.homework.common.exception.HomeworkException;
+import com.homework.common.result.ResultCodeEnum;
 import com.homework.web.admin.config.AdminJwtProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtParser;
@@ -33,7 +35,7 @@ public class AdminJwtService {
             keyBytes = properties.getSecretKey().getBytes(StandardCharsets.UTF_8);
         }
         if (keyBytes.length < 32) {
-            throw new IllegalStateException("ADMIN_JWT_SECRET_KEY must contain at least 32 bytes");
+            throw new HomeworkException(ResultCodeEnum.ADMIN_JWT_SECRET_KEY_TOO_SHORT);
         }
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
         this.parser = Jwts.parserBuilder()

@@ -74,6 +74,7 @@ public enum ResultCodeEnum {
     ADMIN_SESSION_REVOKED(1006, "管理员会话已失效"),
     ADMIN_INVITATION_INVALID(1007, "管理员邀请无效或已过期"),
     ADMIN_REAUTH_INVALID(1008, "二次认证无效或已过期"),
+    ADMIN_JWT_SECRET_KEY_TOO_SHORT(1009, "管理员 JWT 秘钥长度不足"),
     ADMIN_ACCOUNT_NOT_FOUND(1101, "管理员不存在"),
     ADMIN_ACCOUNT_CONFLICT(1102, "管理员邮箱或状态冲突"),
     ADMIN_BANK_NOT_FOUND(1201, "题库不存在"),

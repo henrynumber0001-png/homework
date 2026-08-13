@@ -50,6 +50,13 @@ export function getCertificateQuestions(bankId: number) {
   })
 }
 
+export function getCertificateRecord(bankId: number) {
+  return apiRequest<CertificateReview[]>({
+    url: '/app/bank/questions/certificate/record',
+    params: { bankId },
+  })
+}
+
 export function submitCertificatePracticeAnswer(data: {
   bankId: number
   questionId: number
@@ -81,6 +88,17 @@ export function finishQuestionBank(bankId: number, groupType: GroupTypeValue) {
   return apiRequest<BankFinish>({
     url: '/app/bank/questions/finish',
     method: 'POST',
+    params: { bankId, groupType },
+  })
+}
+
+export function clearQuestionBankRecord(
+  bankId: number,
+  groupType: GroupTypeValue,
+) {
+  return apiRequest<void>({
+    url: '/app/bank/questions/clear/record',
+    method: 'DELETE',
     params: { bankId, groupType },
   })
 }

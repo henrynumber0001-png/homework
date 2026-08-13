@@ -33,6 +33,7 @@ import com.homework.web.admin.vo.ActionResultVO;
 import com.homework.web.admin.vo.AdminInvitationCreateVO;
 import com.homework.web.admin.vo.AdminRowVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,7 +60,9 @@ public class AdminManagementService {
     private final AdminFeatureProperties featureProperties;
     private final ObjectMapper objectMapper;
     private final AdminAuditService auditService;
+    private final ApplicationEventPublisher eventPublisher;
 
+    //对应 “管理员” 菜单
     public PageResult<AdminRowVO> list(
             String keyword,
             AdminStatus status,
@@ -68,16 +71,22 @@ public class AdminManagementService {
     ) {
         int normalizedPage = pageNum == null || pageNum < 1 ? 1 : pageNum;
         int normalizedSize = pageSize == null ? 20 : Math.min(Math.max(pageSize, 1), 100);
+
         LambdaQueryWrapper<AdminAccount> query = new LambdaQueryWrapper<>();
         if (keyword != null && !keyword.isBlank()) {
-            query.and(wrapper -> wrapper.like(AdminAccount::getEmail, keyword.trim())
-                    .or().like(AdminAccount::getDisplayName, keyword.trim()));
+            query.and(wrapper -> wrapper
+                    .like(AdminAccount::getEmail, keyword.trim())
+                    .or()
+                    .like(AdminAccount::getDisplayName, keyword.trim()));
         }
+
         query.eq(status != null, AdminAccount::getStatus, status);
         query.orderByAsc(AdminAccount::getRole).orderByDesc(AdminAccount::getCreatedTime);
+
+        //这里使用了分页查询
         Page<AdminAccount> page = accountMapper.selectPage(new Page<>(normalizedPage, normalizedSize), query);
         PageResult<AdminRowVO> result = new PageResult<>();
-        result.setRecords(page.getRecords().stream().map(this::toRow).toList());
+        result.setRecords(page.getRecords().stream().map(this::toRow).toList()); //page.getRecords() 就是 List<AdminAccount>
         result.setTotal(page.getTotal());
         result.setPageNum(page.getCurrent());
         result.setPageSize(page.getSize());
@@ -92,23 +101,25 @@ public class AdminManagementService {
         if (accountCount > 0) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_ACCOUNT_CONFLICT);
         }
+
         List<String> permissions = new ArrayList<>(new LinkedHashSet<>(dto.getPermissions()));
         if (!AdminPermissionCatalog.ALL.containsAll(permissions)
                 || permissions.stream().anyMatch(AdminPermissionCatalog.SUPER_ONLY::contains)) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_PERMISSION_DENIED);
         }
         BankDataScope bankDataScope = dto.getBankDataScope();
-        List<Long> bankIds = dto.getAssignedBankIds() == null
-                ? List.of()
-                : new ArrayList<>(new LinkedHashSet<>(dto.getAssignedBankIds()));
+        List<Long> bankIds = dto.getAssignedBankIds() == null ? List.of() : new ArrayList<>(new LinkedHashSet<>(dto.getAssignedBankIds()));
+
         if (bankDataScope == BankDataScope.ASSIGNED_BANKS && bankIds.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+
         for (Long bankId : bankIds) {
             if (bankMapper.selectById(bankId) == null) {
                 throw new HomeworkException(ResultCodeEnum.ADMIN_BANK_NOT_FOUND);
             }
         }
+
         String rawToken = UUID.randomUUID().toString();
         LocalDateTime expiresTime = LocalDateTime.now().plusHours(24);
         AdminInvitation invitation = invitationMapper.selectOne(
@@ -139,14 +150,77 @@ public class AdminManagementService {
         } else {
             invitationMapper.updateById(invitation);
         }
+
+        //生成邮件链接
+        //get invitation 字段，但是 invitation 字段的类型是一个内部类，也就是 getInvitation() 的返回值类型是 Invitation类的对象
+        //然后再利用这个对象，调用 getter 方法获取 publicBaseUrl 字段的返回值，这个返回值就是从 application.yml 配置文件中读取的值
         String baseUrl = featureProperties.getInvitation().getPublicBaseUrl();
+        String invitationUrl = baseUrl + (baseUrl.contains("?") ? "&token=" : "?token=") + rawToken;
         AdminInvitationCreateVO result = new AdminInvitationCreateVO();
         result.setEmail(email);
-        result.setInvitationUrl(baseUrl + (baseUrl.contains("?") ? "&token=" : "?token=") + rawToken);
+        result.setInvitationUrl(invitationUrl);
         result.setExpiresTime(expiresTime);
+
         auditService.record("ADMIN", "INVITE", "ADMIN_INVITATION", invitation.getId(), dto.getReason(), null, invitation);
+
+        /*
+         * 此处只发布应用事件，不直接调用 SES。监听器使用 AFTER_COMMIT，只有邀请和审计日志
+         * 都成功提交后才会异步发送邮件；事务回滚时事件不会触发，收件人也不会收到无效链接。
+         */
+
+        //AdminManagementService 不再直接调用邮件服务，而是发布一个“管理员邀请已创建”的事件：ApplicationEventPublisher eventPublisher
+
+        /*  监听逻辑
+            invite()
+              ↓
+            保存邀请
+              ↓
+            保存审计失败
+              ↓
+            数据库回滚
+              ↓
+            Spring 不调用监听器
+              ↓
+            try 和 catch 都不执行
+         */
+        /*
+        数据库成功，邮件进入进入 try
+               ↓
+            执行邮件发送
+               ↓
+            是否抛出异常？
+               ├─ 否 → 跳过 catch，方法结束
+               └─ 是 → 停止 try 的剩余代码，进入 catch
+         */
+        AdminInvitationCreatedEvent adminInvitationCreatedEvent = new AdminInvitationCreatedEvent(
+                invitation.getId(), email, dto.getDisplayName().trim(), invitationUrl, expiresTime);
+
+        //Spring 使用类似 ThreadLocal 的机制，把事务资源绑定到执行请求的线程。
+        //执行eventPublisher.publishEvent() 时，仍处于 invite() 方法内，也仍然使用原来的请求线程。
+        //把监听器注册为 当前线程 的 afterCommit 回调
+        //线程提交成功，执行监听中的回调
+        eventPublisher.publishEvent(adminInvitationCreatedEvent);
         return result;
     }
+    /*
+        事务 T1 开始
+          ↓
+        执行 invite()
+          ↓
+        publishEvent(event)
+          ↓
+        发现当前线程绑定着 T1
+          ↓
+        把监听器注册为 T1 的 afterCommit 回调
+          ↓
+        invite() 返回
+          ↓
+        Spring 提交 T1
+          ↓
+        T1 提交成功
+          ↓
+        执行该回调
+     */
 
     @Transactional
     public AdminRowVO updateAccess(Long adminId, AdminAccessUpdateDTO dto) {

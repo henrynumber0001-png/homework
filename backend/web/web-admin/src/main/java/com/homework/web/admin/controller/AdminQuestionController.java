@@ -64,12 +64,17 @@ public class AdminQuestionController {
 
     /** 变更：查询当前题库直接拥有的题目主体和选项，不再返回关联题库列表。 */
     @Operation(summary = "查询题目详情")
+
+    //@AdminPermission 解决的是当前管理员是否拥有 这个操作权限 value = "question:view"
+    //会有 AdminAuthInterceptor 拦截并校验 当前管理员的 admin_account_permission 中是否有当前操作权限的字段
     @AdminPermission("question:view")
     @GetMapping("/question-banks/{bankId}/questions/{questionId}")
     public Result<QuestionDetailVO> get(
             @PathVariable Long bankId,
             @PathVariable Long questionId
     ) {
+        //而具体的 service中，第一行也会校验，但校验的全部都是 bankId,  requireBank(bankId)
+        //但这个校验不是针对“操作权限”，而是“可访问题库的权限”，也就是当前管理员拥有的这个操作权限，是否能操作当前这个题库
         return Result.success(questionService.get(bankId, questionId));
     }
 

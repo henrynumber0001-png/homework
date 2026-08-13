@@ -15,11 +15,11 @@ public class EmailRegisterDTO {
     private String email;
 
     @NotBlank
-    @Size(min = 8, max = 16)
+    @Size(min = 8, max = 24)
     private String password;
 
     @NotBlank
-    @Size(min = 8, max = 16)
+    @Size(min = 8, max = 24)
     private String passwordConfirm;
 
     @NotBlank

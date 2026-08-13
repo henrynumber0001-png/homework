@@ -22,6 +22,9 @@ test-results/
 *.log
 *-debug.log*
 
+# Deployment artifacts
+artifacts/
+
 # Local environment files
 .env
 .env.*

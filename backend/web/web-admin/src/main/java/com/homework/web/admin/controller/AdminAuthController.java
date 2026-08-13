@@ -39,10 +39,7 @@ public class AdminAuthController {
     /** 接受管理员邀请并设置初始密码。 */
     @Operation(summary = "接受管理员邀请")
     @PostMapping("/invitations/{token}/accept")
-    public Result<Void> acceptInvitation(
-            @PathVariable String token,
-            @Valid @RequestBody AdminInvitationAcceptDTO dto
-    ) {
+    public Result<Void> acceptInvitation(@PathVariable String token, @Valid @RequestBody AdminInvitationAcceptDTO dto) {
         authService.acceptInvitation(token, dto);
         return Result.success();
     }

@@ -12,12 +12,16 @@ import java.time.LocalDateTime;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("admin_invitation")
+/*
+admin_invitation 是 数据库表，如果不把 List<String> permissions 和 List<Long> assignedBankIds 转换成对应的 permissionsJson 和 bankIdsJson
+就无法保存数据，因为数据库不能存 List，但是能存 Json
+ */
 public class AdminInvitation extends BaseEntity {
 
     /** 被邀请邮箱。 */
     private String email;
 
-    /** 被邀请管理员的显示名称。 */
+    /** 被邀请管理员的管理员名称。 */
     private String displayName;
 
     /** 一次性邀请 Token 的 SHA-256 摘要。 */

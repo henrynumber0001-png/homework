@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bookmark, ChevronLeft, ChevronRight, StickyNote } from 'lucide-react'
+import {
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  StickyNote,
+  Trash2,
+} from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -7,12 +13,18 @@ import {
   finishQuestionBank,
   getInterviewQuestions,
   getInterviewRecord,
+  clearQuestionBankRecord,
   saveQuestionNote,
   submitInterviewAnswer,
   updateQuestionFavorite,
 } from '@/features/question/api'
-import { AiChatDialog } from '@/features/question/components/AiChatDialog'
-import { InterviewAnswerPanel } from '@/features/question/components/AnswerPanel'
+import { AiChatDrawer } from '@/features/question/components/AiChatDialog'
+import { ClearRecordDialog } from '@/features/question/components/ClearRecordDialog'
+import { FinishBankDialog } from '@/features/question/components/FinishBankDialog'
+import {
+  InterviewAiPanel,
+  InterviewReferenceAnswer,
+} from '@/features/question/components/AnswerPanel'
 import { QuestionNavigator } from '@/features/question/components/QuestionNavigator'
 import type { InterviewAnswer } from '@/features/question/types'
 import { ActionStatus, GroupType } from '@/shared/constants/domain'
@@ -32,6 +44,8 @@ export function InterviewPracticePage() {
   const [answers, setAnswers] = useState<Record<number, InterviewAnswer>>({})
   const [note, setNote] = useState('')
   const [aiOpen, setAiOpen] = useState(false)
+  const [clearOpen, setClearOpen] = useState(false)
+  const [finishOpen, setFinishOpen] = useState(false)
 
   const questionsQuery = useQuery({
     queryKey: ['interview-questions', bankId],
@@ -138,16 +152,41 @@ export function InterviewPracticePage() {
   })
   const finishMutation = useMutation({
     mutationFn: () => finishQuestionBank(bankId, GroupType.INTERVIEW),
-    onSuccess: () => {
+    onSuccess: (finish) => {
+      setFinishOpen(false)
       void queryClient.invalidateQueries({ queryKey: ['home'] })
       void queryClient.invalidateQueries({ queryKey: ['user-center'] })
-      navigate(`/banks/interview/${bankId}/review`)
+      navigate(`/banks/interview/${bankId}/review`, {
+        state: { questionCount: finish.questionCount },
+      })
+    },
+  })
+  const clearMutation = useMutation({
+    mutationFn: () => clearQuestionBankRecord(bankId, GroupType.INTERVIEW),
+    onSuccess: () => {
+      setDrafts({})
+      setAnswers({})
+      setNote('')
+      setAiOpen(false)
+      setClearOpen(false)
+      const firstQuestion = questions[0]
+      if (firstQuestion) {
+        setSearchParams({ question: String(firstQuestion.questionId) })
+      }
+      queryClient.setQueryData(['interview-record', bankId], [])
+      void queryClient.invalidateQueries({
+        queryKey: ['question-review', 'interview', bankId],
+      })
+      void queryClient.invalidateQueries({ queryKey: ['home'] })
+      void queryClient.invalidateQueries({ queryKey: ['user-center'] })
+      toast.success('当前题库的答题记录已清空')
     },
   })
 
   const selectQuestion = (questionId: number) => {
     setSearchParams({ question: String(questionId) })
     setNote('')
+    setAiOpen(false)
   }
 
   if (questionsQuery.isLoading) {
@@ -173,7 +212,12 @@ export function InterviewPracticePage() {
   const favorite = currentAnswer?.isFavorite ?? currentQuestion.isFavorite
 
   return (
-    <div className="app-container py-6">
+    <div
+      className="app-container py-6"
+      onPointerDown={() => {
+        if (aiOpen) setAiOpen(false)
+      }}
+    >
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-bold text-brand">面试题库 · 作答中</p>
@@ -181,22 +225,65 @@ export function InterviewPracticePage() {
             第 {currentIndex + 1} / {questions.length} 题
           </h1>
         </div>
-        <Button
-          variant="secondary"
-          disabled={finishMutation.isPending}
-          onClick={() => finishMutation.mutate()}
-        >
-          完成题库
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={currentIndex <= 0}
+            onClick={() =>
+              selectQuestion(questions[currentIndex - 1].questionId)
+            }
+          >
+            <ChevronLeft className="size-4" />
+            上一题
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={currentIndex >= questions.length - 1}
+            onClick={() =>
+              selectQuestion(questions[currentIndex + 1].questionId)
+            }
+          >
+            下一题
+            <ChevronRight className="size-4" />
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={finishMutation.isPending}
+            onClick={() => setFinishOpen(true)}
+          >
+            完成题库
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[180px_minmax(0,1fr)_340px]">
-        <QuestionNavigator
-          questionIds={questions.map((item) => item.questionId)}
-          currentId={currentQuestion.questionId}
-          answeredIds={answeredIds}
-          onSelect={selectQuestion}
-        />
+      <div
+        className={cn(
+          'grid gap-5',
+          currentAnswer
+            ? 'lg:grid-cols-[180px_minmax(0,1fr)_340px]'
+            : 'lg:grid-cols-[180px_minmax(0,1fr)]',
+        )}
+      >
+        <aside className="space-y-3">
+          <QuestionNavigator
+            questionIds={questions.map((item) => item.questionId)}
+            currentId={currentQuestion.questionId}
+            answeredIds={answeredIds}
+            onSelect={selectQuestion}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start text-danger hover:bg-danger-soft hover:text-danger"
+            disabled={clearMutation.isPending}
+            onClick={() => setClearOpen(true)}
+          >
+            <Trash2 className="size-4" />
+            清空记录
+          </Button>
+        </aside>
 
         <div className="space-y-4">
           <Card className="p-5 sm:p-6">
@@ -237,8 +324,9 @@ export function InterviewPracticePage() {
                 }))
               }
             />
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4">
               <Button
+                className="w-full"
                 disabled={
                   answerMutation.isPending ||
                   !(drafts[currentQuestion.questionId] || '').trim()
@@ -256,71 +344,74 @@ export function InterviewPracticePage() {
             </div>
           </Card>
 
-          <Card className="p-5">
-            <h3 className="flex items-center gap-2 font-bold">
-              <StickyNote className="size-4 text-accent" />
-              我的笔记
-            </h3>
-            <Textarea
-              className="mt-3 min-h-24"
-              placeholder="记录容易忘记的概念、例子或自己的理解…"
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-            />
-            <div className="mt-3 flex justify-end">
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={!note.trim() || noteMutation.isPending}
-                onClick={() =>
-                  noteMutation.mutate({
-                    bankId,
-                    questionId: currentQuestion.questionId,
-                    noteContent: note.trim(),
-                  })
-                }
-              >
-                保存笔记
-              </Button>
-            </div>
-          </Card>
-
-          <div className="flex justify-between lg:hidden">
-            <Button
-              variant="secondary"
-              disabled={currentIndex <= 0}
-              onClick={() =>
-                selectQuestion(questions[currentIndex - 1].questionId)
-              }
-            >
-              <ChevronLeft className="size-4" />
-              上一题
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={currentIndex >= questions.length - 1}
-              onClick={() =>
-                selectQuestion(questions[currentIndex + 1].questionId)
-              }
-            >
-              下一题
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
+          {currentAnswer ? (
+            <InterviewReferenceAnswer answer={currentAnswer} />
+          ) : null}
         </div>
 
-        <InterviewAnswerPanel
-          answer={currentAnswer}
-          onAskAi={() => setAiOpen(true)}
-        />
+        {currentAnswer ? (
+          <aside className="space-y-4">
+            <InterviewAiPanel
+              answer={currentAnswer}
+              onAskAi={() => setAiOpen(true)}
+            />
+            <Card className="p-5">
+              <h3 className="flex items-center gap-2 font-bold">
+                <StickyNote className="size-4 text-accent" />
+                笔记本
+              </h3>
+              <Textarea
+                className="mt-3 min-h-28"
+                placeholder="记录容易忘记的概念、例子或自己的理解…"
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+              <div className="mt-3 flex justify-end">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!note.trim() || noteMutation.isPending}
+                  onClick={() =>
+                    noteMutation.mutate({
+                      bankId,
+                      questionId: currentQuestion.questionId,
+                      noteContent: note.trim(),
+                    })
+                  }
+                >
+                  保存笔记
+                </Button>
+              </div>
+            </Card>
+          </aside>
+        ) : null}
       </div>
 
-      <AiChatDialog
-        open={aiOpen}
-        onOpenChange={setAiOpen}
-        bankId={bankId}
-        questionId={currentQuestion.questionId}
-        groupType={GroupType.INTERVIEW}
+      {currentAnswer ? (
+        <AiChatDrawer
+          open={aiOpen}
+          onOpenChange={setAiOpen}
+          bankId={bankId}
+          questionId={currentQuestion.questionId}
+          groupType={GroupType.INTERVIEW}
+        />
+      ) : null}
+
+      <ClearRecordDialog
+        open={clearOpen}
+        onOpenChange={setClearOpen}
+        pending={clearMutation.isPending}
+        error={clearMutation.isError}
+        onConfirm={() => clearMutation.mutate()}
+      />
+      <FinishBankDialog
+        open={finishOpen}
+        onOpenChange={setFinishOpen}
+        pending={finishMutation.isPending}
+        error={finishMutation.isError}
+        answeredCount={answeredIds.size}
+        totalCount={questions.length}
+        onConfirm={() => finishMutation.mutate()}
       />
     </div>
   )

@@ -1,4 +1,4 @@
-import { Bot, CheckCircle2, Sparkles, XCircle } from 'lucide-react'
+import { Bot, CheckCircle2, FileText, Sparkles, XCircle } from 'lucide-react'
 import type {
   CertificateAnswer,
   InterviewAnswer,
@@ -6,33 +6,45 @@ import type {
 import { formatRate } from '@/shared/lib/format'
 import { Card } from '@/shared/ui/Card'
 
-export function InterviewAnswerPanel({
+export function InterviewReferenceAnswer({
+  answer,
+}: {
+  answer: InterviewAnswer
+}) {
+  return (
+    <Card className="p-5 sm:p-6">
+      <h3 className="flex items-center gap-2 font-bold">
+        <FileText className="size-4 text-accent" />
+        参考答案
+      </h3>
+      <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted">
+        {answer.analysis}
+      </p>
+    </Card>
+  )
+}
+
+export function InterviewAiPanel({
   answer,
   onAskAi,
 }: {
-  answer?: InterviewAnswer
+  answer: InterviewAnswer
   onAskAi: () => void
 }) {
-  if (!answer) {
-    return (
-      <Card className="p-5 text-sm leading-6 text-muted">
-        提交回答后，这里会显示参考答案和可用的 AI 反馈。
-      </Card>
-    )
-  }
-
   return (
-    <div className="space-y-4">
+    <Card className="p-5">
       {answer.aiEvaluationEnabled && answer.aiResult ? (
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
+        <>
+          <div className="flex items-center justify-between gap-3">
             <h3 className="flex items-center gap-2 font-bold">
               <Sparkles className="size-4 text-premium" />
-              AI 反馈
+              AI 解析
             </h3>
-            <span className="text-lg font-extrabold text-brand">
-              {formatRate(answer.aiResult.scoreRate)}
-            </span>
+            {answer.aiResult.scoreRate === null ? null : (
+              <span className="text-lg font-extrabold text-brand">
+                {formatRate(answer.aiResult.scoreRate)}
+              </span>
+            )}
           </div>
           {answer.aiResult.summary ? (
             <p className="mt-3 text-sm leading-6 text-muted">
@@ -43,6 +55,9 @@ export function InterviewAnswerPanel({
             {answer.aiResult.accurateComment ? (
               <p>准确之处：{answer.aiResult.accurateComment}</p>
             ) : null}
+            {answer.aiResult.innovativeComment ? (
+              <p>亮点思路：{answer.aiResult.innovativeComment}</p>
+            ) : null}
             {answer.aiResult.missingComment ? (
               <p>可以补充：{answer.aiResult.missingComment}</p>
             ) : null}
@@ -50,73 +65,84 @@ export function InterviewAnswerPanel({
               <p>需要修正：{answer.aiResult.wrongComment}</p>
             ) : null}
           </div>
-          <button
-            type="button"
-            className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-accent hover:text-brand"
-            onClick={onAskAi}
-          >
-            <Bot className="size-4" />
-            追问 AI
-          </button>
-        </Card>
+        </>
       ) : (
-        <Card className="p-5">
-          <h3 className="font-bold">AI 评分</h3>
+        <>
+          <h3 className="flex items-center gap-2 font-bold">
+            <Sparkles className="size-4 text-premium" />
+            AI 解析
+          </h3>
           <p className="mt-2 text-sm leading-6 text-muted">
-            当前账号暂未启用 AI 评分，参考答案仍可正常查看。
+            当前账号暂未启用 AI 评分，你仍可以围绕参考答案继续追问。
           </p>
-        </Card>
+        </>
       )}
-      <Card className="p-5">
-        <h3 className="font-bold">参考答案</h3>
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted">
-          {answer.analysis}
-        </p>
-      </Card>
+
+      <button
+        type="button"
+        className="mt-5 inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-accent-soft px-2.5 text-xs font-bold text-accent transition-colors hover:bg-brand-soft hover:text-brand"
+        onClick={onAskAi}
+      >
+        <Bot className="size-3.5" />
+        追问 AI
+      </button>
+    </Card>
+  )
+}
+
+export function CertificateResultBanner({
+  answer,
+}: {
+  answer: CertificateAnswer
+}) {
+  return (
+    <div
+      className={
+        answer.correct
+          ? 'flex items-center gap-2 rounded-2xl border border-[#add0c3] bg-success-soft px-5 py-4 font-bold text-success'
+          : 'flex items-center gap-2 rounded-2xl border border-[#e3b9b9] bg-danger-soft px-5 py-4 font-bold text-danger'
+      }
+      role="status"
+    >
+      {answer.correct ? (
+        <CheckCircle2 className="size-5" />
+      ) : (
+        <XCircle className="size-5" />
+      )}
+      {answer.correct ? '回答正确' : '回答错误，请查看解析'}
     </div>
   )
 }
 
 export function CertificateAnswerPanel({
   answer,
+  onAskAi,
 }: {
-  answer?: CertificateAnswer
+  answer: CertificateAnswer
+  onAskAi: () => void
 }) {
-  if (!answer) {
-    return (
-      <Card className="p-5 text-sm leading-6 text-muted">
-        提交本题后显示正确选项和答案解析。
-      </Card>
-    )
-  }
-
   return (
-    <div className="space-y-4">
-      <Card
-        className={
-          answer.correct
-            ? 'border-[#add0c3] bg-success-soft p-5'
-            : 'border-[#e3b9b9] bg-danger-soft p-5'
-        }
-      >
-        <div className="flex items-center gap-2 font-bold">
-          {answer.correct ? (
-            <CheckCircle2 className="size-5 text-success" />
-          ) : (
-            <XCircle className="size-5 text-danger" />
-          )}
-          {answer.correct ? '回答正确' : '回答不正确'}
-        </div>
-        <p className="mt-3 text-sm text-muted">
-          正确选项：{answer.correctAnswer.join('、')}
-        </p>
-      </Card>
-      <Card className="p-5">
-        <h3 className="font-bold">答案解析</h3>
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted">
-          {answer.analysis}
-        </p>
-      </Card>
-    </div>
+    <Card className="p-5 sm:p-6">
+      <h3 className="flex items-center gap-2 font-bold">
+        <FileText className="size-4 text-accent" />
+        答案解析
+      </h3>
+      <p className="mt-3 text-sm font-semibold text-ink">
+        正确选项：{answer.correctAnswer.join('、')}
+      </p>
+      <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted">
+        {answer.analysis}
+      </p>
+      <div className="mt-5 border-t border-line pt-4">
+        <button
+          type="button"
+          className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-accent-soft px-2.5 text-xs font-bold text-accent transition-colors hover:bg-brand-soft hover:text-brand"
+          onClick={onAskAi}
+        >
+          <Bot className="size-3.5" />
+          追问 AI
+        </button>
+      </div>
+    </Card>
   )
 }

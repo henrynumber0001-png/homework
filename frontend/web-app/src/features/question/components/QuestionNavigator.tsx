@@ -14,7 +14,7 @@ export function QuestionNavigator({
   onSelect,
 }: QuestionNavigatorProps) {
   return (
-    <aside className="surface-card h-fit p-4">
+    <div className="surface-card h-fit p-4">
       <div className="mb-3 flex items-center justify-between text-xs text-muted">
         <span className="font-bold text-ink">题目导航</span>
         <span>
@@ -31,13 +31,12 @@ export function QuestionNavigator({
               type="button"
               className={cn(
                 'flex aspect-square items-center justify-center rounded-lg border text-xs font-bold transition',
-                active
-                  ? 'border-brand bg-brand text-white'
-                  : answered
-                    ? 'border-[#a9c4bb] bg-success-soft text-success'
-                    : 'border-line bg-white text-muted hover:border-brand',
+                answered
+                  ? 'border-line bg-surface-muted text-muted'
+                  : 'border-line bg-white text-ink hover:border-brand',
+                active && 'border-brand text-brand ring-2 ring-brand/15',
               )}
-              aria-label={`第${index + 1}题${answered ? '，已作答' : ''}`}
+              aria-label={`第${index + 1}题，${answered ? '已作答' : '未作答'}`}
               aria-current={active ? 'step' : undefined}
               onClick={() => onSelect(id)}
             >
@@ -46,6 +45,6 @@ export function QuestionNavigator({
           )
         })}
       </div>
-    </aside>
+    </div>
   )
 }

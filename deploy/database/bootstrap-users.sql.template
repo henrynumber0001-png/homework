@@ -1,0 +1,23 @@
+-- Replace every __...__ placeholder before execution.
+-- For a managed MySQL service, restrict account hosts to the server private IP
+-- or subnet instead of using a broad wildcard.
+
+CREATE DATABASE IF NOT EXISTS home_work
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_0900_ai_ci;
+
+CREATE USER IF NOT EXISTS 'homework_app'@'localhost'
+    IDENTIFIED BY '__APP_DB_PASSWORD__';
+CREATE USER IF NOT EXISTS 'homework_admin'@'localhost'
+    IDENTIFIED BY '__ADMIN_DB_PASSWORD__';
+CREATE USER IF NOT EXISTS 'homework_migrator'@'localhost'
+    IDENTIFIED BY '__MIGRATOR_DB_PASSWORD__';
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+    ON home_work.* TO 'homework_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE, DELETE
+    ON home_work.* TO 'homework_admin'@'localhost';
+GRANT ALL PRIVILEGES
+    ON home_work.* TO 'homework_migrator'@'localhost';
+
+FLUSH PRIVILEGES;

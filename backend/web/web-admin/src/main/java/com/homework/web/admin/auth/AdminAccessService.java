@@ -31,6 +31,8 @@ public class AdminAccessService {
     }
 
     public boolean hasPermission(String permissionCode) {
+
+        //先找到管理员账号
         AdminAccount admin = AdminContext.get();
         if (admin == null) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_NOT_AUTHENTICATED);
@@ -39,6 +41,7 @@ public class AdminAccessService {
             return true;
         }
         //查询 管理员权限表
+        //count 大于0，说明有这个权限
         Long count = permissionMapper.selectCount(new LambdaQueryWrapper<AdminAccountPermission>()
                 .eq(AdminAccountPermission::getAdminId, admin.getId())
                 .eq(AdminAccountPermission::getPermissionCode, permissionCode));

@@ -1,5 +1,7 @@
 import { apiRequest } from '@/shared/api/client'
 import type {
+  EmailCodeSendInput,
+  EmailCodeVerifyInput,
   EmailLoginInput,
   EmailRegisterInput,
   OAuthLoginInput,
@@ -16,6 +18,22 @@ export function loginByEmail(data: EmailLoginInput) {
 export function registerByEmail(data: EmailRegisterInput) {
   return apiRequest<string>({
     url: '/app/auth/register/email',
+    method: 'POST',
+    data,
+  })
+}
+
+export function sendEmailCode(data: EmailCodeSendInput) {
+  return apiRequest<void>({
+    url: '/app/auth/register/email/code/send',
+    method: 'POST',
+    data,
+  })
+}
+
+export function verifyEmailCode(data: EmailCodeVerifyInput) {
+  return apiRequest<string>({
+    url: '/app/auth/register/email/code/send/verify',
     method: 'POST',
     data,
   })
