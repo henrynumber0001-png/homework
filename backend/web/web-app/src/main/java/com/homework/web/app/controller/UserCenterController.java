@@ -5,6 +5,7 @@ import com.homework.common.result.PageResult;
 import com.homework.common.result.Result;
 import com.homework.model.enums.GroupType;
 import com.homework.web.app.context.LoginUserHolder;
+import com.homework.web.app.dto.EditProfileDTO;
 import com.homework.web.app.dto.UserImageUpdateDTO;
 import com.homework.web.app.service.UserCenterService;
 import com.homework.model.enums.UserImageType;
@@ -49,6 +50,22 @@ public class UserCenterController {
         return Result.success();
     }
 
+    //用户点击“修改资料”，后端返回给前端数据
+    @GetMapping("/profile-info")
+    public Result<ProfileVO> getProfile(){
+        return Result.success(userCenterService.getProfile(LoginUserHolder.getUserId()));
+    }
+
+    @GetMapping("/profile-info/options")
+    public Result<ProfileOptionsVO> getProfileOptions(){
+        return Result.success(userCenterService.getProfileOptions());
+    }
+
+    //用户填好需要修改的数据，点提交之后给到后端的数据
+    @PutMapping("/edit-profile")
+    public Result<EditedProfileVO> editProfile(@Valid @RequestBody EditProfileDTO dto) {
+        return Result.success(userCenterService.editProfile(LoginUserHolder.getUserId(),dto));
+    }
 
     @GetMapping("/wrong-question-banks")
     public Result<PageResult<WrongQuestionBankVO>> wrongQuestionBanks(@RequestParam GroupType groupType,

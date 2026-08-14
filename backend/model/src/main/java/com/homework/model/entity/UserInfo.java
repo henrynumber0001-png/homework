@@ -3,6 +3,7 @@ package com.homework.model.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 import com.homework.common.entity.BaseEntity;
+import com.homework.model.enums.Gender;
 import com.homework.model.enums.UserInfoStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -25,6 +26,16 @@ public class UserInfo extends BaseEntity {
 
     /** 1.active;2.disabled;3.banned */
     private UserInfoStatus status;
+
+    //主攻的技术方向
+    private Long subTechDirectionId;
+
+    private String companyOrSchool;
+
+    private Gender gender;
+
+    //个人简介
+    private String introduction;
 
     /** 乐观锁版本。 */
     @Version

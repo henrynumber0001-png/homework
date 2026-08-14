@@ -1,23 +1,32 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowUpRight,
+  BriefcaseBusiness,
   Bookmark,
   BookOpenCheck,
+  Code2,
   Clock3,
   FileQuestion,
   Heart,
   ImagePlus,
+  Mars,
   MessageSquareText,
   NotebookPen,
+  Pencil,
   Users,
+  Venus,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   getUserCenter,
+  getUserProfileOptions,
   replaceUserCenterImage,
 } from '@/features/user-center/api'
-import type { UserImageType } from '@/features/user-center/types'
+import type {
+  TechDirectionOption,
+  UserImageType,
+} from '@/features/user-center/types'
 import { LearningCalendar } from '@/features/user-center/components/LearningCalendar'
 import { MembershipType } from '@/shared/constants/domain'
 import { formatCount } from '@/shared/lib/format'
@@ -31,6 +40,11 @@ export function UserCenterPage() {
   const centerQuery = useQuery({
     queryKey: ['user-center'],
     queryFn: getUserCenter,
+  })
+  const profileOptionsQuery = useQuery({
+    queryKey: ['user-profile-options'],
+    queryFn: getUserProfileOptions,
+    staleTime: 60 * 60 * 1000,
   })
   const imageMutation = useMutation({
     mutationFn: ({
@@ -89,6 +103,10 @@ export function UserCenterPage() {
   const updatingImageType = imageMutation.isPending
     ? imageMutation.variables?.imageType
     : null
+  const techDirectionName = findSubTechDirectionName(
+    profileOptionsQuery.data?.techDirectionTreeVOList ?? [],
+    data.userInfoVO.subTechDirectionId,
+  )
 
   return (
     <div className="app-container py-7 sm:py-9">
@@ -171,19 +189,59 @@ export function UserCenterPage() {
               <h1 className="truncate text-2xl font-extrabold tracking-tight">
                 {data.userInfoVO.displayName}
               </h1>
-              {data.membershipActive ? (
-                <Badge className="border-[#dfc98f] bg-premium-soft text-[#77500d]">
-                  {data.membershipType === MembershipType.PREMIUM_PLUS
-                    ? 'Premium Plus'
-                    : 'Premium'}
-                </Badge>
-              ) : (
-                <Badge>Free</Badge>
-              )}
+              <Link
+                to={
+                  data.membershipActive ? '/membership/center' : '/membership'
+                }
+                aria-label={
+                  data.membershipActive ? '进入会员中心' : '了解 Premium 会员'
+                }
+              >
+                {data.membershipActive ? (
+                  <Badge className="border-[#dfc98f] bg-premium-soft text-[#77500d] transition hover:-translate-y-0.5">
+                    {data.membershipType === MembershipType.PREMIUM_PLUS
+                      ? 'Premium Plus'
+                      : 'Premium'}
+                  </Badge>
+                ) : (
+                  <Badge className="transition hover:-translate-y-0.5">
+                    Free
+                  </Badge>
+                )}
+              </Link>
             </div>
             <p className="mt-1 text-sm text-muted">
               @{data.userInfoVO.accountNo}
             </p>
+            {data.userInfoVO.introduction ? (
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-ink/80">
+                {data.userInfoVO.introduction}
+              </p>
+            ) : null}
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted">
+              {data.userInfoVO.gender ? (
+                <span className="inline-flex items-center gap-1.5">
+                  {data.userInfoVO.gender === 1 ? (
+                    <Mars className="size-3.5 text-brand" />
+                  ) : (
+                    <Venus className="size-3.5 text-accent" />
+                  )}
+                  {data.userInfoVO.gender === 1 ? '男' : '女'}
+                </span>
+              ) : null}
+              {techDirectionName ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Code2 className="size-3.5 text-brand" />
+                  {techDirectionName}
+                </span>
+              ) : null}
+              {data.userInfoVO.companyOrSchool ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <BriefcaseBusiness className="size-3.5 text-brand" />
+                  {data.userInfoVO.companyOrSchool}
+                </span>
+              ) : null}
+            </div>
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
               <span>
                 <strong className="text-ink">
@@ -206,11 +264,9 @@ export function UserCenterPage() {
             </div>
           </div>
           <Button asChild>
-            <Link
-              to={data.membershipActive ? '/membership/center' : '/membership'}
-            >
-              {data.membershipActive ? '会员中心' : '了解会员'}
-              <ArrowUpRight className="size-4" />
+            <Link to="/me/edit">
+              <Pencil className="size-4" />
+              修改资料
             </Link>
           </Button>
         </div>
@@ -291,6 +347,20 @@ export function UserCenterPage() {
       </div>
     </div>
   )
+}
+
+function findSubTechDirectionName(
+  directions: TechDirectionOption[],
+  selectedId: number | null,
+) {
+  if (selectedId === null) return null
+  for (const direction of directions) {
+    const selected = direction.subTechDirectionTreeVOList.find(
+      (item) => item.subTechDirectionId === selectedId,
+    )
+    if (selected) return selected.subTechDirectionName
+  }
+  return null
 }
 
 function StatItem({

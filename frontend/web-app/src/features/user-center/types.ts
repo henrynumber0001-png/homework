@@ -1,4 +1,5 @@
 import type {
+  GenderValue,
   MembershipTypeValue,
   QuestionTypeValue,
 } from '@/shared/constants/domain'
@@ -21,6 +22,10 @@ export interface UserCenterData {
     displayName: string
     avatarUrl: string | null
     bannerUrl: string | null
+    companyOrSchool: string | null
+    subTechDirectionId: number | null
+    gender: GenderValue | null
+    introduction: string | null
   }
   membershipActive: boolean
   membershipType: MembershipTypeValue | null
@@ -34,6 +39,42 @@ export interface UserImageUpload {
   imageObjectKey: string
   previewUrl: string
 }
+
+export interface UserProfile {
+  avatarUrl: string | null
+  displayName: string
+  companyOrSchool: string | null
+  subTechDirectionId: number | null
+  gender: GenderValue | null
+  introduction: string | null
+  version: number
+}
+
+export interface SubTechDirectionOption {
+  subTechDirectionId: number
+  subTechDirectionName: string
+}
+
+export interface TechDirectionOption {
+  directionId: number
+  directionName: string
+  subTechDirectionTreeVOList: SubTechDirectionOption[]
+}
+
+export interface UserProfileOptions {
+  techDirectionTreeVOList: TechDirectionOption[]
+}
+
+export interface EditProfileInput {
+  displayName: string
+  companyOrSchool: string | null
+  subTechDirectionId: number | null
+  gender: GenderValue | null
+  introduction: string | null
+  version: number
+}
+
+export type EditedProfile = EditProfileInput
 
 export interface LearningCalendarItem {
   date: string

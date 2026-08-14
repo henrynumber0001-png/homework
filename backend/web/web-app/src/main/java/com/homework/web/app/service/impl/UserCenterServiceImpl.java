@@ -11,6 +11,7 @@ import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.entity.*;
 import com.homework.model.enums.*;
 import com.homework.web.app.dto.AiEvaluationResult;
+import com.homework.web.app.dto.EditProfileDTO;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.MembershipAccessService;
 import com.homework.web.app.service.MembershipAccessSnapshot;
@@ -19,10 +20,10 @@ import com.homework.web.app.vo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -43,6 +44,8 @@ public class UserCenterServiceImpl implements UserCenterService {
     private final QuestionBankMapper questionBankMapper;
     private final CosReadUrlSigner readUrlSigner;
     private final UserImageUrlResolver userImageUrlResolver;
+    private final SubTechDirectionMapper subTechDirectionMapper;
+    private final TechDirectionMapper techDirectionMapper;
 
     @Override
     public UserCenterPageVO getCenterPageInfo(Long userId) {
@@ -66,11 +69,13 @@ public class UserCenterServiceImpl implements UserCenterService {
         userInfoVO.setAvatarUrl(userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey()));
         userInfoVO.setBannerUrl(userImageUrlResolver.resolveBanner(userInfo.getBannerObjectKey()));
         userInfoVO.setDisplayName(userInfo.getDisplayName());
+        userInfoVO.setGender(userInfo.getGender());
+        userInfoVO.setIntroduction(userInfo.getIntroduction());
+        userInfoVO.setCompanyOrSchool(userInfo.getCompanyOrSchool());
+        userInfoVO.setSubTechDirectionId(userInfo.getSubTechDirectionId());
+
 
         userCenterPageVO.setUserInfoVO(userInfoVO);
-
-
-
 
         MembershipAccessSnapshot membership = membershipAccessService.getAccess(userId);
         userCenterPageVO.setMembershipActive(membership.status() != MembershipStatus.FREE);
@@ -742,7 +747,6 @@ public class UserCenterServiceImpl implements UserCenterService {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
-
         MembershipInfoVO vo = new MembershipInfoVO();
         vo.setDisplayName(userInfo.getDisplayName());
         vo.setAvatarUrl(userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey()));
@@ -753,6 +757,130 @@ public class UserCenterServiceImpl implements UserCenterService {
         vo.setExpiredTime(membership.currentExpireTime());
         vo.setBaseFreezeExpireTime(membership.baseFreezeExpireTime());
         return vo;
+    }
+
+    @Override
+    @Transactional
+    public EditedProfileVO editProfile(Long userId, EditProfileDTO dto) {
+        if(userId == null){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+        if(dto == null || !StringUtils.hasText(dto.getDisplayName())){
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+
+
+        LambdaQueryWrapper<UserInfo> userInfoQueryWrapper = new LambdaQueryWrapper<>();
+        userInfoQueryWrapper.eq(UserInfo::getId,userId)
+                .eq(UserInfo::getStatus,UserInfoStatus.ACTIVE);
+        UserInfo userInfo = userInfoMapper.selectOne(userInfoQueryWrapper);
+        if(userInfo == null){
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        Integer version = userInfo.getVersion();
+        if(!version.equals(dto.getVersion())){
+            throw new HomeworkException(ResultCodeEnum.APP_VERSION_CONFLICT);
+        }
+
+        //校验前端传入的这个 subTechDirectionId，在数据库表中是否存在
+        //如果不做校验，会让错误的，对不上任何数据的 subTechDirectionId 进入到 数据库
+        if(dto.getSubTechDirectionId() != null){
+            SubTechDirection subTechDirection = subTechDirectionMapper.selectById(dto.getSubTechDirectionId());
+            if(subTechDirection == null){
+                throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+            }
+        }
+
+        //这个EditedProfileVO, 是用户提交的修改信息成功保存之后，返回的数据
+        //avatarUrl 不在这里返回
+        EditedProfileVO vo = new EditedProfileVO();
+        vo.setDisplayName(dto.getDisplayName().strip());
+        vo.setSubTechDirectionId(dto.getSubTechDirectionId());
+        vo.setIntroduction(dto.getIntroduction() == null ? null : dto.getIntroduction().strip());
+        vo.setGender(dto.getGender());
+        vo.setCompanyOrSchool((dto.getCompanyOrSchool() == null ? null : dto.getCompanyOrSchool().strip()));
+
+
+        //MyBatis-Plus 的普通更新默认通常会忽略 null 字段
+        //某些清空的字段，MyBatis-Plus会忽略掉 null，而依然使用数据库原来的值
+        //因此需要自定义一个SQL，别忘记自己更新乐观锁版本
+        int result = userInfoMapper.updateProfile(vo,userId,version);
+
+        //乐观锁防并发
+        if(result != 1){
+            throw new HomeworkException(ResultCodeEnum.APP_VERSION_CONFLICT);
+        }
+        //重新查询更新后的 userInfo，此时的 version 已成功+1
+        UserInfo userinfoUpdate = userInfoMapper.selectById(userId);
+        vo.setVersion(userinfoUpdate.getVersion());
+        return vo;
+
+
+    }
+
+    @Override
+    public ProfileVO getProfile(Long userId) {
+
+        if(userId == null){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+
+        LambdaQueryWrapper<UserInfo> userInfoQueryWrapper = new LambdaQueryWrapper<>();
+        userInfoQueryWrapper.eq(UserInfo::getId,userId)
+                .eq(UserInfo::getStatus,UserInfoStatus.ACTIVE);
+        UserInfo userInfo = userInfoMapper.selectOne(userInfoQueryWrapper);
+        if(userInfo == null){
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        ProfileVO vo = new ProfileVO();
+        vo.setDisplayName(userInfo.getDisplayName());
+        vo.setIntroduction(userInfo.getIntroduction());
+        vo.setVersion(userInfo.getVersion());
+        vo.setCompanyOrSchool(userInfo.getCompanyOrSchool());
+        vo.setGender(userInfo.getGender());
+        vo.setAvatarUrl(userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey()));
+        vo.setSubTechDirectionId(userInfo.getSubTechDirectionId());
+
+        return vo;
+    }
+
+    @Override
+    public ProfileOptionsVO getProfileOptions() {
+
+        ProfileOptionsVO profileOptionsVO = new ProfileOptionsVO();
+
+        List<TechDirectionTreeVO> techDirectionTreeVOList = new ArrayList<>();
+
+        LambdaQueryWrapper<TechDirection> techQueryWrapper = new LambdaQueryWrapper<>();
+        //这里有一个小技巧，如果想查询全部，LambdaQueryWrapper没办法输入null，那么就随便查一个排序条件，从而获得表中全部数据
+        techQueryWrapper.orderByAsc(TechDirection::getId);
+        List<TechDirection> techDirectionList = techDirectionMapper.selectList(techQueryWrapper);
+        techDirectionList.forEach(techDirection -> {
+            TechDirectionTreeVO vo = new TechDirectionTreeVO();
+            vo.setDirectionName(techDirection.getTechDirectionName());
+            vo.setDirectionId(techDirection.getId());
+
+            List<SubTechDirectionTreeVO> subTechDirectionTreeVOList = new ArrayList<>();
+            LambdaQueryWrapper<SubTechDirection> subTechQueryWrapper = new LambdaQueryWrapper<>();
+            //注意：二级分类树可不再是查全部了，要根据一级分类树的ID（也就是外键）进行查询
+            subTechQueryWrapper.eq(SubTechDirection::getDirectionId,techDirection.getId())
+                    .orderByAsc(SubTechDirection::getId);
+            List<SubTechDirection> subTechDirectionList = subTechDirectionMapper.selectList(subTechQueryWrapper);
+            subTechDirectionList.forEach(subTechDirection -> {
+                SubTechDirectionTreeVO subVo = new SubTechDirectionTreeVO();
+                subVo.setSubTechDirectionId(subTechDirection.getId());
+                subVo.setSubTechDirectionName(subTechDirection.getSubDirectionName());
+                subTechDirectionTreeVOList.add(subVo);
+            });
+            vo.setSubTechDirectionTreeVOList(subTechDirectionTreeVOList);
+            techDirectionTreeVOList.add(vo);
+        });
+
+        profileOptionsVO.setTechDirectionTreeVOList(techDirectionTreeVOList);
+        return profileOptionsVO;
     }
 
 }

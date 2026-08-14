@@ -4,6 +4,10 @@ import type { GroupTypeValue } from '@/shared/constants/domain'
 import type {
   LearningCalendarItem,
   LibraryKind,
+  EditProfileInput,
+  EditedProfile,
+  UserProfile,
+  UserProfileOptions,
   UserCenterData,
   UserImageType,
   UserImageUpload,
@@ -20,6 +24,26 @@ const userImageTypeCodes: Record<UserImageType, 1 | 2> = {
 export function getUserCenter() {
   return apiRequest<UserCenterData>({
     url: '/app/user-center',
+  })
+}
+
+export function getUserProfile() {
+  return apiRequest<UserProfile>({
+    url: '/app/user-center/profile-info',
+  })
+}
+
+export function getUserProfileOptions() {
+  return apiRequest<UserProfileOptions>({
+    url: '/app/user-center/profile-info/options',
+  })
+}
+
+export function updateUserProfile(data: EditProfileInput) {
+  return apiRequest<EditedProfile>({
+    method: 'put',
+    url: '/app/user-center/edit-profile',
+    data,
   })
 }
 

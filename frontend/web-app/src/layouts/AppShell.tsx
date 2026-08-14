@@ -9,7 +9,7 @@ import {
   UserRound,
 } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { queryClient } from '@/app/query-client'
 import { authToken } from '@/features/auth/token'
 import { cn } from '@/shared/lib/cn'
@@ -123,7 +123,7 @@ export function AppShell() {
                   className="z-50 min-w-48 rounded-xl border border-line bg-surface p-1.5 text-ink shadow-xl"
                 >
                   <MenuLink to="/me">个人中心</MenuLink>
-                  <MenuLink to="/membership/center">会员中心</MenuLink>
+                  <MenuLink to="/me/edit">修改资料</MenuLink>
                   <MenuLink to="/messages">我的消息</MenuLink>
                   <MenuLink to="/membership/orders">订单历史</MenuLink>
                   <DropdownMenu.Separator className="my-1 h-px bg-line" />
@@ -199,19 +199,27 @@ function MembershipBadge({
 
   if (status === 2) {
     return (
-      <Badge className="border-[#d4b46d] bg-premium-soft text-[#77500d]">
-        Premium Plus
-      </Badge>
+      <Link to="/membership/center" aria-label="进入会员中心">
+        <Badge className="border-[#d4b46d] bg-premium-soft text-[#77500d] transition hover:-translate-y-0.5">
+          Premium Plus
+        </Badge>
+      </Link>
     )
   }
 
   if (status === 1) {
     return (
-      <Badge className="border-[#dfc98f] bg-premium-soft text-premium">
-        Premium
-      </Badge>
+      <Link to="/membership/center" aria-label="进入会员中心">
+        <Badge className="border-[#dfc98f] bg-premium-soft text-premium transition hover:-translate-y-0.5">
+          Premium
+        </Badge>
+      </Link>
     )
   }
 
-  return <Badge>Free</Badge>
+  return (
+    <Link to="/membership" aria-label="了解 Premium 会员">
+      <Badge className="transition hover:-translate-y-0.5">Free</Badge>
+    </Link>
+  )
 }

@@ -1,24 +1,21 @@
 package com.homework.web.app.vo;
 
 import com.homework.model.enums.Gender;
-import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-@Data
-@Schema(description = "返回前端的用户信息")
-public class UserInfoVO {
-    @Schema(description = "账户ID")
-    private String accountNo;
+import java.util.List;
 
-    @Schema(description = "用户昵称")
+@Data
+public class ProfileVO {
+
+    @NotBlank
+    @Size(max = 50)
     private String displayName;
 
-    @Schema(description = "用户头像")
     private String avatarUrl;
 
-    @Schema(description = "用户banner")
-    private String bannerUrl;
 
     @Size(max = 50)
     private String companyOrSchool;
@@ -31,4 +28,8 @@ public class UserInfoVO {
     //允许不填
     @Size(max = 100)
     private String introduction;
+
+    private Integer version;
+
+
 }

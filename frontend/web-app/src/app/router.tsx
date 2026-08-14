@@ -85,6 +85,11 @@ const UserCenterPage = lazy(() =>
     default: module.UserCenterPage,
   })),
 )
+const UserProfileEditPage = lazy(() =>
+  import('@/features/user-center/pages/UserProfileEditPage').then((module) => ({
+    default: module.UserProfileEditPage,
+  })),
+)
 const UserQuestionLibraryPage = lazy(() =>
   import('@/features/user-center/pages/UserQuestionLibraryPage').then(
     (module) => ({ default: module.UserQuestionLibraryPage }),
@@ -168,6 +173,10 @@ export const router = createBrowserRouter([
           {
             path: '/me',
             element: route(<UserCenterPage />),
+          },
+          {
+            path: '/me/edit',
+            element: route(<UserProfileEditPage />),
           },
           {
             path: '/me/wrong-questions',

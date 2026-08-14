@@ -110,8 +110,7 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
         // 在服务端兜底页码和每页大小，防止异常参数形成无效分页或过大的单次查询。
         long page = pageNum == null ? 1 : Math.max(pageNum, 1);
         long size = pageSize == null ? 20 : Math.min(Math.max(pageSize, 1), 100);
-        List<PublicUserProfileActivityRowVO> rows =
-                profileMapper.listActivities(profileUserId, tab, (page - 1) * size, size);
+        List<PublicUserProfileActivityRowVO> rows = profileMapper.listActivities(profileUserId, tab, (page - 1) * size, size);
         if (rows.isEmpty()) {
             return List.of();
         }
@@ -158,8 +157,7 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
             HitPost post = posts.get(row.getPostId());
             if (post != null) {
                 UserInfo postAuthor = users.get(post.getPostUserId());
-                Set<HitActionType> postActions =
-                        currentActions.getOrDefault(post.getId(), Set.of());
+                Set<HitActionType> postActions = currentActions.getOrDefault(post.getId(), Set.of());
 
                 HitPostVO postVO = new HitPostVO();
                 postVO.setPostId(post.getId());
@@ -175,8 +173,7 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
                     try {
                         tags = objectMapper.readValue(
                                 tagsJson,
-                                objectMapper.getTypeFactory()
-                                        .constructCollectionType(List.class, String.class));
+                                objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
                     } catch (JsonProcessingException ignored) {
                         tags = List.of();
                     }
@@ -202,8 +199,7 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
                     commentVO.setCommentId(comment.getId());
                     commentVO.setPostId(comment.getPostId());
                     commentVO.setCommentUserId(comment.getCommentUserId());
-                    commentVO.setDisplayName(commentAuthor == null
-                            ? "该用户已注销" : commentAuthor.getDisplayName());
+                    commentVO.setDisplayName(commentAuthor == null ? "该用户已注销" : commentAuthor.getDisplayName());
                     commentVO.setAvatar(commentAuthor == null ? null : resolveAvatar(commentAuthor));
                     commentVO.setParentCommentId(comment.getParentCommentId());
                     commentVO.setComment(comment.getComment());

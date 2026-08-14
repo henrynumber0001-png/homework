@@ -23,6 +23,10 @@ describe('UserCenterPage', () => {
               bannerUrl: bannerConfirmed
                 ? 'https://example.com/new-banner.webp'
                 : 'https://example.com/banner.jpg',
+              companyOrSchool: 'HomeWork 大学',
+              subTechDirectionId: 101,
+              gender: 1,
+              introduction: '正在系统学习后端开发。',
             },
             membershipActive: true,
             membershipType: 1,
@@ -46,6 +50,26 @@ describe('UserCenterPage', () => {
           code: 200,
           message: 'success',
           data: [],
+        }),
+      ),
+      http.get('*/api/app/user-center/profile-info/options', () =>
+        HttpResponse.json({
+          code: 200,
+          message: 'success',
+          data: {
+            techDirectionTreeVOList: [
+              {
+                directionId: 1,
+                directionName: '后端开发',
+                subTechDirectionTreeVOList: [
+                  {
+                    subTechDirectionId: 101,
+                    subTechDirectionName: 'Java后端',
+                  },
+                ],
+              },
+            ],
+          },
         }),
       ),
       http.post('*/api/app/user-center/images/2', async ({ request }) => {
@@ -112,6 +136,14 @@ describe('UserCenterPage', () => {
     expect(screen.getByRole('link', { name: /会员中心/ })).toHaveAttribute(
       'href',
       '/membership/center',
+    )
+    expect(screen.getByText('正在系统学习后端开发。')).toBeInTheDocument()
+    expect(screen.getByText('男')).toBeInTheDocument()
+    expect(await screen.findByText('Java后端')).toBeInTheDocument()
+    expect(screen.getByText('HomeWork 大学')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '修改资料' })).toHaveAttribute(
+      'href',
+      '/me/edit',
     )
 
     const labels = ['累计作答', '学习题库', '学习时间', '错题', '收藏', '笔记']

@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
@@ -77,5 +78,12 @@ describe('AppShell', () => {
     expect(screen.getAllByText('#Hit').length).toBeGreaterThan(0)
     expect(screen.getAllByText('个人中心').length).toBeGreaterThan(0)
     expect(screen.getByText('首页内容')).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: '了解 Premium 会员' }),
+    ).toHaveAttribute('href', '/membership')
+
+    await userEvent.click(screen.getByRole('button', { name: /Henry/ }))
+    expect(await screen.findByText('修改资料')).toBeInTheDocument()
+    expect(screen.queryByText('会员中心')).not.toBeInTheDocument()
   })
 })

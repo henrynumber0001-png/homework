@@ -30,6 +30,7 @@ public enum ResultCodeEnum {
     APP_ACCOUNT_STATUS_ERROR(510, "账户状态异常"),
     APP_LOGIN_EMAIL_RESEND_LOCK(512, "邮箱验证码发送过于频繁，请稍后再试"),
     APP_AI_EVALUATION_EMPTY_SCORE(513, "该用户并未作答"),
+    APP_VERSION_CONFLICT(520,"数据已变化，请刷新后重试"),
     EMAIL_CODE_SEND_FAILED(514, "邮箱验证码发送失败"),
     EMAIL_CODE_EXPIRED(515, "邮箱验证码已过期"),
     EMAIL_CODE_ERROR(516,"邮箱验证码错误"),

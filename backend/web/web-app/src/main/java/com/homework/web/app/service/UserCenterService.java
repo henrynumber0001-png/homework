@@ -2,7 +2,9 @@ package com.homework.web.app.service;
 
 import com.homework.common.result.PageResult;
 import com.homework.model.enums.GroupType;
+import com.homework.web.app.dto.EditProfileDTO;
 import com.homework.web.app.vo.*;
+import jakarta.validation.Valid;
 
 public interface UserCenterService {
     UserCenterPageVO getCenterPageInfo(Long userId);
@@ -26,4 +28,11 @@ public interface UserCenterService {
     NoteVO getNote(Long userId, Long bankId, Long questionId);
 
     MembershipInfoVO getMembershipInfo(Long userId);
+
+    EditedProfileVO editProfile(Long userId, @Valid EditProfileDTO dto);
+
+    ProfileVO getProfile(Long userId);
+
+    ProfileOptionsVO getProfileOptions();
+
 }

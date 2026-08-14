@@ -54,6 +54,11 @@ export const MembershipOrderStatus = {
   PAY_FAILED: 6,
 } as const
 
+export const Gender = {
+  MALE: 1,
+  FEMALE: 2,
+} as const
+
 export type GroupTypeValue = (typeof GroupType)[keyof typeof GroupType]
 export type SortTypeValue = (typeof SortType)[keyof typeof SortType]
 export type QuestionTypeValue = (typeof QuestionType)[keyof typeof QuestionType]
@@ -62,3 +67,4 @@ export type MembershipTypeValue =
 export type MembershipStatusValue =
   (typeof MembershipStatus)[keyof typeof MembershipStatus]
 export type ActionStatusValue = (typeof ActionStatus)[keyof typeof ActionStatus]
+export type GenderValue = (typeof Gender)[keyof typeof Gender]
