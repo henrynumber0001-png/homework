@@ -145,6 +145,34 @@ class HitServiceImplTest {
     }
 
     @Test
+    void activateDeletedLikeRestoresExistingRowInsteadOfInsertingDuplicate() {
+        HitPost post = publishedPost(100L, 9L, 0);
+        HitAction deletedAction = new HitAction();
+        deletedAction.setId(50L);
+        deletedAction.setPostId(100L);
+        deletedAction.setActionUserId(7L);
+        deletedAction.setActionType(HitActionType.LIKE);
+        deletedAction.setDeleted(true);
+
+        when(hitPostMapper.selectOne(any())).thenReturn(post);
+        when(hitPostMapper.lockPublishedPost(100L)).thenReturn(100L);
+        when(hitActionMapper.selectIncludingDeletedForUpdate(100L, 7L, 1)).thenReturn(deletedAction);
+        when(hitActionMapper.restoreById(50L)).thenReturn(1);
+        when(hitPostMapper.changeActionCounters(100L, 1, 0, 0)).thenReturn(1);
+        when(hitPostMapper.selectById(100L)).thenReturn(post);
+
+        HitActionDTO dto = new HitActionDTO();
+        dto.setActionType(HitActionType.LIKE);
+        dto.setActionStatus(ActionStatus.ACTIVATE);
+
+        service.action(100L, dto);
+
+        verify(hitActionMapper).restoreById(50L);
+        verify(hitActionMapper, never()).insert(any(HitAction.class));
+        verify(hitPostMapper).changeActionCounters(100L, 1, 0, 0);
+    }
+
+    @Test
     void commentLikeCreatesReceivedNotificationWithContainingPost() {
         HitPost post = publishedPost(100L, 3L, 0);
         HitComment comment = new HitComment();

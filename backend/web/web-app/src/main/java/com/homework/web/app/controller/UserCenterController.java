@@ -17,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 
 @RestController
 @RequestMapping("/api/app/user-center")
@@ -31,6 +33,14 @@ public class UserCenterController {
         Long userId = LoginUserHolder.getUserId();
         UserCenterPageVO pageVO = userCenterService.getCenterPageInfo(userId);
         return Result.success(pageVO);
+    }
+
+    @GetMapping("/activities")
+    public Result<List<UserCenterActivityVO>> activities(
+            @RequestParam(defaultValue = "posts") String tab,
+            @RequestParam(required = false) Integer pageNum,
+            @RequestParam(required = false) Integer pageSize) {
+        return Result.success(userCenterService.listActivities(LoginUserHolder.getUserId(), tab, pageNum, pageSize));
     }
 
     @Operation(summary = "上传头像或banner图片")
@@ -129,5 +139,19 @@ public class UserCenterController {
     public Result<MembershipInfoVO> membershipInfo(){
         Long userId = LoginUserHolder.getUserId();
         return Result.success(userCenterService.getMembershipInfo(userId));
+    }
+
+    @GetMapping("/follower-list")
+    public Result<List<FollowerVO>> checkFollowers(@RequestParam(required = false) Integer pageNum,
+                                                  @RequestParam(required = false) Integer pageSize){
+        List<FollowerVO> followerVOList = userCenterService.getFollowers(LoginUserHolder.getUserId(),pageNum,pageSize);
+        return Result.success(followerVOList);
+    }
+
+    @GetMapping("/following-list")
+    public Result<List<FolloweeVO>> checkFollowing(@RequestParam(required = false) Integer pageNum,
+                                                   @RequestParam(required = false) Integer pageSize){
+        List<FolloweeVO> followeeVOList = userCenterService.getFollowing(LoginUserHolder.getUserId(),pageNum,pageSize);
+        return Result.success(followeeVOList);
     }
 }

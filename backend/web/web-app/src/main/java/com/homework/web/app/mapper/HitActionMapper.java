@@ -9,7 +9,13 @@ public interface HitActionMapper extends BaseMapper<HitAction> {
 
     /** MyBatis-Plus 会自动过滤逻辑删除记录，因此这里显式查询历史互动。 */
     @Select("""
-            SELECT id, post_id, action_user_id, action_type, created_time, updated_time, is_deleted
+            SELECT id, 
+                   post_id, 
+                   action_user_id, 
+                   action_type, 
+                   created_time, 
+                   updated_time, 
+                   is_deleted AS deleted
             FROM hit_action
             WHERE post_id = #{postId} AND action_user_id = #{actionUserId} AND action_type = #{actionType}
             LIMIT 1

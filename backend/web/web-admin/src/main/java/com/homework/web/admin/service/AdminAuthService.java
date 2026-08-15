@@ -249,6 +249,7 @@ public class AdminAuthService {
 
             // 先把 permissionsJson 反序列化成 List<String>
             // 因为在 AdminPermissionCatalog 中，管理员权限是以 List<String> 形式存储到字段 ALL 中的
+            // 使用的是 readValue
             List<String> permissions = objectMapper.readValue(
                     invitation.getPermissionsJson(),
                     new TypeReference<>() {

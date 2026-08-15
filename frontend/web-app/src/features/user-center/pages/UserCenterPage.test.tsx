@@ -34,7 +34,6 @@ describe('UserCenterPage', () => {
             countsVO: {
               followerCount: 12,
               followingCount: 8,
-              postCount: 4,
               answeredQuestionCount: 168,
               learnedBankCount: 9,
               studyHours: 23,
@@ -46,6 +45,13 @@ describe('UserCenterPage', () => {
         }),
       ),
       http.get('*/api/app/learning-activity/calendar', () =>
+        HttpResponse.json({
+          code: 200,
+          message: 'success',
+          data: [],
+        }),
+      ),
+      http.get('*/api/app/user-center/activities', () =>
         HttpResponse.json({
           code: 200,
           message: 'success',
@@ -141,6 +147,9 @@ describe('UserCenterPage', () => {
     expect(screen.getByText('男')).toBeInTheDocument()
     expect(await screen.findByText('Java后端')).toBeInTheDocument()
     expect(screen.getByText('HomeWork 大学')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: '我的动态' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '修改资料' })).toHaveAttribute(
       'href',
       '/me/edit',

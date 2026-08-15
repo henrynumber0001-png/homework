@@ -9,6 +9,9 @@ import type {
   UserProfile,
   UserProfileOptions,
   UserCenterData,
+  UserCenterActivity,
+  FollowerListItem,
+  FollowingListItem,
   UserImageType,
   UserImageUpload,
   UserQuestionBank,
@@ -24,6 +27,31 @@ const userImageTypeCodes: Record<UserImageType, 1 | 2> = {
 export function getUserCenter() {
   return apiRequest<UserCenterData>({
     url: '/app/user-center',
+  })
+}
+
+export function getUserCenterActivities(
+  tab: string,
+  pageNum = 1,
+  pageSize = 20,
+) {
+  return apiRequest<UserCenterActivity[]>({
+    url: '/app/user-center/activities',
+    params: { tab, pageNum, pageSize },
+  })
+}
+
+export function getFollowers(pageNum = 1, pageSize = 20) {
+  return apiRequest<FollowerListItem[]>({
+    url: '/app/user-center/follower-list',
+    params: { pageNum, pageSize },
+  })
+}
+
+export function getFollowing(pageNum = 1, pageSize = 20) {
+  return apiRequest<FollowingListItem[]>({
+    url: '/app/user-center/following-list',
+    params: { pageNum, pageSize },
   })
 }
 

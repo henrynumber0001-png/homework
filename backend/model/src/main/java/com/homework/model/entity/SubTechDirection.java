@@ -5,7 +5,7 @@ import com.homework.common.entity.BaseEntity;
 import lombok.Data;
 
 @Data
-@TableName("tech_sub_direction")
+@TableName("sub_tech_direction")
 public class SubTechDirection extends BaseEntity {
 
     //比如：Java后端/C++后端/PHP后端/.NET后端/Golang后端

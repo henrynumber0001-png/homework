@@ -102,7 +102,9 @@ public class AdminManagementService {
             throw new HomeworkException(ResultCodeEnum.ADMIN_ACCOUNT_CONFLICT);
         }
 
+        //先把 超级管理员勾选的 管理员账户权限 以字符串集合的形式 输出第一版
         List<String> permissions = new ArrayList<>(new LinkedHashSet<>(dto.getPermissions()));
+
         if (!AdminPermissionCatalog.ALL.containsAll(permissions)
                 || permissions.stream().anyMatch(AdminPermissionCatalog.SUPER_ONLY::contains)) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_PERMISSION_DENIED);
@@ -122,6 +124,7 @@ public class AdminManagementService {
 
         String rawToken = UUID.randomUUID().toString();
         LocalDateTime expiresTime = LocalDateTime.now().plusHours(24);
+
         AdminInvitation invitation = invitationMapper.selectOne(
                 new LambdaQueryWrapper<AdminInvitation>()
                         .eq(AdminInvitation::getEmail, email)
@@ -139,6 +142,8 @@ public class AdminManagementService {
         invitation.setExpiresTime(expiresTime);
         invitation.setInvitedByAdminId(AdminContext.getAdminId());
         try {
+            //然后把 字符串集合 序列化为 Json字符串 存入 admin_invitation 表
+            //用的是 writeValue
             invitation.setPermissionsJson(objectMapper.writeValueAsString(permissions));
             invitation.setBankIdsJson(objectMapper.writeValueAsString(
                     bankDataScope == BankDataScope.ALL_BANKS ? List.of() : bankIds));

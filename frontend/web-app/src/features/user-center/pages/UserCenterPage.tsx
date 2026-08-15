@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import {
   ArrowUpRight,
   BriefcaseBusiness,
@@ -10,16 +15,18 @@ import {
   Heart,
   ImagePlus,
   Mars,
+  MessageCircle,
   MessageSquareText,
   NotebookPen,
   Pencil,
   Users,
   Venus,
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   getUserCenter,
+  getUserCenterActivities,
   getUserProfileOptions,
   replaceUserCenterImage,
 } from '@/features/user-center/api'
@@ -28,15 +35,33 @@ import type {
   UserImageType,
 } from '@/features/user-center/types'
 import { LearningCalendar } from '@/features/user-center/components/LearningCalendar'
+import { HitCard } from '@/features/hit/components/HitCard'
 import { MembershipType } from '@/shared/constants/domain'
-import { formatCount } from '@/shared/lib/format'
+import { cn } from '@/shared/lib/cn'
+import { formatCount, formatRelativeTime } from '@/shared/lib/format'
 import { Avatar } from '@/shared/ui/Avatar'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
-import { ErrorState, PageSkeleton } from '@/shared/ui/AsyncState'
+import { EmptyState, ErrorState, PageSkeleton } from '@/shared/ui/AsyncState'
+import { Card } from '@/shared/ui/Card'
+
+const ACTIVITY_PAGE_SIZE = 20
+const activityTabs = [
+  { value: 'posts', label: 'Posts' },
+  { value: 'commented', label: 'Commented' },
+  { value: 'liked', label: 'Liked' },
+  { value: 'favorite', label: 'Favorite' },
+] as const
 
 export function UserCenterPage() {
   const queryClient = useQueryClient()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedActivityTab = searchParams.get('activityTab')
+  const activeActivityTab = activityTabs.some(
+    (tab) => tab.value === requestedActivityTab,
+  )
+    ? requestedActivityTab!
+    : 'posts'
   const centerQuery = useQuery({
     queryKey: ['user-center'],
     queryFn: getUserCenter,
@@ -45,6 +70,14 @@ export function UserCenterPage() {
     queryKey: ['user-profile-options'],
     queryFn: getUserProfileOptions,
     staleTime: 60 * 60 * 1000,
+  })
+  const activitiesQuery = useInfiniteQuery({
+    queryKey: ['user-center', 'activities', activeActivityTab],
+    queryFn: ({ pageParam }) =>
+      getUserCenterActivities(activeActivityTab, pageParam, ACTIVITY_PAGE_SIZE),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.length < ACTIVITY_PAGE_SIZE ? undefined : pages.length + 1,
   })
   const imageMutation = useMutation({
     mutationFn: ({
@@ -107,6 +140,7 @@ export function UserCenterPage() {
     profileOptionsQuery.data?.techDirectionTreeVOList ?? [],
     data.userInfoVO.subTechDirectionId,
   )
+  const activities = activitiesQuery.data?.pages.flat() ?? []
 
   return (
     <div className="app-container py-7 sm:py-9">
@@ -243,24 +277,24 @@ export function UserCenterPage() {
               ) : null}
             </div>
             <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
-              <span>
+              <Link
+                to="/me/followers"
+                className="rounded-md transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
+              >
                 <strong className="text-ink">
                   {formatCount(counts.followerCount)}
                 </strong>{' '}
                 粉丝
-              </span>
-              <span>
+              </Link>
+              <Link
+                to="/me/following"
+                className="rounded-md transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35"
+              >
                 <strong className="text-ink">
                   {formatCount(counts.followingCount)}
                 </strong>{' '}
                 关注
-              </span>
-              <span>
-                <strong className="text-ink">
-                  {formatCount(counts.postCount)}
-                </strong>{' '}
-                Hit
-              </span>
+              </Link>
             </div>
           </div>
           <Button asChild>
@@ -345,8 +379,92 @@ export function UserCenterPage() {
       <div className="mt-7">
         <LearningCalendar />
       </div>
+
+      <section className="mt-10">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-accent">
+            Hit activity
+          </p>
+          <h2 className="mt-1 text-xl font-extrabold tracking-tight">
+            我的动态
+          </h2>
+        </div>
+
+        <div className="mt-4 flex overflow-x-auto border-b border-line">
+          {activityTabs.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              className={cn(
+                'relative shrink-0 px-4 py-3 text-sm font-semibold text-muted',
+                activeActivityTab === tab.value &&
+                  'text-brand after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-brand',
+              )}
+              onClick={() => setSearchParams({ activityTab: tab.value })}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {activitiesQuery.isLoading ? (
+          <div className="mt-4">
+            <PageSkeleton />
+          </div>
+        ) : activities.length ? (
+          <div className="mt-4 space-y-4">
+            {activities.map((activity, index) => (
+              <div
+                key={`${activity.activityType}-${activity.activityTime}-${index}`}
+              >
+                <p className="mb-2 flex items-center gap-1.5 text-xs text-muted">
+                  {activity.activityType === 'COMMENT' ? (
+                    <MessageCircle className="size-3.5" />
+                  ) : (
+                    <Users className="size-3.5" />
+                  )}
+                  {activityLabel(activity.activityType)} ·{' '}
+                  {formatRelativeTime(activity.activityTime)}
+                </p>
+                <HitCard post={activity.post} compact />
+                {activity.comment ? (
+                  <p className="-mt-3 rounded-b-xl border border-t-0 border-line bg-surface-muted px-5 py-3 text-sm text-muted">
+                    {activity.comment.comment}
+                  </p>
+                ) : null}
+              </div>
+            ))}
+            {activitiesQuery.hasNextPage ? (
+              <Button
+                className="w-full"
+                variant="secondary"
+                disabled={activitiesQuery.isFetchingNextPage}
+                onClick={() => void activitiesQuery.fetchNextPage()}
+              >
+                {activitiesQuery.isFetchingNextPage ? '加载中…' : '加载更多'}
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <Card className="mt-4">
+            <EmptyState title="这个分类还没有内容" />
+          </Card>
+        )}
+      </section>
     </div>
   )
+}
+
+function activityLabel(type: string) {
+  const labels: Record<string, string> = {
+    POST: '发布了 Hit',
+    REPOST: '转发了 Hit',
+    COMMENT: '评论了 Hit',
+    LIKED_POST: '点赞了 Hit',
+    LIKED_COMMENT: '点赞了评论',
+    FAVORITE: '收藏了 Hit',
+  }
+  return labels[type] || '产生了新动态'
 }
 
 function findSubTechDirectionName(

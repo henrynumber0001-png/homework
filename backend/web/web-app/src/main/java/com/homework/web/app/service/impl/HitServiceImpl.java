@@ -382,17 +382,25 @@ public class HitServiceImpl implements HitService {
         }
 
         HitActionType actionType = dto.getActionType();
+
+        //前端是根据 listHits()的返回值 HitPostVO 中的 boolean liked/favorited/reposted 进行判断的
+        //如果是 true，那么点击操作就是 deActive
         ActionStatus actionStatus = dto.getActionStatus();
 
         if(hitPostMapper.lockPublishedPost(postId) == null){
             throw new HomeworkException(ResultCodeEnum.HIT_NOT_EXIST);
         }
 
-        // 查询有效或已取消的历史记录，并在当前事务内锁定它。
+        // postId + action_userId + action_type 是唯一索引，也就意味着，同一个action，针对同一条post，它只能是 is_deleted = 0/ is_deleted = 1
+        // 为什么只有这一条需要把 is_deleted AS deleted? 为什么 restoreById 和 deactivateById 不用重命名呢？
+        // 因为只有 selectIncludingDeletedForUpdate 返回到实体类，所以要有映射这一步骤，而@Tablefield("is_deleted")对自定义SQL是失效的
+        // restoreById 和 deactivateById 都是update, 是根据查询条件 hit_action.id 查询到指定的行数据，然后更新 is_deleted 的值，它们只返回 int，也就是更新是否成功，不涉及 is_deleted 的映射
         HitAction existing = hitActionMapper.selectIncludingDeletedForUpdate(postId, actionUserId, actionType.getCode());
 
         boolean changed = false;
+        //如果曾经有这个 actionType 的记录，但是已经取消了（逻辑删除了）
         if (existing != null && Boolean.TRUE.equals(existing.getDeleted())) {
+            //如果现在是 激活，那么就去数据库里把这一条 action 恢复
             if (actionStatus == ActionStatus.ACTIVATE) {
                 int result = hitActionMapper.restoreById(existing.getId());
                 if (result != 1) {
@@ -400,7 +408,9 @@ public class HitServiceImpl implements HitService {
                 }
                 changed = true;
             }
+            // 如果 这个被查询的 actionType 有记录 且 没有取消（逻辑删除）
         } else if (existing != null && !Boolean.TRUE.equals(existing.getDeleted())) {
+            // 如果现在的操作是 取消，那么就把这个 action 逻辑删除
             if (actionStatus == ActionStatus.DEACTIVATE) {
                 int result = hitActionMapper.deactivateById(existing.getId());
                 if (result != 1) {
@@ -409,6 +419,7 @@ public class HitServiceImpl implements HitService {
                 changed = true;
             }
         } else {
+            // 如果HitAction里没有关于这一个action的记录，那么就新建
             if (actionStatus == ActionStatus.ACTIVATE) {
                 HitAction action = new HitAction();
                 action.setPostId(postId);

@@ -7,24 +7,26 @@ import {
 import {
   AtSign,
   BookOpenCheck,
+  BriefcaseBusiness,
+  Code2,
   Clock3,
-  Heart,
-  MessageCircle,
+  Mars,
   Send,
   UserCheck,
   UserPlus,
-  Users,
+  Venus,
 } from 'lucide-react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { HitCard } from '@/features/hit/components/HitCard'
+import { getUserProfileOptions } from '@/features/user-center/api'
+import type { TechDirectionOption } from '@/features/user-center/types'
 import {
-  getPublicUserActivities,
+  getPublicUserPosts,
   getPublicUserProfile,
   updateFollow,
 } from '@/features/user-profile/api'
-import { MembershipType } from '@/shared/constants/domain'
-import { cn } from '@/shared/lib/cn'
-import { formatCount, formatRelativeTime } from '@/shared/lib/format'
+import { MembershipStatus, MembershipType } from '@/shared/constants/domain'
+import { formatCount } from '@/shared/lib/format'
 import { Avatar } from '@/shared/ui/Avatar'
 import { Badge } from '@/shared/ui/Badge'
 import { Button } from '@/shared/ui/Button'
@@ -32,32 +34,27 @@ import { Card } from '@/shared/ui/Card'
 import { EmptyState, ErrorState, PageSkeleton } from '@/shared/ui/AsyncState'
 
 const PAGE_SIZE = 20
-const activityTabs = [
-  { value: 'posts', label: 'Posts' },
-  { value: 'commented', label: 'Commented' },
-  { value: 'liked', label: 'Liked' },
-  { value: 'favorite', label: 'Favorite' },
-] as const
-
 export function PublicUserProfilePage() {
   const queryClient = useQueryClient()
   const { userId: rawUserId } = useParams()
   const userId = Number(rawUserId)
-  const [searchParams, setSearchParams] = useSearchParams()
-  const requestedTab = searchParams.get('tab')
-  const activeTab = activityTabs.some((item) => item.value === requestedTab)
-    ? requestedTab!
-    : 'posts'
 
   const profileQuery = useQuery({
     queryKey: ['public-profile', userId],
     queryFn: () => getPublicUserProfile(userId),
   })
-  const activitiesQuery = useInfiniteQuery({
-    queryKey: ['public-profile', userId, 'activities', activeTab],
+  const profileOptionsQuery = useQuery({
+    queryKey: ['user-profile-options'],
+    queryFn: getUserProfileOptions,
+    enabled: Boolean(profileQuery.data && !profileQuery.data.blocked),
+    staleTime: 60 * 60 * 1000,
+  })
+  const postsQuery = useInfiniteQuery({
+    queryKey: ['public-profile', userId, 'posts'],
     queryFn: ({ pageParam }) =>
-      getPublicUserActivities(userId, activeTab, pageParam, PAGE_SIZE),
+      getPublicUserPosts(userId, pageParam, PAGE_SIZE),
     initialPageParam: 1,
+    enabled: Boolean(profileQuery.data && !profileQuery.data.blocked),
     getNextPageParam: (lastPage, pages) =>
       lastPage.length < PAGE_SIZE ? undefined : pages.length + 1,
   })
@@ -87,75 +84,128 @@ export function PublicUserProfilePage() {
   }
 
   const profile = profileQuery.data
-  const info = profile.membershipInfoVO
-  const activities = activitiesQuery.data?.pages.flat() || []
+  const info = profile.userInfo
+  const posts = postsQuery.data?.pages.flat() || []
+  const techDirectionName = findSubTechDirectionName(
+    profileOptionsQuery.data?.techDirectionTreeVOList ?? [],
+    info.subTechDirectionId ?? null,
+  )
 
   return (
     <div className="reading-container py-8">
       <Card className="overflow-hidden">
-        <div className="h-24 bg-[#173f73]">
-          <div className="h-full bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,.24),transparent_35%),radial-gradient(circle_at_80%_100%,rgba(79,163,220,.34),transparent_40%)]" />
-        </div>
-        <div className="px-5 pb-6 sm:px-7">
-          <div className="-mt-10 flex flex-wrap items-end justify-between gap-4">
-            <Avatar
-              src={info.avatarUrl}
-              name={info.displayName}
-              className="size-20 border-4 border-surface"
+        <div className="relative h-36 overflow-hidden bg-[#173f73] sm:h-48">
+          {info.bannerUrl ? (
+            <img
+              src={info.bannerUrl}
+              alt={`${info.displayName}的主页封面`}
+              className="absolute inset-0 z-0 size-full object-cover"
             />
-            <div className="flex gap-2">
-              {profile.self ? (
-                <Button asChild variant="secondary">
-                  <Link to="/me">进入个人中心</Link>
+          ) : null}
+          <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,.24),transparent_35%),radial-gradient(circle_at_80%_100%,rgba(79,163,220,.34),transparent_40%)]" />
+          <div className="absolute inset-x-0 bottom-0 z-10 h-20 bg-gradient-to-t from-black/25 to-transparent" />
+        </div>
+        <div className="relative px-5 pb-6 sm:px-7">
+          <div className="-mt-11 flex flex-wrap items-end justify-between gap-4 sm:-mt-12">
+            <div
+              data-testid="profile-avatar-layer"
+              className="relative z-20 rounded-full bg-surface p-1 shadow-lg"
+            >
+              <Avatar
+                src={info.avatarUrl}
+                name={info.displayName}
+                className="size-20 sm:size-24"
+              />
+            </div>
+            {!profile.self ? (
+              <div className="relative z-20 flex flex-col gap-2 pb-1">
+                <Button
+                  variant={
+                    profile.followedByCurrentUser ? 'secondary' : 'primary'
+                  }
+                  disabled={followMutation.isPending}
+                  onClick={() =>
+                    followMutation.mutate(!profile.followedByCurrentUser)
+                  }
+                >
+                  {profile.followedByCurrentUser ? (
+                    <UserCheck className="size-4" />
+                  ) : (
+                    <UserPlus className="size-4" />
+                  )}
+                  {profile.mutualFollow
+                    ? 'Mutual'
+                    : profile.followedByCurrentUser
+                      ? 'Following'
+                      : 'Follow'}
                 </Button>
-              ) : (
-                <>
-                  {profile.canFollow ? (
-                    <Button
-                      variant={
-                        profile.followedByCurrentUser ? 'secondary' : 'primary'
-                      }
-                      disabled={followMutation.isPending}
-                      onClick={() =>
-                        followMutation.mutate(!profile.followedByCurrentUser)
+                {profile.canSendPrivateMessage ? (
+                  <Button asChild variant="secondary">
+                    <Link
+                      to={
+                        profile.chatboxId
+                          ? `/messages?tab=private&chatboxId=${profile.chatboxId}`
+                          : `/messages?tab=private&userId=${userId}`
                       }
                     >
-                      {profile.followedByCurrentUser ? (
-                        <UserCheck className="size-4" />
-                      ) : (
-                        <UserPlus className="size-4" />
-                      )}
-                      {profile.followedByCurrentUser ? '已关注' : '关注'}
-                    </Button>
-                  ) : null}
-                  {profile.canSendPrivateMessage ? (
-                    <Button asChild variant="secondary">
-                      <Link to={`/messages?tab=private&userId=${userId}`}>
-                        <Send className="size-4" />
-                        私信
-                      </Link>
-                    </Button>
-                  ) : null}
-                </>
-              )}
-            </div>
+                      <Send className="size-4" />
+                      私信
+                    </Link>
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-extrabold">{info.displayName}</h1>
-            {info.memberStatus ? (
+            {profile.membershipStatus !== MembershipStatus.FREE ? (
               <Badge className="border-[#dfc98f] bg-premium-soft text-premium">
-                {info.membershipType === MembershipType.PREMIUM_PLUS
+                {profile.membershipType === MembershipType.PREMIUM_PLUS
                   ? 'Premium Plus'
                   : 'Premium'}
               </Badge>
             ) : null}
-            {profile.mutualFollow ? (
+            {profile.mutualFollow && !profile.blocked ? (
               <Badge className="border-[#add0c3] bg-success-soft text-success">
                 互相关注
               </Badge>
             ) : null}
           </div>
+          {!profile.blocked && info.accountNo ? (
+            <p className="mt-1 text-sm text-muted">@{info.accountNo}</p>
+          ) : null}
+          {!profile.blocked && info.introduction ? (
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-ink/80">
+              {info.introduction}
+            </p>
+          ) : null}
+          {!profile.blocked ? (
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted">
+              {info.gender ? (
+                <span className="inline-flex items-center gap-1.5">
+                  {info.gender === 1 ? (
+                    <Mars className="size-3.5 text-brand" />
+                  ) : (
+                    <Venus className="size-3.5 text-accent" />
+                  )}
+                  {info.gender === 1 ? '男' : '女'}
+                </span>
+              ) : null}
+              {techDirectionName ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Code2 className="size-3.5 text-brand" />
+                  {techDirectionName}
+                </span>
+              ) : null}
+              {info.companyOrSchool ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <BriefcaseBusiness className="size-3.5 text-brand" />
+                  {info.companyOrSchool}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
             <span>
               <strong className="text-ink">
@@ -169,102 +219,78 @@ export function PublicUserProfilePage() {
               </strong>{' '}
               关注
             </span>
-            <span>
-              <strong className="text-ink">
-                {formatCount(profile.postCount)}
-              </strong>{' '}
-              Hit
-            </span>
           </div>
         </div>
       </Card>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <ProfileStat
-          icon={AtSign}
-          label="累计作答"
-          value={`${formatCount(profile.answeredQuestionCount)} 题`}
-        />
-        <ProfileStat
-          icon={BookOpenCheck}
-          label="学习题库"
-          value={`${formatCount(profile.learnedBankCount)} 个`}
-        />
-        <ProfileStat
-          icon={Clock3}
-          label="学习时长"
-          value={`${formatCount(profile.studyHours)} 小时`}
-        />
-        <ProfileStat
-          icon={Heart}
-          label="收到互动"
-          value={formatCount(profile.receivedTotalActionCount)}
-        />
-      </div>
-
-      <section className="mt-7">
-        <div className="flex overflow-x-auto border-b border-line">
-          {activityTabs.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              className={cn(
-                'relative shrink-0 px-4 py-3 text-sm font-semibold text-muted',
-                activeTab === tab.value &&
-                  'text-brand after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-brand',
-              )}
-              onClick={() => setSearchParams({ tab: tab.value })}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {activitiesQuery.isLoading ? (
-          <div className="mt-4">
-            <PageSkeleton />
+      {!profile.blocked ? (
+        <>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <ProfileStat
+              icon={AtSign}
+              label="累计作答"
+              value={`${formatCount(profile.answeredQuestionCount ?? 0)} 题`}
+            />
+            <ProfileStat
+              icon={BookOpenCheck}
+              label="学习题库"
+              value={`${formatCount(profile.learnedBankCount ?? 0)} 个`}
+            />
+            <ProfileStat
+              icon={Clock3}
+              label="学习时长"
+              value={`${formatCount(profile.studyHours ?? 0)} 小时`}
+            />
           </div>
-        ) : activities.length ? (
-          <div className="mt-4 space-y-4">
-            {activities.map((activity, index) => (
-              <div
-                key={`${activity.activityType}-${activity.activityTime}-${index}`}
-              >
-                <p className="mb-2 flex items-center gap-1.5 text-xs text-muted">
-                  {activity.activityType === 'COMMENT' ? (
-                    <MessageCircle className="size-3.5" />
-                  ) : (
-                    <Users className="size-3.5" />
-                  )}
-                  {activityLabel(activity.activityType)} ·{' '}
-                  {formatRelativeTime(activity.activityTime)}
-                </p>
-                <HitCard post={activity.post} compact />
-                {activity.comment ? (
-                  <p className="-mt-3 rounded-b-xl border border-t-0 border-line bg-surface-muted px-5 py-3 text-sm text-muted">
-                    {activity.comment.comment}
-                  </p>
+
+          <section className="mt-7">
+            <h2 className="text-xl font-extrabold tracking-tight">Posts</h2>
+
+            {postsQuery.isLoading ? (
+              <div className="mt-4">
+                <PageSkeleton />
+              </div>
+            ) : posts.length ? (
+              <div className="mt-4 space-y-4">
+                {posts.map((post) => (
+                  <div key={post.postId}>
+                    <HitCard post={post} compact />
+                  </div>
+                ))}
+                {postsQuery.hasNextPage ? (
+                  <Button
+                    className="w-full"
+                    variant="secondary"
+                    onClick={() => void postsQuery.fetchNextPage()}
+                  >
+                    加载更多
+                  </Button>
                 ) : null}
               </div>
-            ))}
-            {activitiesQuery.hasNextPage ? (
-              <Button
-                className="w-full"
-                variant="secondary"
-                onClick={() => void activitiesQuery.fetchNextPage()}
-              >
-                加载更多
-              </Button>
-            ) : null}
-          </div>
-        ) : (
-          <Card className="mt-4">
-            <EmptyState title="这个分类还没有内容" />
-          </Card>
-        )}
-      </section>
+            ) : (
+              <Card className="mt-4">
+                <EmptyState title="这个用户还没有发布 Post" />
+              </Card>
+            )}
+          </section>
+        </>
+      ) : null}
     </div>
   )
+}
+
+function findSubTechDirectionName(
+  directions: TechDirectionOption[],
+  selectedId: number | null,
+) {
+  if (selectedId === null) return null
+  for (const direction of directions) {
+    const selected = direction.subTechDirectionTreeVOList.find(
+      (item) => item.subTechDirectionId === selectedId,
+    )
+    if (selected) return selected.subTechDirectionName
+  }
+  return null
 }
 
 function ProfileStat({
@@ -272,7 +298,7 @@ function ProfileStat({
   label,
   value,
 }: {
-  icon: typeof Heart
+  icon: typeof AtSign
   label: string
   value: string
 }) {
@@ -283,16 +309,4 @@ function ProfileStat({
       <p className="mt-1 text-xs text-muted">{label}</p>
     </Card>
   )
-}
-
-function activityLabel(type: string) {
-  const labels: Record<string, string> = {
-    POST: '发布了 Hit',
-    REPOST: '转发了 Hit',
-    COMMENT: '评论了 Hit',
-    LIKED_POST: '点赞了 Hit',
-    LIKED_COMMENT: '点赞了评论',
-    FAVORITE: '收藏了 Hit',
-  }
-  return labels[type] || '产生了新动态'
 }

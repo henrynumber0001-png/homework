@@ -1,5 +1,6 @@
 package com.homework.web.app.vo;
 
+import com.homework.model.enums.Gender;
 import com.homework.model.enums.MembershipType;
 import com.homework.model.enums.MembershipStatus;
 import java.time.LocalDateTime;

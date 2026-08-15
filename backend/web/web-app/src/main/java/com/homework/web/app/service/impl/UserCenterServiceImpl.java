@@ -3,6 +3,8 @@ package com.homework.web.app.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.PageResult;
 import com.homework.common.result.ResultCodeEnum;
@@ -29,10 +31,16 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class UserCenterServiceImpl implements UserCenterService {
+    private static final Set<String> ACTIVITY_TABS = Set.of("posts", "commented", "liked", "favorite");
+
     private final UserInfoMapper userInfoMapper;
     private final MembershipAccessService membershipAccessService;
     private final UserFollowMapper userFollowMapper;
     private final HitPostMapper hitPostMapper;
+    private final HitCommentMapper hitCommentMapper;
+    private final HitActionMapper hitActionMapper;
+    private final HitCommentLikeMapper hitCommentLikeMapper;
+    private final UserCenterActivityMapper userCenterActivityMapper;
     private final UserQuestionAnswerMapper userQuestionAnswerMapper;
     private final UserFavoriteQuestionMapper userFavoriteQuestionMapper;
     private final UserQuestionNoteMapper userQuestionNoteMapper;
@@ -46,6 +54,8 @@ public class UserCenterServiceImpl implements UserCenterService {
     private final UserImageUrlResolver userImageUrlResolver;
     private final SubTechDirectionMapper subTechDirectionMapper;
     private final TechDirectionMapper techDirectionMapper;
+    private final ObjectMapper objectMapper;
+    private final UserBlockMapper userBlockMapper;
 
     @Override
     public UserCenterPageVO getCenterPageInfo(Long userId) {
@@ -74,7 +84,6 @@ public class UserCenterServiceImpl implements UserCenterService {
         userInfoVO.setCompanyOrSchool(userInfo.getCompanyOrSchool());
         userInfoVO.setSubTechDirectionId(userInfo.getSubTechDirectionId());
 
-
         userCenterPageVO.setUserInfoVO(userInfoVO);
 
         MembershipAccessSnapshot membership = membershipAccessService.getAccess(userId);
@@ -92,10 +101,6 @@ public class UserCenterServiceImpl implements UserCenterService {
         userFollowingQueryWrapper.eq(UserFollow::getFollowerUserId, userId);
         Long followingCount = userFollowMapper.selectCount(userFollowingQueryWrapper);
 
-        //组装postCount
-        LambdaQueryWrapper<HitPost> postQueryWrapper = new LambdaQueryWrapper<>();
-        postQueryWrapper.eq(HitPost::getPostUserId, userId);
-        Long postCount = hitPostMapper.selectCount(postQueryWrapper);
 
         //组装answeredQuestionCount
         LambdaQueryWrapper<UserQuestionAnswer> userQuestionAnswerQueryWrapper = new LambdaQueryWrapper<>();
@@ -139,13 +144,172 @@ public class UserCenterServiceImpl implements UserCenterService {
         userCenterCountsVO.setNoteCount(noteCount);
         userCenterCountsVO.setFollowerCount(followerCount);
         userCenterCountsVO.setFollowingCount(followingCount);
-        userCenterCountsVO.setPostCount(postCount);
         userCenterCountsVO.setAnsweredQuestionCount(answeredQuestionCount);
 
         userCenterPageVO.setCountsVO(userCenterCountsVO);
         return userCenterPageVO;
 
 
+    }
+
+    /**
+     * 查询当前登录用户自己的 Hit 活动历史。
+     *
+     * <p>这里故意使用分步骤和普通 for 循环，方便初学者沿着“查 ID → 批量查详情 → 组装 VO”
+     * 的顺序阅读，同时仍然避免逐条访问数据库造成 N+1 查询。</p>
+     */
+    @Override
+    public List<UserCenterActivityVO> listActivities(Long userId, String tab, Integer pageNum, Integer pageSize) {
+        if (userId == null) {
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+        if (tab == null || !ACTIVITY_TABS.contains(tab)) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        long pageNumber = pageNum == null ? 1 : Math.max(pageNum, 1);
+        long pageSizeValue = pageSize == null ? 20 : Math.min(Math.max(pageSize, 1), 100);
+        long offset = (pageNumber - 1) * pageSizeValue;
+
+        // 第一步：只查询这一页活动所关联的 postId 和 commentId。
+        List<UserCenterActivityRowVO> rows = userCenterActivityMapper.listActivities(userId, tab, offset, pageSizeValue);
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+
+        // 第二步：收集 ID。Set 可以自动去重，避免同一 Post 被重复查询。
+        Set<Long> postIds = new HashSet<>();
+        Set<Long> commentIds = new HashSet<>();
+        for (UserCenterActivityRowVO row : rows) {
+            postIds.add(row.getPostId());
+            if (row.getCommentId() != null) {
+                commentIds.add(row.getCommentId());
+            }
+        }
+
+        // 第三步：批量查询 Post 和 Comment，再按 ID 放入 Map，后面可以直接 get(id)。
+        Map<Long, HitPost> postMap = new HashMap<>();
+        List<HitPost> hitPostList = hitPostMapper.selectByIds(postIds);
+        for (HitPost post :hitPostList) {
+            postMap.put(post.getId(), post);
+        }
+
+        Map<Long, HitComment> commentMap = new HashMap<>();
+        if (!commentIds.isEmpty()) {
+            List<HitComment> hitCommentList = hitCommentMapper.selectByIds(commentIds);
+            for (HitComment comment :hitCommentList ) {
+                commentMap.put(comment.getId(), comment);
+            }
+        }
+
+        // 第四步：批量查询本页涉及的作者。
+        Set<Long> authorIds = new HashSet<>();
+
+        Collection<HitPost> hitPosts = postMap.values();
+        for (HitPost post : hitPosts) {
+            authorIds.add(post.getPostUserId());
+        }
+        Collection<HitComment> hitComments = commentMap.values();
+        for (HitComment comment : hitComments) {
+            authorIds.add(comment.getCommentUserId());
+        }
+
+        Map<Long, UserInfo> userMap = new HashMap<>();
+        if (!authorIds.isEmpty()) {
+            List<UserInfo> userInfos = userInfoMapper.selectByIds(authorIds);
+            for (UserInfo user : userInfos) {
+                userMap.put(user.getId(), user);
+            }
+        }
+
+        // 第五步：读取当前用户对这些内容仍然有效的互动状态。
+        Map<Long, Set<HitActionType>> actionTypesByPostId = new HashMap<>();
+        LambdaQueryWrapper<HitAction> actionQuery = new LambdaQueryWrapper<>();
+        actionQuery.eq(HitAction::getActionUserId, userId)
+                .in(HitAction::getPostId, postIds);
+        for (HitAction action : hitActionMapper.selectList(actionQuery)) {
+            Set<HitActionType> actionTypes = actionTypesByPostId.computeIfAbsent(
+                    action.getPostId(), ignored -> new HashSet<>());
+            actionTypes.add(action.getActionType());
+        }
+
+        Set<Long> likedCommentIds = new HashSet<>();
+        if (!commentIds.isEmpty()) {
+            LambdaQueryWrapper<HitCommentLike> commentLikeQuery = new LambdaQueryWrapper<>();
+            commentLikeQuery.eq(HitCommentLike::getActionUserId, userId)
+                    .in(HitCommentLike::getCommentId, commentIds);
+            for (HitCommentLike commentLike : hitCommentLikeMapper.selectList(commentLikeQuery)) {
+                likedCommentIds.add(commentLike.getCommentId());
+            }
+        }
+
+        // 第六步：按照 rows 原来的时间顺序组装前端需要的活动列表。
+        List<UserCenterActivityVO> result = new ArrayList<>();
+        for (UserCenterActivityRowVO row : rows) {
+            HitPost post = postMap.get(row.getPostId());
+            if (post == null) {
+                continue;
+            }
+
+            UserCenterActivityVO activityVO = new UserCenterActivityVO();
+            activityVO.setActivityType(row.getActivityType());
+            activityVO.setActivityTime(row.getActivityTime());
+
+            UserInfo postAuthor = userMap.get(post.getPostUserId());
+            Set<HitActionType> actionTypes = actionTypesByPostId.getOrDefault(post.getId(), Set.of());
+            HitPostVO postVO = new HitPostVO();
+            postVO.setPostId(post.getId());
+            postVO.setUserId(post.getPostUserId());
+            postVO.setDisplayName(postAuthor == null ? "该用户已注销" : postAuthor.getDisplayName());
+            postVO.setAvatar(postAuthor == null ? null : userImageUrlResolver.resolveAvatar(postAuthor.getAvatarObjectKey()));
+            postVO.setContent(post.getContent());
+            postVO.setTags(readActivityTags(post.getTagsJson()));
+            postVO.setCommentCount(post.getCommentCount() == null ? 0 : post.getCommentCount());
+            postVO.setLikeCount(post.getLikeCount() == null ? 0 : post.getLikeCount());
+            postVO.setFavoriteCount(post.getFavoriteCount() == null ? 0 : post.getFavoriteCount());
+            postVO.setRepostCount(post.getRepostCount() == null ? 0 : post.getRepostCount());
+            postVO.setLiked(actionTypes.contains(HitActionType.LIKE));
+            postVO.setFavorited(actionTypes.contains(HitActionType.FAVORITE));
+            postVO.setReposted(actionTypes.contains(HitActionType.REPOST));
+            postVO.setCreatedTime(post.getCreatedTime());
+            activityVO.setPost(postVO);
+
+            if (row.getCommentId() != null) {
+                HitComment comment = commentMap.get(row.getCommentId());
+                if (comment != null) {
+                    UserInfo commentAuthor = userMap.get(comment.getCommentUserId());
+                    HitCommentVO commentVO = new HitCommentVO();
+                    commentVO.setCommentId(comment.getId());
+                    commentVO.setPostId(comment.getPostId());
+                    commentVO.setCommentUserId(comment.getCommentUserId());
+                    commentVO.setDisplayName(commentAuthor == null ? "该用户已注销"
+                            : commentAuthor.getDisplayName());
+                    commentVO.setAvatar(commentAuthor == null ? null
+                            : userImageUrlResolver.resolveAvatar(commentAuthor.getAvatarObjectKey()));
+                    commentVO.setParentCommentId(comment.getParentCommentId());
+                    commentVO.setComment(comment.getComment());
+                    commentVO.setLikeCount(comment.getLikeCount() == null ? 0 : comment.getLikeCount());
+                    commentVO.setLiked(likedCommentIds.contains(comment.getId()));
+                    commentVO.setCreatedTime(comment.getCreatedTime());
+                    activityVO.setComment(commentVO);
+                }
+            }
+            result.add(activityVO);
+        }
+        return result;
+    }
+
+    private List<String> readActivityTags(String tagsJson) {
+        if (tagsJson == null || tagsJson.isBlank()) {
+            return List.of();
+        }
+        try {
+            return objectMapper.readValue(
+                    tagsJson,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+        } catch (JsonProcessingException ignored) {
+            return List.of();
+        }
     }
 
     @Override
@@ -881,6 +1045,126 @@ public class UserCenterServiceImpl implements UserCenterService {
 
         profileOptionsVO.setTechDirectionTreeVOList(techDirectionTreeVOList);
         return profileOptionsVO;
+    }
+
+    @Override
+    //查看粉丝列表（当前用户作为被关注者）
+    public List<FollowerVO> getFollowers(Long userId,Integer pageNum, Integer pageSize) {
+
+        if(userId == null){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+
+        pageNum = pageNum == null ? 1 : Math.max(pageNum, 1);
+        pageSize = pageSize == null ? 20 : Math.min(Math.max(pageSize, 1), 50);
+
+        LambdaQueryWrapper<UserFollow>  queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(UserFollow::getFolloweeUserId,userId) //多对一
+                .select(UserFollow::getFollowerUserId)
+                .orderByDesc(UserFollow::getCreatedTime)
+                .orderByDesc(UserFollow::getId);
+
+        Page<UserFollow> page = new Page<>(pageNum,pageSize,false);
+        Page<UserFollow> userFollowPage = userFollowMapper.selectPage(page, queryWrapper);
+
+        List<Long> followerIds = userFollowPage.getRecords().stream()
+                .map(UserFollow::getFollowerUserId)
+                .toList();
+        //没查到，要返回空
+        if (followerIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<UserInfo> followerUserInfos = userInfoMapper.selectByIds(followerIds);
+
+        List<FollowerVO> followerVOList = new ArrayList<>();
+        followerUserInfos.forEach(followerInfo -> {
+            FollowerVO followerVO = new FollowerVO();
+            followerVO.setFollowerUserId(followerInfo.getId());
+            followerVO.setFollowerDisplayName(followerInfo.getDisplayName());
+            followerVO.setFollowerAvatarUrl(userImageUrlResolver.resolveAvatar(followerInfo.getAvatarObjectKey()));
+
+            //能查到的 followerUserInfo，那一定是对方已经关注你了的，但是你不一定关注对方
+            //先查一下是否mutual，如果mutual = false，那说明你没有 follow 对方，那么按钮要显示 follow；如果mutual = true，那么按钮显示mutual
+            LambdaQueryWrapper<UserFollow> mutualFollowQuery = new LambdaQueryWrapper<>();
+            mutualFollowQuery.eq(UserFollow::getFollowerUserId,userId) //一对多
+                    .eq(UserFollow::getFolloweeUserId,followerInfo.getId());
+            boolean mutualFollow = userFollowMapper.selectCount(mutualFollowQuery) > 0;
+
+
+            LambdaQueryWrapper<UserBlock> userBlockQuery = new LambdaQueryWrapper<>();
+            userBlockQuery.eq(UserBlock::getBlockerUserId,userId)
+                    .eq(UserBlock::getBlockedUserId,followerInfo.getId())
+                    .or()
+                    .eq(UserBlock::getBlockerUserId,followerInfo.getId())
+                    .eq(UserBlock::getBlockedUserId,userId);
+            boolean blocked = userBlockMapper.selectCount(userBlockQuery) > 0;
+
+            followerVO.setMutualFollow(mutualFollow);
+            followerVO.setBlocked(blocked);
+            followerVO.setFollowerUserId(followerInfo.getId());
+            followerVOList.add(followerVO);
+        });
+        return followerVOList;
+    }
+
+    @Override
+    //查看关注列表（当前用户作为关注者）
+    public List<FolloweeVO> getFollowing(Long userId, Integer pageNum, Integer pageSize) {
+        if(userId == null){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+
+        pageNum = pageNum == null ? 1 : Math.max(pageNum, 1);
+        pageSize = pageSize == null ? 20 : Math.min(Math.max(pageSize, 1), 50);
+
+        LambdaQueryWrapper<UserFollow>  queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(UserFollow::getFollowerUserId,userId)
+                .select(UserFollow::getFolloweeUserId)
+                .orderByDesc(UserFollow::getCreatedTime)
+                .orderByDesc(UserFollow::getId);
+
+        Page<UserFollow> page = new Page<>(pageNum,pageSize,false);
+        Page<UserFollow> userFollowPage = userFollowMapper.selectPage(page, queryWrapper);
+
+        List<Long> followeeIds = userFollowPage.getRecords().stream()
+                .map(UserFollow::getFolloweeUserId)
+                .toList();
+        if (followeeIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<UserInfo> followeeUserInfos = userInfoMapper.selectByIds(followeeIds);
+
+        List<FolloweeVO> followerVOList = new ArrayList<>();
+        followeeUserInfos.forEach(followeeUserInfo -> {
+            FolloweeVO followeeVO = new FolloweeVO();
+            followeeVO.setFolloweeUserId(followeeUserInfo.getId());
+            followeeVO.setFolloweeDisplayName(followeeUserInfo.getDisplayName());
+            followeeVO.setFolloweeAvatarUrl(userImageUrlResolver.resolveAvatar(followeeUserInfo.getAvatarObjectKey()));
+
+            //能查到的 followeeUserInfo，那一定是你已经关注对方了，那么按钮显示 following
+            //然后继续查一下对方是否关注了你，如果mutual = false，那说明对方没有 follow 你，那么按钮继续显示 following；如果mutual = true，那么按钮显示mutual
+            LambdaQueryWrapper<UserFollow> mutualFollowQuery = new LambdaQueryWrapper<>();
+            mutualFollowQuery.eq(UserFollow::getFollowerUserId,followeeUserInfo.getId())
+                    .eq(UserFollow::getFolloweeUserId,userId);
+            boolean mutualFollow = userFollowMapper.selectCount(mutualFollowQuery) > 0;
+
+            LambdaQueryWrapper<UserBlock> userBlockQuery = new LambdaQueryWrapper<>();
+            userBlockQuery.eq(UserBlock::getBlockerUserId,userId)
+                    .eq(UserBlock::getBlockedUserId,followeeUserInfo.getId())
+                    .or()
+                    .eq(UserBlock::getBlockerUserId,followeeUserInfo.getId())
+                    .eq(UserBlock::getBlockedUserId,userId);
+            boolean blocked = userBlockMapper.selectCount(userBlockQuery) > 0;
+
+            followeeVO.setMutualFollow(mutualFollow);
+            followeeVO.setBlocked(blocked);
+            followeeVO.setFolloweeUserId(followeeUserInfo.getId());
+            followerVOList.add(followeeVO);
+        });
+        return followerVOList;
+
     }
 
 }

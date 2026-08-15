@@ -1,30 +1,34 @@
-import type { HitComment, HitPost } from '@/features/hit/types'
-import type { MembershipInfo } from '@/shared/types/session'
+import type {
+  GenderValue,
+  MembershipStatusValue,
+  MembershipTypeValue,
+} from '@/shared/constants/domain'
 
 export interface PublicUserProfile {
   userId: number
-  membershipInfoVO: MembershipInfo
+  userInfo: {
+    accountNo?: string
+    displayName: string
+    avatarUrl: string | null
+    bannerUrl: string | null
+    companyOrSchool?: string | null
+    subTechDirectionId?: number | null
+    gender?: GenderValue | null
+    introduction?: string | null
+  }
+  membershipStatus: MembershipStatusValue
+  membershipType: MembershipTypeValue | null
   followerCount: number
   followingCount: number
-  postCount: number
-  answeredQuestionCount: number
-  learnedBankCount: number
-  studyHours: number
-  receivedTotalActionCount: number
+  answeredQuestionCount?: number
+  learnedBankCount?: number
+  studyHours?: number
   self: boolean
   followedByCurrentUser: boolean | null
   mutualFollow: boolean
-  canFollow: boolean
+  blocked: boolean
   canSendPrivateMessage: boolean
   chatboxId: number | null
-}
-
-export interface PublicUserActivity {
-  activityType:
-    'POST' | 'REPOST' | 'COMMENT' | 'LIKED_POST' | 'LIKED_COMMENT' | 'FAVORITE'
-  activityTime: string
-  post: HitPost
-  comment: HitComment | null
 }
 
 export interface FollowState {

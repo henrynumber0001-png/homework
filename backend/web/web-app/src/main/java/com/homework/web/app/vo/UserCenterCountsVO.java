@@ -7,8 +7,6 @@ public class UserCenterCountsVO {
 
     private long followerCount;
     private long followingCount;
-    private long postCount;
-
 
     private long answeredQuestionCount;
     private long learnedBankCount; //有作答记录的题库数量

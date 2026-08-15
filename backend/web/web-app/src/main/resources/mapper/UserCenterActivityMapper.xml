@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.homework.web.app.mapper.PublicUserProfileMapper">
-    <select id="listActivities" resultType="com.homework.web.app.vo.PublicUserProfileActivityRowVO">
+<mapper namespace="com.homework.web.app.mapper.UserCenterActivityMapper">
+    <select id="listActivities" resultType="com.homework.web.app.vo.UserCenterActivityRowVO">
         <choose>
             <when test="tab == 'posts'">
                 SELECT activity_type, activity_time, activity_id, post_id, comment_id

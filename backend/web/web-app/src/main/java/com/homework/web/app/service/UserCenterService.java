@@ -6,8 +6,12 @@ import com.homework.web.app.dto.EditProfileDTO;
 import com.homework.web.app.vo.*;
 import jakarta.validation.Valid;
 
+import java.util.List;
+
 public interface UserCenterService {
     UserCenterPageVO getCenterPageInfo(Long userId);
+
+    List<UserCenterActivityVO> listActivities(Long userId, String tab, Integer pageNum, Integer pageSize);
 
     PageResult<WrongQuestionBankVO> getWrongQuestionBanks(Long userId, GroupType groupType, Integer pageNum, Integer pageSize);
 
@@ -35,4 +39,7 @@ public interface UserCenterService {
 
     ProfileOptionsVO getProfileOptions();
 
+    List<FollowerVO> getFollowers(Long userId,Integer pageNum, Integer pageSize);
+
+    List<FolloweeVO> getFollowing(Long userId, Integer pageNum, Integer pageSize);
 }

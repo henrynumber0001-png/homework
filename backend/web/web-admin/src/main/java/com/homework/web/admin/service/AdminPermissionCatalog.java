@@ -6,6 +6,7 @@ import java.util.Set;
 /** 管理端允许分配的权限码目录。 */
 public final class AdminPermissionCatalog {
 
+    //创建一个 List<String>，里面的元素都是以 Json 的格式存储的
     public static final List<String> ALL = List.of(
             "dashboard:view",
             "bank:view",

@@ -95,6 +95,11 @@ const UserQuestionLibraryPage = lazy(() =>
     (module) => ({ default: module.UserQuestionLibraryPage }),
   ),
 )
+const UserFollowListPage = lazy(() =>
+  import('@/features/user-center/pages/UserFollowListPage').then((module) => ({
+    default: module.UserFollowListPage,
+  })),
+)
 const PublicUserProfilePage = lazy(() =>
   import('@/features/user-profile/pages/PublicUserProfilePage').then(
     (module) => ({ default: module.PublicUserProfilePage }),
@@ -177,6 +182,14 @@ export const router = createBrowserRouter([
           {
             path: '/me/edit',
             element: route(<UserProfileEditPage />),
+          },
+          {
+            path: '/me/followers',
+            element: route(<UserFollowListPage kind="followers" />),
+          },
+          {
+            path: '/me/following',
+            element: route(<UserFollowListPage kind="following" />),
           },
           {
             path: '/me/wrong-questions',

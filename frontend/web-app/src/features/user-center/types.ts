@@ -3,11 +3,11 @@ import type {
   MembershipTypeValue,
   QuestionTypeValue,
 } from '@/shared/constants/domain'
+import type { HitComment, HitPost } from '@/features/hit/types'
 
 export interface UserCenterCounts {
   followerCount: number
   followingCount: number
-  postCount: number
   answeredQuestionCount: number
   learnedBankCount: number
   studyHours: number
@@ -32,6 +32,32 @@ export interface UserCenterData {
   aiFeaturesEnabled: boolean
   countsVO: UserCenterCounts
 }
+
+export interface UserCenterActivity {
+  activityType:
+    'POST' | 'REPOST' | 'COMMENT' | 'LIKED_POST' | 'LIKED_COMMENT' | 'FAVORITE'
+  activityTime: string
+  post: HitPost
+  comment: HitComment | null
+}
+
+export interface FollowerListItem {
+  followerUserId: number
+  followerDisplayName: string
+  followerAvatarUrl: string | null
+  mutualFollow: boolean
+  blocked: boolean
+}
+
+export interface FollowingListItem {
+  followeeUserId: number
+  followeeDisplayName: string
+  followeeAvatarUrl: string | null
+  mutualFollow: boolean
+  blocked: boolean
+}
+
+export type FollowListKind = 'followers' | 'following'
 
 export type UserImageType = 'avatar' | 'banner'
 

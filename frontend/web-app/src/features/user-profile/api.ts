@@ -1,9 +1,9 @@
 import { apiRequest } from '@/shared/api/client'
 import type {
   FollowState,
-  PublicUserActivity,
   PublicUserProfile,
 } from '@/features/user-profile/types'
+import type { HitPost } from '@/features/hit/types'
 
 export function getPublicUserProfile(userId: number) {
   return apiRequest<PublicUserProfile>({
@@ -11,15 +11,10 @@ export function getPublicUserProfile(userId: number) {
   })
 }
 
-export function getPublicUserActivities(
-  userId: number,
-  tab: string,
-  pageNum = 1,
-  pageSize = 20,
-) {
-  return apiRequest<PublicUserActivity[]>({
-    url: `/app/users/${userId}/profile/activities`,
-    params: { tab, pageNum, pageSize },
+export function getPublicUserPosts(userId: number, pageNum = 1, pageSize = 20) {
+  return apiRequest<HitPost[]>({
+    url: `/app/users/${userId}/profile/posts`,
+    params: { pageNum, pageSize },
   })
 }
 
