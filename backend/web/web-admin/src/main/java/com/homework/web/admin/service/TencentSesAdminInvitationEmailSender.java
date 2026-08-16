@@ -24,6 +24,7 @@ public class TencentSesAdminInvitationEmailSender implements EmailInvitationSend
         try {
             Template template = new Template();
             template.setTemplateID(properties.getTemplateId());
+            //从 JSON 语法看，值可以是 int、long、boolean 等类型；但对于腾讯云 SES，建议统一转换成字符串。
             template.setTemplateData(objectMapper.writeValueAsString(Map.of(
                     "displayName", displayName,
                     "invitationUrl", invitationUrl,

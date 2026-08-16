@@ -50,6 +50,7 @@ public class TencentSesEmailCodeSender implements EmailCodeSender {
         }
 
     }
+    //从 JSON 语法看，值可以是 int、long、boolean 等类型；但对于腾讯云 SES，建议统一转换成字符串。
     private String buildTemplateData(String code) throws JsonProcessingException {
         return objectMapper.writeValueAsString(Map.of("code", code, "minutes", "1"));
     }
