@@ -6,10 +6,12 @@ import {
 } from '@tanstack/react-query'
 import {
   AtSign,
+  Ban,
   BookOpenCheck,
   BriefcaseBusiness,
   Code2,
   Clock3,
+  LoaderCircle,
   Mars,
   Send,
   UserCheck,
@@ -17,14 +19,20 @@ import {
   Venus,
 } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { HitCard } from '@/features/hit/components/HitCard'
 import { getUserProfileOptions } from '@/features/user-center/api'
 import type { TechDirectionOption } from '@/features/user-center/types'
 import {
   getPublicUserPosts,
   getPublicUserProfile,
+  updateBlock,
   updateFollow,
 } from '@/features/user-profile/api'
+import {
+  BlockStatus,
+  type PublicUserProfile,
+} from '@/features/user-profile/types'
 import { MembershipStatus, MembershipType } from '@/shared/constants/domain'
 import { formatCount } from '@/shared/lib/format'
 import { Avatar } from '@/shared/ui/Avatar'
@@ -66,6 +74,29 @@ export function PublicUserProfilePage() {
       })
     },
   })
+  const blockMutation = useMutation({
+    mutationFn: (blockedByCurrentUser: boolean) =>
+      updateBlock(
+        userId,
+        blockedByCurrentUser ? BlockStatus.DEACTIVATE : BlockStatus.ACTIVATE,
+      ),
+    onSuccess: (result) => {
+      queryClient.setQueryData<PublicUserProfile>(
+        ['public-profile', userId],
+        (current) =>
+          current
+            ? { ...current, blockedByCurrentUser: result.blocked }
+            : current,
+      )
+      void queryClient.invalidateQueries({
+        queryKey: ['public-profile', userId],
+      })
+      toast.success(result.blocked ? '已拉黑该用户' : '已解除拉黑')
+    },
+    onError: () => {
+      toast.error('拉黑状态更新失败，请稍后重试')
+    },
+  })
 
   if (profileQuery.isLoading) {
     return (
@@ -104,58 +135,79 @@ export function PublicUserProfilePage() {
           ) : null}
           <div className="absolute inset-0 z-10 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,.24),transparent_35%),radial-gradient(circle_at_80%_100%,rgba(79,163,220,.34),transparent_40%)]" />
           <div className="absolute inset-x-0 bottom-0 z-10 h-20 bg-gradient-to-t from-black/25 to-transparent" />
+          {!profile.self ? (
+            <Button
+              className="absolute bottom-3 right-3 z-20 min-h-8 rounded-full border border-white/40 bg-slate-950/30 px-3 text-[11px] text-white shadow-sm shadow-black/10 backdrop-blur-md hover:border-white/60 hover:bg-slate-950/45 sm:bottom-4 sm:right-4"
+              size="sm"
+              variant="ghost"
+              aria-pressed={profile.blockedByCurrentUser}
+              disabled={blockMutation.isPending}
+              onClick={() => blockMutation.mutate(profile.blockedByCurrentUser)}
+            >
+              {blockMutation.isPending ? (
+                <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" />
+              ) : (
+                <Ban className="size-3.5" />
+              )}
+              {blockMutation.isPending
+                ? '处理中'
+                : profile.blockedByCurrentUser
+                  ? '解除拉黑'
+                  : '拉黑'}
+            </Button>
+          ) : null}
         </div>
-        <div className="relative px-5 pb-6 sm:px-7">
-          <div className="-mt-11 flex flex-wrap items-end justify-between gap-4 sm:-mt-12">
+        <div className="relative flow-root px-5 pb-6 sm:px-7">
+          <div className="-mt-11 flex sm:-mt-12">
             <div
               data-testid="profile-avatar-layer"
-              className="relative z-20 rounded-full bg-surface p-1 shadow-lg"
+              className="relative z-20 size-[5.5rem] shrink-0 overflow-hidden rounded-full bg-surface p-1 shadow-lg sm:size-[6.5rem]"
             >
               <Avatar
                 src={info.avatarUrl}
                 name={info.displayName}
-                className="size-20 sm:size-24"
+                className="size-full"
               />
             </div>
-            {!profile.self ? (
-              <div className="relative z-20 flex flex-col gap-2 pb-1">
-                <Button
-                  variant={
-                    profile.followedByCurrentUser ? 'secondary' : 'primary'
-                  }
-                  disabled={followMutation.isPending}
-                  onClick={() =>
-                    followMutation.mutate(!profile.followedByCurrentUser)
-                  }
-                >
-                  {profile.followedByCurrentUser ? (
-                    <UserCheck className="size-4" />
-                  ) : (
-                    <UserPlus className="size-4" />
-                  )}
-                  {profile.mutualFollow
-                    ? 'Mutual'
-                    : profile.followedByCurrentUser
-                      ? 'Following'
-                      : 'Follow'}
-                </Button>
-                {profile.canSendPrivateMessage ? (
-                  <Button asChild variant="secondary">
-                    <Link
-                      to={
-                        profile.chatboxId
-                          ? `/messages?tab=private&chatboxId=${profile.chatboxId}`
-                          : `/messages?tab=private&userId=${userId}`
-                      }
-                    >
-                      <Send className="size-4" />
-                      私信
-                    </Link>
-                  </Button>
-                ) : null}
-              </div>
-            ) : null}
           </div>
+          {!profile.self ? (
+            <div className="absolute right-5 top-3 z-20 flex flex-col gap-2 sm:right-7">
+              <Button
+                variant={
+                  profile.followedByCurrentUser ? 'secondary' : 'primary'
+                }
+                disabled={followMutation.isPending}
+                onClick={() =>
+                  followMutation.mutate(!profile.followedByCurrentUser)
+                }
+              >
+                {profile.followedByCurrentUser ? (
+                  <UserCheck className="size-4" />
+                ) : (
+                  <UserPlus className="size-4" />
+                )}
+                {profile.mutualFollow
+                  ? 'Mutual'
+                  : profile.followedByCurrentUser
+                    ? 'Following'
+                    : 'Follow'}
+              </Button>
+              {profile.canSendPrivateMessage ? (
+                <Button asChild variant="secondary">
+                  <Link
+                    to={
+                      profile.chatboxId
+                        ? `/messages?tab=private&chatboxId=${profile.chatboxId}`
+                        : `/messages?tab=private&userId=${userId}`
+                    }
+                  >
+                    <Send className="size-4" />
+                    私信
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <h1 className="text-2xl font-extrabold">{info.displayName}</h1>

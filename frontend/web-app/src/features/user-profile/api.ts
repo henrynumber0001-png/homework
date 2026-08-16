@@ -1,5 +1,7 @@
 import { apiRequest } from '@/shared/api/client'
 import type {
+  BlockResult,
+  BlockStatusValue,
   FollowState,
   PublicUserProfile,
 } from '@/features/user-profile/types'
@@ -23,5 +25,13 @@ export function updateFollow(userId: number, active: boolean) {
     url: `/app/users/${userId}/follow`,
     method: 'PUT',
     data: { active },
+  })
+}
+
+export function updateBlock(userId: number, blockStatus: BlockStatusValue) {
+  return apiRequest<BlockResult>({
+    url: `/app/users/${userId}/block`,
+    method: 'PUT',
+    data: { blockStatus },
   })
 }

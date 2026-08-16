@@ -5,10 +5,12 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.homework.common.exception.HomeworkException;
+import com.homework.common.result.Result;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.entity.*;
 import com.homework.model.enums.*;
+import com.homework.web.app.dto.BlockActionDTO;
 import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.MembershipAccessService;
 import com.homework.web.app.service.MembershipAccessSnapshot;
@@ -16,6 +18,7 @@ import com.homework.web.app.service.PublicUserProfileService;
 import com.homework.web.app.vo.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
@@ -50,6 +53,10 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_USER_NOT_EXIST);
         }
 
+        if(currentUserId == null){
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+
         boolean self = Objects.equals(currentUserId, profileUserId);
 
         // 查看自己时没有关注关系，跳过查询既符合页面语义，也能减少不必要的数据库访问。
@@ -69,6 +76,7 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
         }
 
         boolean blocked = false;
+        boolean blockedByCurrentUser = false;
         if (!self) {
             LambdaQueryWrapper<UserBlock> blockQuery = new LambdaQueryWrapper<>();
             blockQuery.and(query -> query
@@ -78,8 +86,15 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
                             .eq(UserBlock::getBlockerUserId, profileUserId)
                             .eq(UserBlock::getBlockedUserId, currentUserId)));
             blocked = userBlockMapper.selectCount(blockQuery) > 0;
-        }
 
+            //从业务逻辑上看，所有的拉黑相关操作，都应该在 !self 情况下进行，也就是不允许也不提供自己对自己拉黑
+            //这不是有没有影响的问题，而是业务逻辑设计的问题
+            LambdaQueryWrapper<UserBlock> userBlockQuery = new LambdaQueryWrapper<>();
+            userBlockQuery.eq(UserBlock::getBlockerUserId, currentUserId)
+                    .eq(UserBlock::getBlockedUserId, profileUserId);
+
+            blockedByCurrentUser = userBlockMapper.selectCount(userBlockQuery) > 0;
+        }
 
         //用户展示名称 和 AccountNo 不能为空或null
         if (!StringUtils.hasText(profileUser.getDisplayName()) || !StringUtils.hasText(profileUser.getAccountNo())) {
@@ -121,6 +136,7 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
         vo.setFollowingCount(followingCount);
         vo.setSelf(self);
         vo.setBlocked(blocked);
+        vo.setBlockedByCurrentUser(blockedByCurrentUser); //这个判断用于前端决定是否显示 拉黑/接触拉黑 按钮
         vo.setCanSendPrivateMessage(!self && !blocked);
         if (!self) {
             vo.setFollowedByCurrentUser(following);
@@ -257,6 +273,77 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
             result.add(postVO);
         }
         return result;
+    }
+
+    @Override
+    @Transactional
+    public BlockResultVO blockByCurrentUser(Long currentUserId, Long profileUserId, BlockActionDTO dto) {
+        //不需要检查 dto.getBlockStatus() 是否属于 BlockStatus 枚举类，因为 enum 的特殊机制，Java 枚举不能由外部随意实例化（构造方法私有 且是 final class）
+        //只可能是 BlockStatus.ACTIVATE, BlockStatus.DEACTIVATE 或 null
+        //如果前端传入的 blockStatus 非已存在枚举常量，那么在 converter 转换到 枚举常量的过程中就会抛异常，例如当前端传入 3 时，没有对应常量，反序列化就会失败
+
+        if (profileUserId == null || dto == null || dto.getBlockStatus() == null) {
+            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+        if (currentUserId == null) {
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+
+        // 公开主页只属于正常启用的用户，先校验可避免继续查询无效用户的关联数据。
+        UserInfo profileUser = userInfoMapper.selectById(profileUserId);
+
+        if (profileUser == null || profileUser.getStatus() != UserInfoStatus.ACTIVE) {
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_USER_NOT_EXIST);
+        }
+
+        BlockResultVO vo = new BlockResultVO();
+        boolean self = Objects.equals(currentUserId, profileUserId);
+
+        boolean blocked = false; //blocked 声明在外层方法代码块中，作用域一直持续到方法结束。所以if(){}里的 blocked 的结果的变化，对 blocked 始终有效，直到 blockByCurrentUser 方法结束
+        if (!self) { //不能拉黑自己
+            //因为blockerId和blockedId是唯一索引，因此先检查user_block表里是否存在block记录
+            UserBlock existing = userBlockMapper.selectIncludingDeletedForUpdate(profileUserId, currentUserId);
+            if (existing != null && Boolean.TRUE.equals(existing.getDeleted())) {
+                if (dto.getBlockStatus() == BlockStatus.ACTIVATE) { //此时的 DEACTIVATE 不需要操作，因为已经是逻辑删除状态了
+                    int result = userBlockMapper.restoreUserBlock(profileUserId, currentUserId);
+                    if (result != 1) {
+                        throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+                    }
+                    blocked = true;
+                }
+            } else if (existing != null && Boolean.FALSE.equals(existing.getDeleted())) {
+                if (dto.getBlockStatus() == BlockStatus.DEACTIVATE) {
+                    int result = userBlockMapper.blockByCurrentUser(profileUserId, currentUserId);
+                    if (result != 1) {
+                        throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+                    }
+                }
+                blocked = true;
+            } else {//如果没有，就创建一个新的
+                //如果对一个从未拉黑过的用户进行 DEACTIVATE 操作，就是不做任何操作，因为你没拉黑过他，而且你还准备解除拉黑，那么就相当于什么都不用做
+                if (dto.getBlockStatus() == BlockStatus.ACTIVATE) {
+                    UserBlock userBlock = new UserBlock();
+                    userBlock.setBlockerUserId(currentUserId);
+                    userBlock.setBlockedUserId(profileUserId);
+                    int result = userBlockMapper.insert(userBlock);
+                    if (result != 1) { //依然通过报错控制返回值是否是 success
+                        throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+                    }
+                    blocked = true;
+                }
+            }
+        }
+        vo.setProfileUserId(profileUserId);
+        vo.setSelf(self);
+
+        //这里属于你基础知识掌握的不牢固了
+        //vo.setBlocked(blocked) 就应该设置在全局作用域内，因为 boolean blocked 是 blockByCurrentUser 方法内部的全局作用域 局部变量
+        //所以即便你在 if()内修改了 block，block 在全局作用域内依然有效
+        //因为你把 blocked 定义在 blockByCurrentUser 的大作用域里面，所以只要还没出去这个大作用域， blocked 的栈内存就一直有效
+        vo.setBlocked(blocked);
+        vo.setBlockStatus(dto.getBlockStatus());
+
+        return vo;
     }
 
 

@@ -27,6 +27,7 @@ export interface PublicUserProfile {
   followedByCurrentUser: boolean | null
   mutualFollow: boolean
   blocked: boolean
+  blockedByCurrentUser: boolean
   canSendPrivateMessage: boolean
   chatboxId: number | null
 }
@@ -35,4 +36,18 @@ export interface FollowState {
   active: boolean
   followerCount: number
   mutualFollow: boolean
+}
+
+export const BlockStatus = {
+  ACTIVATE: 1,
+  DEACTIVATE: 2,
+} as const
+
+export type BlockStatusValue = (typeof BlockStatus)[keyof typeof BlockStatus]
+
+export interface BlockResult {
+  self: boolean
+  blocked: boolean
+  profileUserId: number
+  blockStatus: BlockStatusValue
 }

@@ -2,7 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
 import { server } from '../../../../tests/msw/server'
 import { PublicUserProfilePage } from '@/features/user-profile/pages/PublicUserProfilePage'
 
@@ -11,12 +12,17 @@ function renderPage({
   blocked = false,
   followedByCurrentUser = false,
   mutualFollow = false,
+  blockedByCurrentUser = false,
+  onBlockRequest,
 }: {
   self?: boolean
   blocked?: boolean
   followedByCurrentUser?: boolean
   mutualFollow?: boolean
+  blockedByCurrentUser?: boolean
+  onBlockRequest?: (blockStatus: number) => void
 } = {}) {
+  let currentBlockedByCurrentUser = blockedByCurrentUser
   server.use(
     http.get('*/api/app/users/8/profile', () =>
       HttpResponse.json({
@@ -44,7 +50,8 @@ function renderPage({
           self,
           followedByCurrentUser: self ? null : followedByCurrentUser,
           mutualFollow,
-          blocked,
+          blocked: blocked || currentBlockedByCurrentUser,
+          blockedByCurrentUser: currentBlockedByCurrentUser,
           canSendPrivateMessage: !self && !blocked,
           chatboxId: null,
         },
@@ -73,6 +80,21 @@ function renderPage({
         },
       }),
     ),
+    http.put('*/api/app/users/8/block', async ({ request }) => {
+      const body = (await request.json()) as { blockStatus: number }
+      onBlockRequest?.(body.blockStatus)
+      currentBlockedByCurrentUser = body.blockStatus === 1
+      return HttpResponse.json({
+        code: 200,
+        message: 'success',
+        data: {
+          self: false,
+          blocked: currentBlockedByCurrentUser,
+          profileUserId: 8,
+          blockStatus: body.blockStatus,
+        },
+      })
+    }),
   )
 
   const router = createMemoryRouter(
@@ -106,6 +128,35 @@ describe('PublicUserProfilePage', () => {
       'z-0',
     )
     expect(screen.getByTestId('profile-avatar-layer')).toHaveClass('z-20')
+    expect(screen.getByTestId('profile-avatar-layer')).toHaveClass(
+      'size-[5.5rem]',
+      'shrink-0',
+    )
+  })
+
+  it('places a compact block action in the bottom-right of the banner', async () => {
+    renderPage()
+
+    const button = await screen.findByRole('button', { name: '拉黑' })
+    expect(button).toHaveClass('absolute', 'bottom-3', 'right-3', 'min-h-8')
+  })
+
+  it('blocks and unblocks the profile user with the expected status codes', async () => {
+    const user = userEvent.setup()
+    const onBlockRequest = vi.fn()
+    renderPage({ onBlockRequest })
+
+    await user.click(await screen.findByRole('button', { name: '拉黑' }))
+    expect(onBlockRequest).toHaveBeenLastCalledWith(1)
+    expect(
+      await screen.findByRole('button', { name: '解除拉黑' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '解除拉黑' }))
+    expect(onBlockRequest).toHaveBeenLastCalledWith(2)
+    expect(
+      await screen.findByRole('button', { name: '拉黑' }),
+    ).toBeInTheDocument()
   })
 
   it('shows Follow when neither user has blocked the other', async () => {
@@ -174,6 +225,9 @@ describe('PublicUserProfilePage', () => {
     ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Mutual' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: '拉黑' }),
     ).not.toBeInTheDocument()
   })
 })
