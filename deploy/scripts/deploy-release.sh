@@ -15,6 +15,16 @@ RELEASE_ID=$2
 DEPLOY_ROOT=/opt/homework
 RELEASE_DIR="$DEPLOY_ROOT/releases/$RELEASE_ID"
 CURRENT_LINK="$DEPLOY_ROOT/current"
+NGINX_USER=www-data
+
+if ! command -v setfacl >/dev/null 2>&1; then
+  echo "Missing required command: setfacl. Install it with: apt-get install -y acl" >&2
+  exit 1
+fi
+if ! id "$NGINX_USER" >/dev/null 2>&1; then
+  echo "Missing Nginx user: $NGINX_USER" >&2
+  exit 1
+fi
 
 if [[ ! -f "$ARTIFACT_PATH" ]]; then
   echo "Artifact not found: $ARTIFACT_PATH" >&2
@@ -72,6 +82,14 @@ for required_path in \
     exit 1
   fi
 done
+
+# Nginx runs as www-data. Grant it traversal access to the private release
+# hierarchy and read access only to this release's immutable frontend assets.
+setfacl -m "u:${NGINX_USER}:--x" \
+  "$DEPLOY_ROOT" \
+  "$DEPLOY_ROOT/releases" \
+  "$RELEASE_DIR"
+setfacl -R -m "u:${NGINX_USER}:rX" "$RELEASE_DIR/frontend"
 
 install -o root -g root -m 0644 "$RELEASE_DIR/deploy/systemd/homework-web-app.service" /etc/systemd/system/homework-web-app.service
 install -o root -g root -m 0644 "$RELEASE_DIR/deploy/systemd/homework-web-admin.service" /etc/systemd/system/homework-web-admin.service
