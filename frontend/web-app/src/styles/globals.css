@@ -82,6 +82,13 @@ textarea:focus-visible,
   background: #dbe8f7;
 }
 
+.auth-brand-pattern-word {
+  font-family: ui-serif, Georgia, serif;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+}
+
 .app-container {
   width: min(100% - 2rem, 1200px);
   margin-inline: auto;
