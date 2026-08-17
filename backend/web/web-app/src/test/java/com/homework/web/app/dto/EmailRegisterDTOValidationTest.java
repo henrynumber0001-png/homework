@@ -32,8 +32,8 @@ class EmailRegisterDTOValidationTest {
     @Test
     void acceptsPasswordAtMaximumLength() {
         EmailRegisterDTO dto = validDto();
-        dto.setPassword("1234567890123456");
-        dto.setPasswordConfirm("1234567890123456");
+        dto.setPassword("123456789012345678901234");
+        dto.setPasswordConfirm("123456789012345678901234");
 
         assertTrue(validator.validate(dto).isEmpty());
     }
@@ -47,9 +47,9 @@ class EmailRegisterDTOValidationTest {
     }
 
     @Test
-    void rejectsPasswordLongerThanSixteenCharacters() {
+    void rejectsPasswordLongerThanTwentyFourCharacters() {
         EmailRegisterDTO dto = validDto();
-        dto.setPassword("12345678901234567");
+        dto.setPassword("1234567890123456789012345");
 
         assertHasViolation(validator.validate(dto), "password");
     }
