@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @ConditionalOnProperty(name = "llm.provider", havingValue = "mock", matchIfMissing = true)
+//matchIfMissing的意思是：当 LLM_PROVIDER:mock 这个配置没有写，也启动当前这个@Service，也就是 完全没写这个配置，也走 LLM_PROVIDER:mock
 public class MockLlmClient implements LlmClient {
 
     @Override

@@ -144,7 +144,6 @@ llm:
   read-timeout: ${LLM_READ_TIMEOUT:60s}
 
 tencent-ses:
-  enabled: ${TENCENT_SES_ENABLED:false}
   secret-id: ${TENCENT_SES_SECRET_ID:}
   secret-key: ${TENCENT_SES_SECRET_KEY:}
   region: ${TENCENT_SES_REGION:ap-hongkong}

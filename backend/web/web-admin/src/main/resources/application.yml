@@ -71,7 +71,6 @@ tencent-cos:
   read-url-ttl-seconds: ${TENCENT_COS_READ_URL_TTL_SECONDS:3600}
 
 tencent-ses:
-  enabled: ${TENCENT_SES_ENABLED:false}
   secret-id: ${TENCENT_SES_SECRET_ID:}
   secret-key: ${TENCENT_SES_SECRET_KEY:}
   region: ${TENCENT_SES_REGION:ap-hongkong}
