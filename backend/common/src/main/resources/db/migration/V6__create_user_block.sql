@@ -10,10 +10,10 @@ CREATE TABLE `user_block` (
   KEY `idx_user_block_blocked` (`blocked_user_id`, `is_deleted`),
   CONSTRAINT `fk_user_block_blocker`
     FOREIGN KEY (`blocker_user_id`) REFERENCES `user_info` (`id`)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_user_block_blocked`
     FOREIGN KEY (`blocked_user_id`) REFERENCES `user_info` (`id`)
-    ON DELETE RESTRICT ON UPDATE CASCADE,
+    ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `chk_user_block_not_self`
     CHECK (`blocker_user_id` <> `blocked_user_id`),
   CONSTRAINT `chk_user_block_deleted`
