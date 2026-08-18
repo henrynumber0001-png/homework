@@ -1,6 +1,7 @@
 package com.homework.web.app.dto;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import com.homework.model.enums.UserImageType;
 import org.junit.jupiter.api.Test;
 
@@ -10,11 +11,14 @@ class UserImageUpdateDTOTest {
 
     @Test
     void convertsNumericJsonValueToUserImageType() throws Exception {
-        UserImageUpdateDTO dto = new ObjectMapper().readValue(
-                "{\"imageObjectKey\":\"temp/user/image/avatar/example.png\",\"userImageType\":1}",
+        ObjectMapper objectMapper = new ObjectMapper()
+                .registerModule(new ParameterNamesModule());
+
+        UserImageUpdateDTO dto = objectMapper.readValue(
+                "{\"imageObjectKey\":\"temp/user/image/banner/example.png\",\"userImageType\":2}",
                 UserImageUpdateDTO.class
         );
 
-        assertEquals(UserImageType.AVATAR, dto.getUserImageType());
+        assertEquals(UserImageType.BANNER, dto.getUserImageType());
     }
 }

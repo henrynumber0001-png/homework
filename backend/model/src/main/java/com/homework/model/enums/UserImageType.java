@@ -22,7 +22,7 @@ public enum UserImageType implements BaseEnum {
 
     }
 
-    @JsonCreator
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
     public static UserImageType of(Integer code){
         for(UserImageType type : values()){
             if(type.getCode().equals(code)){
