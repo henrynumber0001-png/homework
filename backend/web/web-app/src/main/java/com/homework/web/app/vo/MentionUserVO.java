@@ -12,5 +12,5 @@ public class MentionUserVO {
     /** 用户展示名。 */
     private String displayName;
     /** 用户头像。 */
-    private String avatar;
+    private String avatarUrl;
 }

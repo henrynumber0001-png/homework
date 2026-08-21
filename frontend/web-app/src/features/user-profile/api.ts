@@ -6,6 +6,7 @@ import type {
   PublicUserProfile,
 } from '@/features/user-profile/types'
 import type { HitPost } from '@/features/hit/types'
+import type { ActionStatusValue } from '@/shared/constants/domain'
 
 export function getPublicUserProfile(userId: number) {
   return apiRequest<PublicUserProfile>({
@@ -20,11 +21,11 @@ export function getPublicUserPosts(userId: number, pageNum = 1, pageSize = 20) {
   })
 }
 
-export function updateFollow(userId: number, active: boolean) {
+export function updateFollow(userId: number, status: ActionStatusValue) {
   return apiRequest<FollowState>({
     url: `/app/users/${userId}/follow`,
     method: 'PUT',
-    data: { active },
+    params: { status },
   })
 }
 

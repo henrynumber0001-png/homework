@@ -13,6 +13,8 @@ public class CosReadUrlSigner {
     private final String bucket;
     private final long ttlSeconds;
 
+    //这三个参数由 Spring 在启动时，通过 TencentCosConfig 传入。
+    //TencentCosConfig 的 cosReadUrlSigner 返回值刚好调用了这个构造方法，生成一个 CosReadUrlSigner 对象
     public CosReadUrlSigner(COSClient cosClient, String bucket, long ttlSeconds) {
         this.cosClient = cosClient;
         this.bucket = bucket;

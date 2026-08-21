@@ -38,7 +38,7 @@ public class AdminInvitationEmailListener {
             emailInvitationSender.sendInvitation(
                     event.email(),
                     event.displayName(),
-                    event.invitationUrl(),
+                    event.rawToken(),
                     event.expiresTime()
             );
         } catch (Exception exception) {

@@ -60,8 +60,7 @@ public class HitServiceImpl implements HitService {
      * \p{N}：数字。
      * _：下划线。
      */
-    private static final Pattern HASHTAG_PATTERN =
-            Pattern.compile("#([\\p{L}\\p{N}_]+)");
+    private static final Pattern HASHTAG_PATTERN = Pattern.compile("#([\\p{L}\\p{N}_]+)");
 
     /**
      * 查询公共 Hit 时间线。
@@ -136,8 +135,7 @@ public class HitServiceImpl implements HitService {
             vo.setRepostCount(post.getRepostCount());
             vo.setContent(post.getContent());
             vo.setCreatedTime(post.getCreatedTime());
-            vo.setAvatar(userInfo == null ? null
-                    : userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey()));
+            vo.setAvatar(userInfo == null ? null : userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey()));
             vo.setDisplayName(userInfo == null ? "该用户已注销" : userInfo.getDisplayName());
             vo.setLiked(hitActionTypeSet.contains(HitActionType.LIKE));
             vo.setFavorited(hitActionTypeSet.contains(HitActionType.FAVORITE));

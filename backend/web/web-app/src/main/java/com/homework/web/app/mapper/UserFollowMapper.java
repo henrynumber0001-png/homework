@@ -15,11 +15,11 @@ public interface UserFollowMapper extends BaseMapper<UserFollow> {
             """
             SELECT COUNT(*) 
             FROM user_follow 
-            WHERE followee_user_id = #{userId} AND is_deleted = 0
+            WHERE followee_user_id = #{targetUserId} AND is_deleted = 0
             """
     )
     //查看当前用户的关注者数量（因此是 当前用户 = 被关注者）
-    long countFollowers(@Param("userId") Long userId);
+    long countFollowers(@Param("targetUserId") Long targetUserId);
 
     @Select(
             """
@@ -35,18 +35,29 @@ public interface UserFollowMapper extends BaseMapper<UserFollow> {
 
     @Select(
             """
-            SELECT * 
-            FROM user_follow 
-            WHERE follower_user_id = #{followerUserId} AND followee_user_id = #{followeeUserId}
-            LIMIT 1
-            FOR UPDATE 
-            """
+                    SELECT * 
+                    FROM user_follow 
+                    WHERE follower_user_id = #{currentUserId} 
+                      AND followee_user_id = #{targetUserId}
+                    LIMIT 1
+                    FOR UPDATE 
+                    """
     )
-    UserFollow selectIncludingDeletedForUpdate(@Param("followerUserId") Long followerUserId, @Param("followeeUserId") Long followeeUserId);
+    UserFollow selectIncludingDeletedForUpdate(@Param("currentUserId") Long currentUserId, @Param("targetUserId") Long targetUserId);
 
-    @Update("UPDATE user_follow SET is_deleted = 0, updated_time = CURRENT_TIMESTAMP WHERE id = #{id}")
-    int restoreById(@Param("id") Long id);
+    @Update("""
+            UPDATE user_follow 
+            SET is_deleted = 0,
+                updated_time = CURRENT_TIMESTAMP 
+                WHERE id = #{followId}
+                AND is_deleted = 1""")
+    int restoreById(@Param("followId") Long followId);
 
-    @Update("UPDATE user_follow SET is_deleted = 1, updated_time = CURRENT_TIMESTAMP WHERE id = #{id} AND is_deleted = 0")
-    int deactivateById(@Param("id") Long id);
+    @Update("""
+            UPDATE user_follow 
+            SET is_deleted = 1,
+                updated_time = CURRENT_TIMESTAMP 
+                WHERE id = #{followId} 
+                  AND is_deleted = 0""")
+    int deactivateById(@Param("followId") Long followId);
 }

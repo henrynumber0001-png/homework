@@ -89,7 +89,6 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
         validatePasswordLength(emailRegisterDTO.getPassword());
         validatePasswordLength(emailRegisterDTO.getPasswordConfirm());
 
-
         if(!StringUtils.hasText(emailRegisterDTO.getDisplayName())){
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_DISPLAY_NAME_EMPTY);
         }
@@ -164,6 +163,7 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
         userInfo.setStatus(UserInfoStatus.ACTIVE);
         insertUserInfoWithAccountNo(userInfo);
 
+        //依然是存储两套：用户个人信息 和 用户登录信息
         userAuthIdentity.setUserId(userInfo.getId());
         userAuthIdentity.setProvider(thirdPartyUser.getProvider()); // ThirdPartyUser 是服务端验证成功后生成的结果，更可信。
         userAuthIdentity.setAccount(account);
@@ -225,6 +225,8 @@ public class UserAuthIdentityServiceImpl extends ServiceImpl<UserAuthIdentityMap
         }
 
         //全部验证通过，加上accountNo之后，就可以发JWT了
+        //获取 userId 不是为了校验用的，因为校验用的是 account 和 passwordHash
+        //获取 userId 是为了发放JWT
         Long userId = fetchedUserAuthIdentity.getUserId();
         String accountNo = userInfoMapper.selectById(userId).getAccountNo();
 

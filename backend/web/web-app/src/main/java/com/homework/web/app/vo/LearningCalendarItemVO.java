@@ -2,11 +2,13 @@ package com.homework.web.app.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 
 @Data
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class LearningCalendarItemVO { //创建日历
 
     /** 日期。 */

@@ -20,14 +20,15 @@ public class TencentSesAdminInvitationEmailSender implements EmailInvitationSend
     private final TencentSesProperties properties;
     private final ObjectMapper objectMapper;
     @Override
-    public void sendInvitation(String email, String displayName, String rowToken, LocalDateTime expiresTime) {
+    public void sendInvitation(String email, String displayName, String rawToken, LocalDateTime expiresTime) {
         try {
             Template template = new Template();
             template.setTemplateID(properties.getTemplateId());
             //从 JSON 语法看，值可以是 int、long、boolean 等类型；但对于腾讯云 SES，建议统一转换成字符串。
             template.setTemplateData(objectMapper.writeValueAsString(Map.of(
                     "displayName", displayName,
-                    "rowToken", rowToken, //因为腾讯云对于邮箱模板的审核要求，需要暴露出URL中非变量的字段，因此变量从invitationUrl -> rowToken
+                    // 腾讯云已审核模板固定展示 URL 前缀，因此这里只传递原始 Token。
+                    "rowToken", rawToken,
                     "expiresTime", expiresTime.toString()
             )));
 

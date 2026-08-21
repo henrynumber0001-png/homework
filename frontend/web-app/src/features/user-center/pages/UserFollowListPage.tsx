@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { getFollowers, getFollowing } from '@/features/user-center/api'
 import type { FollowListKind } from '@/features/user-center/types'
 import { updateFollow } from '@/features/user-profile/api'
+import { ActionStatus, type ActionStatusValue } from '@/shared/constants/domain'
 import { Avatar } from '@/shared/ui/Avatar'
 import { Button } from '@/shared/ui/Button'
 import { Card } from '@/shared/ui/Card'
@@ -65,8 +66,13 @@ export function UserFollowListPage({ kind }: { kind: FollowListKind }) {
       lastPage.length < PAGE_SIZE ? undefined : pages.length + 1,
   })
   const followMutation = useMutation({
-    mutationFn: ({ userId, active }: { userId: number; active: boolean }) =>
-      updateFollow(userId, active),
+    mutationFn: ({
+      userId,
+      status,
+    }: {
+      userId: number
+      status: ActionStatusValue
+    }) => updateFollow(userId, status),
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['user-center'] }),
@@ -146,7 +152,9 @@ export function UserFollowListPage({ kind }: { kind: FollowListKind }) {
                     onClick={() =>
                       followMutation.mutate({
                         userId: row.userId,
-                        active: !followedByCurrentUser,
+                        status: followedByCurrentUser
+                          ? ActionStatus.DEACTIVATE
+                          : ActionStatus.ACTIVATE,
                       })
                     }
                   >

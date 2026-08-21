@@ -142,9 +142,10 @@ public class QuestionImageService {
         String fileName = objectKey.substring(objectKey.lastIndexOf('/') + 1); //从 objectKey 中的最后一个 / 之后开始截取
         int separator = fileName.indexOf('-'); //找到 - 的索引
         try {
+            //把 上传时间的 毫秒级时间戳 做成 ObjectKey 的字符串拼接组件之一，用于后续校验 临时ObjectKey 的有效期，非常精妙的设计
             long uploadedAt = Long.parseLong(fileName.substring(0, separator)); // 就是自主设计的规则中的 System.currentTimeMillis()，也就是上传时间
             long expiresAt = uploadedAt + java.time.Duration.ofHours(24).toMillis(); // + 24小时并转换到毫秒，然后校验临时图片过期了没
-            if (System.currentTimeMillis() > expiresAt) {
+            if (System.currentTimeMillis() > expiresAt) { //当前的毫秒级时间戳 大于 过期时间，说明过期了
                 throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
             }
         } catch (HomeworkException exception) {

@@ -30,9 +30,11 @@ public class SearchUsersServiceImpl implements SearchUsersService {
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
         }
 
+        //查询条件永远都是可以为 null 的，因为可以不传
+        //所以这个三元表达式不可以删除，否则 keyword.trim() 就会NPE
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
 
-        if (normalizedKeyword.isEmpty()) {
+        if (normalizedKeyword.isBlank()) {
             return List.of();
         }
 
@@ -42,7 +44,7 @@ public class SearchUsersServiceImpl implements SearchUsersService {
         LambdaQueryWrapper<UserInfo> userInfoQuery = new LambdaQueryWrapper<UserInfo>();
         userInfoQuery.eq(UserInfo::getStatus, UserInfoStatus.ACTIVE)
                 .ne(UserInfo::getId, currentUserId)
-                .and(
+                .and( // and 语法优先级高于 or，因此要用 () 扩起来
                         wrapper -> wrapper.likeRight(UserInfo::getAccountNo, normalizedKeyword)
                         .or().like(UserInfo::getDisplayName, normalizedKeyword)
                 )
@@ -56,10 +58,7 @@ public class SearchUsersServiceImpl implements SearchUsersService {
             vo.setUserId(targetUserInfo.getId());
             vo.setAccountNo(targetUserInfo.getAccountNo());
             vo.setDisplayName(targetUserInfo.getDisplayName());
-            vo.setAvatar(userImageUrlResolver.resolveAvatar(targetUserInfo.getAvatarObjectKey()));
-
-            //Java 不知道你最后到底想把哪个对象交给 map()，所以必须要有返回值
-            //Lambda表达式 必须有返回值，只不过多行方法体，不能省略 return 了
+            vo.setAvatarUrl(userImageUrlResolver.resolveAvatar(targetUserInfo.getAvatarObjectKey()));
             return vo;
         }).toList();
         return mentionUserVOS;

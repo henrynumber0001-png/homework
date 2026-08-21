@@ -1,4 +1,5 @@
 import type {
+  ActionStatusValue,
   GenderValue,
   MembershipStatusValue,
   MembershipTypeValue,
@@ -33,7 +34,7 @@ export interface PublicUserProfile {
 }
 
 export interface FollowState {
-  active: boolean
+  status: ActionStatusValue
   followerCount: number
   mutualFollow: boolean
 }

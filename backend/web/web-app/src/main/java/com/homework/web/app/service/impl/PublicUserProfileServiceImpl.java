@@ -39,14 +39,11 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
     private final UserLearningStatDailyMapper userLearningStatDailyMapper;
     private final UserBlockMapper userBlockMapper;
 
-    /**
-     * 一次性完成主页用户校验、统计数据和当前用户关系的组装，
-     * 让调用方只拿到可展示且权限状态完整的公开主页数据。
-     */
+
     @Override
     public PublicUserProfileVO getProfile(Long currentUserId, Long profileUserId) {
 
-        // 公开主页只属于正常启用的用户，先校验可避免继续查询无效用户的关联数据。
+        // 先校验 profileUserId 是否存在合法状态账户
         UserInfo profileUser = userInfoMapper.selectById(profileUserId);
 
         if (profileUser == null || profileUser.getStatus() != UserInfoStatus.ACTIVE) {
@@ -67,7 +64,7 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
                     .eq(UserFollow::getFollowerUserId, currentUserId)
                     .eq(UserFollow::getFolloweeUserId, profileUserId)) > 0;
 
-            // 只有当前用户已经关注对方时才需要反向检查，以最少查询判断是否互相关注。
+            // 更进一步：如果双方角色交换，依然有记录，那就是 mutual 了
             if (following) {
                 mutualFollow = followMapper.selectCount(new LambdaQueryWrapper<UserFollow>()
                         .eq(UserFollow::getFollowerUserId, profileUserId)
@@ -79,12 +76,16 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
         boolean blockedByCurrentUser = false;
         if (!self) {
             LambdaQueryWrapper<UserBlock> blockQuery = new LambdaQueryWrapper<>();
-            blockQuery.and(query -> query
+            blockQuery.and(
+                    query -> query
                     .eq(UserBlock::getBlockerUserId, currentUserId)
                     .eq(UserBlock::getBlockedUserId, profileUserId)
-                    .or(reverse -> reverse
+                    .or(
+                            reverse -> reverse
                             .eq(UserBlock::getBlockerUserId, profileUserId)
-                            .eq(UserBlock::getBlockedUserId, currentUserId)));
+                            .eq(UserBlock::getBlockedUserId, currentUserId)
+                    )
+            );
             blocked = userBlockMapper.selectCount(blockQuery) > 0;
 
             //从业务逻辑上看，所有的拉黑相关操作，都应该在 !self 情况下进行，也就是不允许也不提供自己对自己拉黑
@@ -139,8 +140,9 @@ public class PublicUserProfileServiceImpl implements PublicUserProfileService {
         vo.setBlockedByCurrentUser(blockedByCurrentUser); //这个判断用于前端决定是否显示 拉黑/接触拉黑 按钮
         vo.setCanSendPrivateMessage(!self && !blocked);
         if (!self) {
-            vo.setFollowedByCurrentUser(following);
-            vo.setMutualFollow(mutualFollow);
+            vo.setFollowedByCurrentUser(following); //用于判断展示 follow/following 按钮
+            vo.setMutualFollow(mutualFollow); //用于判断展示 following/mutual 按钮
+            //注意：即使是拉黑关系，也可以显示 following/mutual 按钮，这样用户可以选择拉黑之后取消关注对方
 
             if (blocked) {
                 return vo;

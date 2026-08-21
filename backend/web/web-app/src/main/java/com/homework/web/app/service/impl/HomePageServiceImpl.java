@@ -7,6 +7,7 @@ import com.homework.model.entity.CategoryModule;
 import com.homework.model.entity.CategorySubModule;
 import com.homework.model.entity.QuestionBank;
 import com.homework.model.enums.GroupType;
+import com.homework.model.enums.QuestionBankStatus;
 import com.homework.web.app.mapper.CategoryModuleMapper;
 import com.homework.web.app.mapper.CategorySubModuleMapper;
 import com.homework.web.app.mapper.QuestionBankMapper;
@@ -61,16 +62,21 @@ public class HomePageServiceImpl implements HomePageService {
     private List<HotQuestionBankVO> getHotBanks(List<Long> submoduleIds){
         LambdaQueryWrapper<QuestionBank> bankQueryWrapper = new LambdaQueryWrapper<>();
         bankQueryWrapper.in(QuestionBank::getSubModuleId, submoduleIds)
-                .eq(QuestionBank::getStatus, com.homework.model.enums.QuestionBankStatus.PUBLISHED)
+                .eq(QuestionBank::getStatus, QuestionBankStatus.PUBLISHED)
                 .orderByDesc(QuestionBank::getHotScore)
                 .orderByDesc(QuestionBank::getId)
                 .last("limit 5");
+
+        //按照 hotScore 排序，查出来5个题库
         List<QuestionBank> questionBanks = questionBankMapper.selectList(bankQueryWrapper);
         if(questionBanks.isEmpty()){
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
         List<Long> bankIds = questionBanks.stream().map(QuestionBank::getId).collect(Collectors.toList());
+        //user_bank_correct_rate 是在 QuestionInfoServiceImpl 中被存储的，在这里只是调用，而不是存入数据
+        //这里传入的是 bankIds，不是 bankId
+        //5个题库，是5个平均正确率，所以要放入一个 List
         List<BankCorrectRateVO> bankCorrectRateVOList = userBankCorrectRateMapper.selectAverageByBankIds(bankIds);
         Map<Long, BigDecimal> bankCorrectRateMap = bankCorrectRateVOList.stream().collect(Collectors.toMap(BankCorrectRateVO::getBankId, BankCorrectRateVO::getAvgCorrectRate));
         questionBanks.forEach(questionBank -> {
@@ -82,16 +88,18 @@ public class HomePageServiceImpl implements HomePageService {
         List<CategorySubModule> categorySubModules = categorySubModuleMapper.selectByIds(submoduleIds);
         List<Long> moduleIds = categorySubModules.stream().map(CategorySubModule::getModuleId).toList();
         List<CategoryModule> categoryModules = categoryModuleMapper.selectByIds(moduleIds);
-        Map<Long, String> categoryModuleMap = categoryModules.stream().collect(Collectors.toMap(CategoryModule::getId, CategoryModule::getModuleName));
 
+        //这两个 Map 设计的甚是精妙！
+        Map<Long, String> categoryModuleMap = categoryModules.stream().collect(Collectors.toMap(CategoryModule::getId, CategoryModule::getModuleName));
         Map<Long, Long> submoduleMap = categorySubModules.stream().collect(Collectors.toMap(CategorySubModule::getId, CategorySubModule::getModuleId));
 
 
+        //开始组装首页的热门题库组件
         List<HotQuestionBankVO> hotInterviewBanksVOList = new ArrayList<>();
         questionBanks.forEach(questionBank -> {
             HotQuestionBankVO vo = new HotQuestionBankVO();
             Long moduleId = submoduleMap.get(questionBank.getSubModuleId());
-            String moduleName = categoryModuleMap.get(moduleId);
+            String moduleName = categoryModuleMap.get(moduleId); //非常精妙的通过外键的双层耦合
 
             vo.setBankId(questionBank.getId());
             vo.setBankName(questionBank.getBankName());

@@ -807,6 +807,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             List<InterviewQuestionReviewVO> interviewQuestionReviewVos = getInterviewQuestionReview(bankId);
             finishVO.setInterviewQuestionReviewVos(interviewQuestionReviewVos);
             //完成次数+1
+            //question_bank 中的 completion_count 需要手写一个 update 完成 +1
+            //这个 completion_count 就是一个很简单的 +1，因此不需要像 UserBankCorrectRate 一样单独创建一个表
+            //而且最最重要的，completion_count 统计的是 题库 的完成次数，它不关心是哪个用户完成的，只要有人完成就 +1
+            //但题库的平均正确率，就必须按照 userId 去加权平均，否则你怎么知道 平均数呢？ 因为需要用到 userId，那么就必须单独再创建一张表，因为 question_bank 不存 userId
             int count = interviewQuestionInfoMapper.bankCompletionCount(bankId);
             if(count != 1){
                 throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
@@ -896,6 +900,8 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                     );
             countVO.setCorrectRate(correctRate);
 
+            //这里要单独保存一份正确率数据到 user_bank_correct_rate 表
+            //因为用户刚好做完一套题，然后这个 bankCorrectRate 需要在首页和题库选择页面都要展示出来
             UserBankCorrectRate bankCorrectRate = new UserBankCorrectRate();
             bankCorrectRate.setUserId(userId);
             bankCorrectRate.setBankId(bankId);

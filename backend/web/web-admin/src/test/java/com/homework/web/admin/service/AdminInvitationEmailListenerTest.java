@@ -16,11 +16,12 @@ class AdminInvitationEmailListenerTest {
         EmailInvitationSender sender = mock(EmailInvitationSender.class);
         AdminInvitationEmailListener listener = new AdminInvitationEmailListener(sender);
         LocalDateTime expiresTime = LocalDateTime.now().plusHours(24);
+        String rawToken = "96f47b5c-c497-4b7a-a91b-c18752d64045";
         AdminInvitationCreatedEvent event = new AdminInvitationCreatedEvent(
                 10L,
                 "admin@example.com",
                 "Admin",
-                "https://admin.example.com/admin/invitation?token=secret",
+                rawToken,
                 expiresTime
         );
 
@@ -29,7 +30,7 @@ class AdminInvitationEmailListenerTest {
         verify(sender).sendInvitation(
                 "admin@example.com",
                 "Admin",
-                "https://admin.example.com/admin/invitation?token=secret",
+                rawToken,
                 expiresTime
         );
     }
@@ -38,11 +39,12 @@ class AdminInvitationEmailListenerTest {
     void containsSenderFailureBecauseInvitationIsAlreadyCommitted() {
         EmailInvitationSender sender = mock(EmailInvitationSender.class);
         AdminInvitationEmailListener listener = new AdminInvitationEmailListener(sender);
+        String rawToken = "96f47b5c-c497-4b7a-a91b-c18752d64045";
         AdminInvitationCreatedEvent event = new AdminInvitationCreatedEvent(
                 10L,
                 "admin@example.com",
                 "Admin",
-                "https://admin.example.com/admin/invitation?token=secret",
+                rawToken,
                 LocalDateTime.now().plusHours(24)
         );
         doThrow(new RuntimeException("SES unavailable"))
@@ -50,7 +52,7 @@ class AdminInvitationEmailListenerTest {
                 .sendInvitation(
                         event.email(),
                         event.displayName(),
-                        event.invitationUrl(),
+                        event.rawToken(),
                         event.expiresTime()
                 );
 

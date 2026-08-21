@@ -1,8 +1,8 @@
 package com.homework.web.app.controller;
 
 import com.homework.common.result.Result;
+import com.homework.model.enums.ActionStatus;
 import com.homework.web.app.context.LoginUserHolder;
-import com.homework.web.app.dto.FollowActionDTO;
 import com.homework.web.app.service.FollowService;
 import com.homework.web.app.vo.FollowStateVO;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,8 @@ public class FollowController {
     private final FollowService followService;
 
     @PutMapping("/{targetUserId}/follow")
-    public Result<FollowStateVO> follow(@PathVariable Long targetUserId, @RequestBody FollowActionDTO dto) {
-        return Result.success(followService.follow(LoginUserHolder.getUserId(), targetUserId, dto.getActive()));
+    public Result<FollowStateVO> follow(@PathVariable Long targetUserId,
+                                        @RequestParam ActionStatus status) {
+        return Result.success(followService.follow(LoginUserHolder.getUserId(), targetUserId, status));
     }
 }

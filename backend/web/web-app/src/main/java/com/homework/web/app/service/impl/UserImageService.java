@@ -48,7 +48,7 @@ public class UserImageService {
         }
 
         //Magic Number：不相信文件名后缀，而是直接检查文件二进制内容的开头几个字节，判断它到底是 PNG、JPG 还是 WebP
-        //获得文件后缀名
+        //获得文件后缀名，这个后缀名是用于拼接到 ObjectKey 的最后一个词缀
         String extension = detectExtension(content);
         //再转换回 contentType 格式
         String contentType = switch (extension) {
@@ -58,6 +58,7 @@ public class UserImageService {
             default -> throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         };
 
+        // contentType 是通过检查文件二进制 Magic Number 后推断出来的，代表文件的真实格式
         if (!contentType.equalsIgnoreCase(file.getContentType())) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -76,8 +77,12 @@ public class UserImageService {
         metadata.setContentType(contentType);
 
         try (InputStream inputStream = file.getInputStream()) {
-            cosClient.putObject(new PutObjectRequest(
-                    properties.getBucket(), temporaryObjectKey, inputStream, metadata
+            cosClient.putObject(
+                    new PutObjectRequest(
+                    properties.getBucket(),
+                            temporaryObjectKey,
+                            inputStream,
+                            metadata
             ));
         } catch (Exception exception) {
             throw new HomeworkException(ResultCodeEnum.SERVICE_ERROR, exception);
@@ -95,6 +100,7 @@ public class UserImageService {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
+        //校验格式
         validateTemporaryObjectKey(imageType, temporaryObjectKey);
 
         // userInfo 是 updateImage() 方法内的局部变量
@@ -110,7 +116,8 @@ public class UserImageService {
         String oldObjectKey = imageType == UserImageType.AVATAR ? userInfo.getAvatarObjectKey() : userInfo.getBannerObjectKey();
 
         try {
-            cosClient.copyObject(new CopyObjectRequest(
+            cosClient.copyObject(
+                    new CopyObjectRequest(
                     properties.getBucket(), temporaryObjectKey,
                     properties.getBucket(), officialObjectKey
             ));
@@ -156,11 +163,8 @@ public class UserImageService {
 
         String fileName = objectKey.substring(prefix.length());
         if (fileName.isBlank() || fileName.contains("/") || fileName.contains("\\") //因为 \ 是转义字符，所以用 双\\表示 单纯的 \
-                || !(fileName.endsWith(".jpg")
-                || fileName.endsWith(".png")
-                || fileName.endsWith(".webp"))) {
-            throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
-        }
+                || !(fileName.endsWith(".jpg") || fileName.endsWith(".png") || fileName.endsWith(".webp"))
+        ) {throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);}
     }
 
 

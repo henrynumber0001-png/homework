@@ -7,7 +7,7 @@ public record AdminInvitationCreatedEvent(
         Long invitationId,
         String email,
         String displayName,
-        String invitationUrl,
+        String rawToken,
         LocalDateTime expiresTime
 ) {
 }

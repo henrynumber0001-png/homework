@@ -70,7 +70,7 @@ public class LearningActivityServiceImpl implements LearningActivityService {
             return;
         }
 
-        //如果最近一次心跳时间不会null，获取 最近一次 到 now 之间的时间，基本就是 around 60L
+        //如果最近一次心跳时间不为null，获取 最近一次 到 now 之间的时间，基本就是 around 60L
         long gapSeconds = Duration.between(lastHeartbeat, now).getSeconds();
 
         // 请求过于频繁，不累计，也不更新时间。
@@ -80,6 +80,8 @@ public class LearningActivityServiceImpl implements LearningActivityService {
 
         //如果gapSeconds > MAX_IDLE_SECONDS，说明用户长时间没有操作，已经退出上一轮的计时了
         //因此只设置 最近心跳时间为 now，重新开启新一轮统计, studySeconds 不更新
+        //这里说白了就是：间隔在 两分钟之内的时间，算到 studySeconds，间隔只要超过 两分钟，无论你是离开了 三分钟，还是三十分钟，全部不计入累积时长
+        //然后还要把 lastHeartbeatTime 更新为 now，重新开启新一轮统计
         if(gapSeconds > MAX_CONTINUOUS_HEARTBEAT_SECONDS){
             daily.setLastHeartbeatTime(now);
             userLearningStatDailyMapper.updateById(daily);
@@ -123,11 +125,17 @@ public class LearningActivityServiceImpl implements LearningActivityService {
                 .between(UserLearningStatDaily::getStatDate, startDate, endDate)
                 .orderByAsc(UserLearningStatDaily::getStatDate);
 
+        //一年中全部有学习记录的日期所产生的 userLearningStatDaily
         List<UserLearningStatDaily> dailyStats = userLearningStatDailyMapper.selectList(wrapper);
 
+        //把每一次学习记录当天的学习时长（分钟）做成 List集合，返回
         return dailyStats.stream().map(daily -> {
                     long studyMinutes = daily.getStudySeconds() / 60L;
-                    return new LearningCalendarItemVO(daily.getStatDate(), studyMinutes); //当日的学习日期 + 学习时长
+
+            LearningCalendarItemVO learningCalendarItemVO = new LearningCalendarItemVO();
+            learningCalendarItemVO.setDate(daily.getStatDate());
+            learningCalendarItemVO.setStudyMinutes(studyMinutes);
+            return learningCalendarItemVO; //当日的学习日期 + 学习时长
                 }).toList();
     }
 }

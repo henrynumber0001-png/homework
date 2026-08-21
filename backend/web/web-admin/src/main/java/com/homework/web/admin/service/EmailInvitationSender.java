@@ -6,7 +6,7 @@ public interface EmailInvitationSender {
     void sendInvitation(
             String email,
             String displayName,
-            String invitationUrl,
+            String rawToken,
             LocalDateTime expiresTime
     );
 }

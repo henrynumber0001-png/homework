@@ -35,7 +35,7 @@ public class ThirdPartyAuthServiceImpl implements ThirdPartyAuthService {
     /*
     第三方授权账号 这种方式，最重要的就是 ThirdPartyAuthServiceImpl 这个类
     它相当于一个 DispatcherServlet, 居中调度。
-    从前端获取provider和authCode信息（传入UserAuthIdentityServiceImpl的registerByOAuth方法），
+    从前端获取 provider 和 authCode 信息（传入 UserAuthIdentityServiceImpl 的 registerByOAuth 方法），
     然后分发给下游的 ThirdPartyAuthHandler，
     根据provider找到对应的handler，调用 handler 的 verifyAndGetUser 方法，传入 authCode, 获取id_token, 解析并转换成 ThirdPartyUser 对象并返回。
     这个ThirdPartyUser对象中，就包含从 id_token 中获取的 subject(userId), externalUserId

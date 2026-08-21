@@ -37,7 +37,7 @@ public enum ResultCodeEnum {
     EMAIL_SECURE_TICKET_ERROR(517, "SecureTicket错误"),
     EMAIL_CODE_RATE_LIMITED(518, "邮箱验证码发送过于频繁，请稍后再试"),
 
-    EXAM_EXPIRED(914, "考试已到期，系统已自动交卷"),
+    EXAM_EXPIRED(530, "考试已到期，系统已自动交卷"),
 
     TOKEN_EXPIRED(601, "token过期"),
     TOKEN_INVALID(602, "token非法"),

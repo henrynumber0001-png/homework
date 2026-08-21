@@ -33,7 +33,12 @@ import {
   BlockStatus,
   type PublicUserProfile,
 } from '@/features/user-profile/types'
-import { MembershipStatus, MembershipType } from '@/shared/constants/domain'
+import {
+  ActionStatus,
+  type ActionStatusValue,
+  MembershipStatus,
+  MembershipType,
+} from '@/shared/constants/domain'
 import { formatCount } from '@/shared/lib/format'
 import { Avatar } from '@/shared/ui/Avatar'
 import { Badge } from '@/shared/ui/Badge'
@@ -67,7 +72,7 @@ export function PublicUserProfilePage() {
       lastPage.length < PAGE_SIZE ? undefined : pages.length + 1,
   })
   const followMutation = useMutation({
-    mutationFn: (active: boolean) => updateFollow(userId, active),
+    mutationFn: (status: ActionStatusValue) => updateFollow(userId, status),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ['public-profile', userId],
@@ -178,7 +183,11 @@ export function PublicUserProfilePage() {
                 }
                 disabled={followMutation.isPending}
                 onClick={() =>
-                  followMutation.mutate(!profile.followedByCurrentUser)
+                  followMutation.mutate(
+                    profile.followedByCurrentUser
+                      ? ActionStatus.DEACTIVATE
+                      : ActionStatus.ACTIVATE,
+                  )
                 }
               >
                 {profile.followedByCurrentUser ? (

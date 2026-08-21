@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class HomePageController {
     private final HomePageService homePageService;
 
-
     @GetMapping
     public Result<HomePageVO> getHomePage() {
        HomePageVO homePageVO = homePageService.getHomePage();

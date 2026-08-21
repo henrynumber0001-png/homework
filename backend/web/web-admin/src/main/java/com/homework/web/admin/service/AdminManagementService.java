@@ -198,7 +198,7 @@ public class AdminManagementService {
                └─ 是 → 停止 try 的剩余代码，进入 catch
          */
         AdminInvitationCreatedEvent adminInvitationCreatedEvent = new AdminInvitationCreatedEvent(
-                invitation.getId(), email, dto.getDisplayName().trim(), invitationUrl, expiresTime);
+                invitation.getId(), email, dto.getDisplayName().trim(), rawToken, expiresTime);
 
         //Spring 使用类似 ThreadLocal 的机制，把事务资源绑定到执行请求的线程。
         //执行eventPublisher.publishEvent() 时，仍处于 invite() 方法内，也仍然使用原来的请求线程。
@@ -230,22 +230,18 @@ public class AdminManagementService {
     @Transactional
     public AdminRowVO updateAccess(Long adminId, AdminAccessUpdateDTO dto) {
         AdminAccount target = accountMapper.selectById(adminId);
-        if (target == null || target.getRole() == AdminRole.SUPER_ADMIN
-                || target.getStatus() == AdminStatus.ARCHIVED) {
+        if (target == null || target.getRole() == AdminRole.SUPER_ADMIN || target.getStatus() == AdminStatus.ARCHIVED) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_ACCOUNT_NOT_FOUND);
         }
         if (!target.getVersion().equals(dto.getVersion())) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
         }
         List<String> permissions = new ArrayList<>(new LinkedHashSet<>(dto.getPermissions()));
-        if (!AdminPermissionCatalog.ALL.containsAll(permissions)
-                || permissions.stream().anyMatch(AdminPermissionCatalog.SUPER_ONLY::contains)) {
+        if (!AdminPermissionCatalog.ALL.containsAll(permissions) || permissions.stream().anyMatch(AdminPermissionCatalog.SUPER_ONLY::contains)) {
             throw new HomeworkException(ResultCodeEnum.ADMIN_PERMISSION_DENIED);
         }
         BankDataScope scope = dto.getBankDataScope();
-        List<Long> bankIds = dto.getAssignedBankIds() == null
-                ? List.of()
-                : new ArrayList<>(new LinkedHashSet<>(dto.getAssignedBankIds()));
+        List<Long> bankIds = dto.getAssignedBankIds() == null ? List.of() : new ArrayList<>(new LinkedHashSet<>(dto.getAssignedBankIds()));
         if (scope == BankDataScope.ASSIGNED_BANKS && bankIds.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
@@ -293,8 +289,7 @@ public class AdminManagementService {
     @Transactional
     public ActionResultVO action(Long adminId, AdminAccountActionDTO dto) {
         AdminAccount target = accountMapper.selectById(adminId);
-        if (target == null || target.getRole() == AdminRole.SUPER_ADMIN
-                || !target.getVersion().equals(dto.getVersion())) {
+        if (target == null || target.getRole() == AdminRole.SUPER_ADMIN || !target.getVersion().equals(dto.getVersion())) {
             if (target != null && target.getRole() != AdminRole.SUPER_ADMIN) {
                 throw new HomeworkException(ResultCodeEnum.ADMIN_RESOURCE_VERSION_CONFLICT);
             }
@@ -343,9 +338,7 @@ public class AdminManagementService {
         vo.setDisplayName(account.getDisplayName());
         vo.setRole(account.getRole());
         vo.setStatus(account.getStatus());
-        vo.setPermissions(account.getRole() == AdminRole.SUPER_ADMIN
-                ? AdminPermissionCatalog.ALL
-                : accessService.listPermissions(account.getId()));
+        vo.setPermissions(account.getRole() == AdminRole.SUPER_ADMIN ? AdminPermissionCatalog.ALL : accessService.listPermissions(account.getId()));
         vo.setBankDataScope(account.getBankDataScope());
         vo.setAssignedBankIds(account.getRole() == AdminRole.SUPER_ADMIN
                 || account.getBankDataScope() == BankDataScope.ALL_BANKS

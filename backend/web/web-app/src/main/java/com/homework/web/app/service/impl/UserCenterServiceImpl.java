@@ -117,7 +117,9 @@ public class UserCenterServiceImpl implements UserCenterService {
         dailyQueryWrapper.eq(UserLearningStatDaily::getUserId, userId)
                 .select(UserLearningStatDaily::getStudySeconds);
         List<UserLearningStatDaily> userLearningStatDailies = userLearningStatDailyMapper.selectList(dailyQueryWrapper);
-        long studySeconds = userLearningStatDailies.stream().mapToLong(UserLearningStatDaily::getStudySeconds).sum();
+        long studySeconds = userLearningStatDailies.stream()
+                .mapToLong(UserLearningStatDaily::getStudySeconds)
+                .sum();
         long studyHours = Math.round((studySeconds / 3600.0));
 
         //wrongQuestionCount
@@ -299,14 +301,21 @@ public class UserCenterServiceImpl implements UserCenterService {
         return result;
     }
 
+    //把 Json Array 反序列化成 List<String>
     private List<String> readActivityTags(String tagsJson) {
         if (tagsJson == null || tagsJson.isBlank()) {
             return List.of();
         }
         try {
-            return objectMapper.readValue(
-                    tagsJson,
-                    objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+            //ObjectMapper 是 Jackson 提供的核心类，主要负责 Java 对象和 JSON 之间的转换
+
+            //这里有一个异常重要的概念澄清：tagsJson 是 Json Array，不是 Json Object，它们是 Json 数据结构的 两种完全不同的类型
+
+            //objectMapper.readValue(tagsJson, xxx)： tagJson = 要解析的数据， xxx = 要转换成为的数据类型
+            //如果 xxx 直接写 List.class，Java就无法知道 List 的泛型是什么
+            //getTypeFactory() 是 Jackson 专门用来描述复杂 Java 类型的工厂
+            //constructCollectionType() = Collection类型：List，元素类型：String
+            return objectMapper.readValue(tagsJson, objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
         } catch (JsonProcessingException ignored) {
             return List.of();
         }
@@ -1010,7 +1019,21 @@ public class UserCenterServiceImpl implements UserCenterService {
 
         return vo;
     }
+    //前端在 UserProfileEditPage.tsx 同时请求这两个接口：getProfile 和 getProfileOptions
+    /*
+    profile-info 返回 id：101
+        +
+    profile-info/options 返回 id + name：101 → Java 后端
+        ↓
+    前端使用 find() 匹配
+        ↓
+    页面显示“Java 后端”
+     */
 
+    //这种设计的好处是用户资料只保存和传递稳定的外键 ID，名称统一由选项接口提供。选项接口还设置了一个小时的前端缓存
+    //前端进入一个页面时，可以同时请求多个后端接口
+    //React Query 的两个 useQuery 会各自独立发起请求，浏览器通常会并发执行这两个 HTTP 请求，而不是必须等第一个完成后再发送第二个
+    //前端在两份数据都返回后再初始化表单
     @Override
     public ProfileOptionsVO getProfileOptions() {
 
@@ -1064,6 +1087,7 @@ public class UserCenterServiceImpl implements UserCenterService {
                 .orderByDesc(UserFollow::getCreatedTime)
                 .orderByDesc(UserFollow::getId);
 
+        //这个设计的目的是：每次只展示一页，返回给前端
         Page<UserFollow> page = new Page<>(pageNum,pageSize,false);
         Page<UserFollow> userFollowPage = userFollowMapper.selectPage(page, queryWrapper);
 
@@ -1075,11 +1099,18 @@ public class UserCenterServiceImpl implements UserCenterService {
             return List.of();
         }
 
+        //这里不对 userInfo 的状态做筛选，因为不论状态是 active/disabled/banned，都要原封不动的显示
+        //原理和 block 一样，即使 block 了，following/unfollowing 都依然要显示，你要留通道给人们取消关注，但私信功能不能提供
         List<UserInfo> followerUserInfos = userInfoMapper.selectByIds(followerIds);
 
         List<FollowerVO> followerVOList = new ArrayList<>();
         followerUserInfos.forEach(followerInfo -> {
             FollowerVO followerVO = new FollowerVO();
+
+            //这个 userId 不是随随便便返回给前端的，它有着前后端工程的联动设计在里面
+            //作用一：当用户进一步选择某个 follower，用于通过 /{userId}/profile" 进入该用户的公共主页，即 进入 UserProfileController 的 profile() 方法
+            //作用二：当用户进一步选择 回关 某个 follower，用于通过 "/{targetUserId}/follow" 关注 follower，即 进入 FollowController 的 follow() 方法
+            //作用三：前端列表中的每一个原色，需要一个 唯一Key，只有 userId 是最适合的
             followerVO.setFollowerUserId(followerInfo.getId());
             followerVO.setFollowerDisplayName(followerInfo.getDisplayName());
             followerVO.setFollowerAvatarUrl(userImageUrlResolver.resolveAvatar(followerInfo.getAvatarObjectKey()));
@@ -1102,7 +1133,6 @@ public class UserCenterServiceImpl implements UserCenterService {
 
             followerVO.setMutualFollow(mutualFollow);
             followerVO.setBlocked(blocked);
-            followerVO.setFollowerUserId(followerInfo.getId());
             followerVOList.add(followerVO);
         });
         return followerVOList;
