@@ -79,10 +79,6 @@ public class HomePageServiceImpl implements HomePageService {
         //5个题库，是5个平均正确率，所以要放入一个 List
         List<BankCorrectRateVO> bankCorrectRateVOList = userBankCorrectRateMapper.selectAverageByBankIds(bankIds);
         Map<Long, BigDecimal> bankCorrectRateMap = bankCorrectRateVOList.stream().collect(Collectors.toMap(BankCorrectRateVO::getBankId, BankCorrectRateVO::getAvgCorrectRate));
-        questionBanks.forEach(questionBank -> {
-            BigDecimal avgCorrectRate = bankCorrectRateMap.get(questionBank.getId());
-            questionBank.setAvgCorrectRate(avgCorrectRate);
-        });
 
         //Map<submoduleId,moduleName>
         List<CategorySubModule> categorySubModules = categorySubModuleMapper.selectByIds(submoduleIds);
@@ -104,7 +100,7 @@ public class HomePageServiceImpl implements HomePageService {
             vo.setBankId(questionBank.getId());
             vo.setBankName(questionBank.getBankName());
             vo.setModuleName(moduleName);
-            vo.setAvgCorrectRate(questionBank.getAvgCorrectRate());
+            vo.setAvgCorrectRate(bankCorrectRateMap.get(questionBank.getId()));
             vo.setCompleteCount(questionBank.getCompleteCount());
             hotInterviewBanksVOList.add(vo);
         });

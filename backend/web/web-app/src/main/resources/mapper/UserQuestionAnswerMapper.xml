@@ -11,6 +11,7 @@
             is_correct = #{userQuestionAnswer.isCorrect},
             ai_score_rate = #{userQuestionAnswer.aiScoreRate},
             is_deleted = 0,
+            answered_time = #{userQuestionAnswer.answeredTime},
             updated_time = CURRENT_TIMESTAMP(3)
         WHERE id = #{userQuestionAnswer.id} <!-- 这些是业务字段，如果这些字段都改了，你还更新什么，那就变成插入了 -->
         AND bank_id = #{userQuestionAnswer.bankId}

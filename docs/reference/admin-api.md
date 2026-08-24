@@ -4,7 +4,7 @@
 >
 > 目标模块：`web/web-admin`
 >
-> 设计依据：[Homework 后台管理系统设计文档](./web-admin-system-design.md)
+> 设计依据：[Homework 后台管理系统设计文档](../domains/admin/overview.md)
 >
 > 接口前缀：`/api/admin`
 

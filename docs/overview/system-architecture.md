@@ -205,10 +205,11 @@ API 路径和跨域策略。
 
 ## 12. 相关文档
 
-- [主要 API 接口](api-reference.md)
-- [用户端前端详细设计](frontend-engineering-design.md)
-- [后台管理系统详细设计](web-admin-system-design.md)
-- [后台管理 API 详细文档](web-admin-api.md)
-- [会员与支付](membership-api.md)
-- [Hit、消息与公开主页](hit-api.md)
-
+- [文档中心](../README.md)
+- [功能地图](feature-map.md)
+- [主要 API 接口](../reference/api-overview.md)
+- [用户端前端详细设计](../engineering/web-app-frontend.md)
+- [后台管理系统详细设计](../domains/admin/overview.md)
+- [后台管理 API 详细文档](../reference/admin-api.md)
+- [会员与支付](../domains/membership/overview.md)
+- [社区与社交](../domains/social/overview.md)

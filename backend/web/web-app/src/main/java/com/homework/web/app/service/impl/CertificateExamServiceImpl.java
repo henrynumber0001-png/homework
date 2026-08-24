@@ -72,6 +72,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+        publishedQuestionBankAccessService.requirePublished(bankId);
 
         Long userId = LoginUserHolder.getUserId();
 
@@ -94,6 +95,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
                                 .eq(CertificateExamSession::getStatus, ExamSessionStatus.IN_PROGRESS)
                                 .orderByDesc(CertificateExamSession::getId)
                                 .last("LIMIT 1 FOR UPDATE")
+                        //其实 certificate_exam_session 并没有唯一索引，但是这个 LIMIT 1 的逻辑是，永远查询最近的一条考试记录是否还是 进行中 的状态
                 );
 
         // 如果 CertificateExamSession 中的最新一条 activeSession 不为空，说明有进行中的考试。
@@ -110,25 +112,24 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             finishSession(activeSession, ExamSessionStatus.EXPIRED);
         }
 
+
         //如果没有 activeSession，那么就开始创建新的session
-        publishedQuestionBankAccessService.requirePublished(bankId);
-        // 变更：认证考试原来先查关系表；现在直接按 certificate_question_info.bank_id 选择可用题目。
+        //从第118行 一直到 137行，其实全都在做一件事，就是 新session 的题目顺序
+        //如何实现这个顺序呢？ 通过获取题库内（已随机）题目（Ids）的 List集合，因为 List集合都是带下标的，保存这个集合就是在保存 该session 的题目顺序
         List<CertificateQuestionInfo> certQuestionInfos = certificateQuestionInfoMapper.selectList(
                 new LambdaQueryWrapper<CertificateQuestionInfo>()
                         .eq(CertificateQuestionInfo::getBankId, bankId)
                         .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
-                        .in(
-                                CertificateQuestionInfo::getQuestionType,
-                                QuestionInfoQuestionType.SINGLE_CHOICE,
-                                QuestionInfoQuestionType.MULTIPLE
-                        )
+                        .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
         );
+
         if (certQuestionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
-        // 返回可修改列表，因为 startOrResume 随后需要调用 Collections.shuffle。
-        ArrayList<CertificateQuestionInfo> questionInfos = new ArrayList<>(certQuestionInfos);
+        // 返回可修改列表，因为 startOrResume 随后需要调用 Collections.shuffle
+        List<CertificateQuestionInfo> questionInfos = new ArrayList<>(certQuestionInfos);
+        //实际上 new ArrayList<>(certQuestionInfos) 这个构造器就是专门用于根据已有的 Collection集合 创建一个新的 ArrayList
 
         // 只在创建新场次时随机一次；随机后的结果马上保存到 questionOrder，今后只要进入这个 session，题目就按照这个 questionOrder 排列。
         Collections.shuffle(questionInfos);
@@ -145,7 +146,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         CertificateExamSession newSession = new CertificateExamSession();
         newSession.setUserId(userId);
         newSession.setBankId(bankId);
-        // 保存本场考试的随机题序，之后恢复页面只认这个顺序。
+        // 保存本场考试的随机题序，之后恢复页面只认这个顺序 (List集合都是带下标的)
         newSession.setQuestionOrder(questionOrder);
         newSession.setStartedAt(now);
         // 截止时间等于开始时间加 60 分钟；关闭浏览器不会暂停它。
@@ -170,7 +171,16 @@ public class CertificateExamServiceImpl implements CertificateExamService {
 
         Long userId = LoginUserHolder.getUserId();
 
-        CertificateExamSession session = getOwnedSessionForUpdate(sessionId, userId);
+        LambdaQueryWrapper<CertificateExamSession> sessionQuery = new LambdaQueryWrapper<>();
+        sessionQuery.eq(CertificateExamSession::getId, sessionId)
+                .eq(CertificateExamSession::getUserId, userId)
+                .last("FOR UPDATE");
+        CertificateExamSession session = certificateExamSessionMapper.selectOne(sessionQuery);
+        if (session == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            //session == null 是需要抛异常的，否则NPE
+            //而且，一个已知 sessionId 的 session 搜不到，一定是不正常的
+        }
 
         // 能查到，接下来看看这个session的状态是否过期
         if (session.getStatus() == ExamSessionStatus.IN_PROGRESS && isExpired(session)) {
@@ -196,10 +206,16 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         Long userId = LoginUserHolder.getUserId();
 
         // 锁定 session，避免保存答案和提交考试并发执行。
-        CertificateExamSession session = getOwnedSessionForUpdate(
-                dto.getSessionId(),
-                userId
-        );
+        LambdaQueryWrapper<CertificateExamSession> sessionQuery = new LambdaQueryWrapper<>();
+        sessionQuery.eq(CertificateExamSession::getId, dto.getSessionId())
+                .eq(CertificateExamSession::getUserId, userId)
+                .last("FOR UPDATE");
+        CertificateExamSession session = certificateExamSessionMapper.selectOne(sessionQuery);
+        if (session == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            //session == null 是需要抛异常的，否则NPE
+            //而且，一个已知 sessionId 的 session 搜不到，一定是不正常的
+        }
 
         // 能查到，接下来看看这个session的状态是否过期
         if (session.getStatus() == ExamSessionStatus.IN_PROGRESS && isExpired(session)) {
@@ -268,7 +284,16 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         Long userId = LoginUserHolder.getUserId();
 
         // 与 saveAnswer 锁定同一行。
-        CertificateExamSession session = getOwnedSessionForUpdate(sessionId, userId);
+        LambdaQueryWrapper<CertificateExamSession> sessionQuery = new LambdaQueryWrapper<>();
+        sessionQuery.eq(CertificateExamSession::getId, sessionId)
+                .eq(CertificateExamSession::getUserId, userId)
+                .last("FOR UPDATE");
+        CertificateExamSession session = certificateExamSessionMapper.selectOne(sessionQuery);
+        if (session == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            //session == null 是需要抛异常的，否则NPE
+            //而且，一个已知 sessionId 的 session 搜不到，一定是不正常的
+        }
 
         //这个条件判断用于解决：
         // 用户重复点击提交的问题，比如双击“提交试卷”，可能发出两个请求
@@ -570,20 +595,5 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         return userOptions.size() == correctOptions.size()
                 && new HashSet<>(userOptions).equals(new HashSet<>(correctOptions));
         //第二步把 List 转成 Set：原因是多选题不应该关心选项顺序。
-    }
-
-    private CertificateExamSession getOwnedSessionForUpdate(Long sessionId, Long userId) {
-        CertificateExamSession session = certificateExamSessionMapper.selectOne(
-                new LambdaQueryWrapper<CertificateExamSession>()
-                        .eq(CertificateExamSession::getId, sessionId)
-                        .eq(CertificateExamSession::getUserId, userId)
-                        .last("FOR UPDATE") //把对应的 certificate_exam_session 行锁定，直到当前事务提交或回滚。
-        );
-
-        if (session == null) {
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
-        }
-
-        return session;
     }
 }

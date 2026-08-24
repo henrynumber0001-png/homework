@@ -1,4 +1,6 @@
-# Hit、我的消息与公开主页接口
+# 社交域 API 参考
+
+> 本文集中记录接口与请求示例。业务边界和规则分别参见 [Hit](../domains/social/hit.md)、[内容互动](../domains/social/interactions.md)、[用户关系](../domains/social/relationships.md)、[私信](../domains/social/messaging.md)和[通知](../domains/social/notifications.md)。
 
 所有接口都在 `/api/app` 下，并需要 `Authorization: Bearer <JWT>`。发布者、评论者、互动者、关注者和私信发送者均从 JWT 获取。
 
@@ -91,10 +93,11 @@ Comment 点赞只提交最终目标状态：
 | --- | --- | --- |
 | `GET` | `/users/search?keyword=henry&limit=10` | Post/Comment 的 @ 用户选择器 |
 | `GET` | `/users/{userId}/profile` | PublicUserProfile 上方个人信息卡 |
-| `GET` | `/users/{userId}/profile/activities?tab=posts` | 下方活动列表 |
-| `PUT` | `/users/{userId}/follow` | 显式关注或取消关注 |
+| `GET` | `/users/{userId}/profile/posts` | 公开主页的 Hit 列表 |
+| `PUT` | `/users/{userId}/follow?status=ACTIVATE|DEACTIVATE` | 显式关注或取消关注 |
+| `PUT` | `/users/{userId}/block` | 显式拉黑或取消拉黑 |
 
-活动页签为 `posts、commented、liked、favorite`，默认使用 `posts`，列表不查询总数。`postCount` 等于原创 Post 数与有效转发数之和。
+当前实现提供公开主页的 `posts` 列表。`commented`、`liked`、`favorite` 活动页签属于原设计扩展，尚未作为当前接口开放。
 
 查看自己的公开主页时：
 
@@ -104,15 +107,13 @@ Comment 点赞只提交最终目标状态：
 - `canSendPrivateMessage=false`
 - `chatboxId=null`
 
-关注请求：
+关注状态通过查询参数提交：
 
-```json
-{
-  "active": true
-}
+```http
+PUT /api/app/users/42/follow?status=ACTIVATE
 ```
 
 ## 数据库脚本
 
-- 新数据库首次部署执行 [`sql/hit_feature.sql`](../sql/hit_feature.sql)。
-- 已有旧版 Hit/私信表时执行 [`sql/my_messages_v1.sql`](../sql/my_messages_v1.sql)；脚本会回填 Chatbox 和 `chatbox_id` 后移除旧 `allow_reason` 设计。
+- 新数据库首次部署执行 [`sql/hit_feature.sql`](../../sql/hit_feature.sql)。
+- 已有旧版 Hit/私信表时执行 [`sql/my_messages_v1.sql`](../../sql/my_messages_v1.sql)；脚本会回填 Chatbox 和 `chatbox_id` 后移除旧 `allow_reason` 设计。

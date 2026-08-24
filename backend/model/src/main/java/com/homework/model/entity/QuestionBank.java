@@ -6,9 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 import com.homework.common.entity.BaseEntity;
 import com.homework.model.enums.QuestionBankStatus;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -25,8 +23,6 @@ public class QuestionBank extends BaseEntity {
 
     @Schema(description = "完成题库的人数")
     private Integer completeCount;
-
-    private BigDecimal avgCorrectRate;
 
     private Integer viewCount;
 

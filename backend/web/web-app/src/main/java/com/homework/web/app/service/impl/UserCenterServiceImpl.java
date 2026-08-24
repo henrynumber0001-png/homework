@@ -335,8 +335,12 @@ public class UserCenterServiceImpl implements UserCenterService {
 
         Page<WrongQuestionBankVO> page = new Page<>(current, size);
 
+        //顶部有一个滑块，让用户可以在自己的 面试题库 和 认证题库 之间切换，从而查看错题
+        //在 user_question_answer 里查出来当前 userId 有哪些题库，其中错题有多少道，同时返回 bankId，用于去 bank_tag 里查询该题库对应的 标签List
         IPage<WrongQuestionBankVO> wrongQuestionBanks = userQuestionAnswerMapper.getWrongQuestionBanks(page, groupType, userId);
 
+        //因为这里明确要求返回一个 分页器，所以要创建自定义的 PageResult
+        //如果返回的是 List<T>，那么就不需要 PageResult，直接用 Mybatis 自带的 Page，然后用 records() 转换成 List 即可
         PageResult<WrongQuestionBankVO> result = new PageResult<>();
         result.setTotal(wrongQuestionBanks.getTotal());
         result.setRecords(wrongQuestionBanks.getRecords());
@@ -350,13 +354,14 @@ public class UserCenterServiceImpl implements UserCenterService {
         }
         List<Long> bankIds = records.stream().map(WrongQuestionBankVO::getBankId).toList();
 
-
         LambdaQueryWrapper<BankTag> tagQueryWrapper = new LambdaQueryWrapper<>();
         tagQueryWrapper.in(BankTag::getBankId, bankIds);
+
         List<BankTag> bankTags = bankTagMapper.selectList(tagQueryWrapper);
         Map<Long, List<String>> tagNamesMap = bankTags.stream().collect(Collectors.groupingBy(BankTag::getBankId, Collectors.mapping(BankTag::getTagName, Collectors.toList())));
 
         records.forEach(wrongQuestionBankVO ->
+                //不是每一个 bankId 都有 tagNames，如果没有标签，这个 wrongQuestionBankVO 的 List<String> tagNames 就返回空集合
                 wrongQuestionBankVO.setTagNames(tagNamesMap.getOrDefault(wrongQuestionBankVO.getBankId(), Collections.emptyList())));
         return result;
     }
@@ -516,7 +521,6 @@ public class UserCenterServiceImpl implements UserCenterService {
         vo.setChosenOptions(userQuestionAnswer.getChosenOptions());
         vo.setContent(userQuestionAnswer.getContent());
         vo.setAnsweredTime(userQuestionAnswer.getAnsweredTime());
-        vo.setContent(userQuestionAnswer.getContent());
 
         return vo;
     }
@@ -773,6 +777,9 @@ public class UserCenterServiceImpl implements UserCenterService {
         }
 
         Page<NoteQuestionVO> page = new Page<>(current, size);
+
+        //这里，用户点击具体的题库，进入下一级菜单，查看有多少道题写了笔记
+        //那么去 note_question 中只能查到 questionId，其他字段还都是空的，需要根据 questionId 继续去 题目表里查
         IPage<NoteQuestionVO> noteQuestions = userQuestionNoteMapper.getNoteQuestions(page, userId, bankId);
 
         PageResult<NoteQuestionVO> result = new PageResult<>();
@@ -781,32 +788,33 @@ public class UserCenterServiceImpl implements UserCenterService {
         result.setPageNum(noteQuestions.getCurrent());
         result.setPageSize(noteQuestions.getSize());
 
-        List<NoteQuestionVO> records = result.getRecords();
-        if (records.isEmpty()) {
+        List<NoteQuestionVO> noteQuestionVOList = result.getRecords();
+        if (noteQuestionVOList.isEmpty()) {
             return result;
         }
-        List<Long> questionIds = records.stream().map(NoteQuestionVO::getQuestionId).toList();
+        List<Long> questionIds = noteQuestionVOList.stream().map(NoteQuestionVO::getQuestionId).toList();
 
         if (groupType.equals(GroupType.INTERVIEW)) {
             LambdaQueryWrapper<InterviewQuestionInfo> interviewInfoQueryWrapper = new LambdaQueryWrapper<>();
             interviewInfoQueryWrapper.in(InterviewQuestionInfo::getId, questionIds)
                     .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
                     .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY);
+
             List<InterviewQuestionInfo> interviewQuestionInfos = interviewQuestionInfoMapper.selectList(interviewInfoQueryWrapper);
             Map<Long, String> questionIdToTitleMap = interviewQuestionInfos.stream().collect(Collectors.toMap(InterviewQuestionInfo::getId, InterviewQuestionInfo::getTitle));
             Map<Long, QuestionInfoQuestionType> questionTypeMap = interviewQuestionInfos.stream().collect(Collectors.toMap(InterviewQuestionInfo::getId, InterviewQuestionInfo::getQuestionType));
 
-            records.forEach(record -> {
-                String title = questionIdToTitleMap.get(record.getQuestionId());
-                QuestionInfoQuestionType questionType = questionTypeMap.get(record.getQuestionId());
+            noteQuestionVOList.forEach(noteQuestionVO -> {
+                String title = questionIdToTitleMap.get(noteQuestionVO.getQuestionId());
+                QuestionInfoQuestionType questionType = questionTypeMap.get(noteQuestionVO.getQuestionId());
                 if (!StringUtils.hasText(title)) {
-                    record.setIsAvailable(false); //给前端一个标识，当isAvailable = false，表示这道题已下架或删除
-                    record.setTitle(null);
-                    record.setQuestionType(null); //没找到questionId，title和type都设置为null，因为这两个字段都是必填项，当找不到questionId时，说明这道题已下架或删除
+                    noteQuestionVO.setIsAvailable(false); //给前端一个标识，当isAvailable = false，表示这道题已下架或删除
+                    noteQuestionVO.setTitle(null);
+                    noteQuestionVO.setQuestionType(null); //没找到questionId，title和type都设置为null，因为这两个字段都是必填项，当找不到questionId时，说明这道题已下架或删除
                 } else {
-                    record.setIsAvailable(true);
-                    record.setTitle(title);
-                    record.setQuestionType(questionType);
+                    noteQuestionVO.setIsAvailable(true);
+                    noteQuestionVO.setTitle(title);
+                    noteQuestionVO.setQuestionType(questionType);
                 }
 
             });
@@ -821,7 +829,7 @@ public class UserCenterServiceImpl implements UserCenterService {
             Map<Long, QuestionInfoQuestionType> questionTypeMap = certificateQuestionInfos.stream().collect(Collectors.toMap(CertificateQuestionInfo::getId, CertificateQuestionInfo::getQuestionType));
 
 
-            records.forEach(record -> {
+            noteQuestionVOList.forEach(record -> {
                 String title = questionIdToTitleMap.get(record.getQuestionId());
                 QuestionInfoQuestionType questionType = questionTypeMap.get(record.getQuestionId());
                 if (!StringUtils.hasText(title)) {

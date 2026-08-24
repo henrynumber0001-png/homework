@@ -74,7 +74,14 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         List<Long> questionIds = questionInfos.stream().map(InterviewQuestionInfo::getId).toList();
 
         // 以 questionId 为键，既能 O(1) 判断收藏状态，也保留完整收藏记录供后续使用。
-        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, questionIds);
+        LambdaQueryWrapper<UserFavoriteQuestion> favQuery = new LambdaQueryWrapper<>();
+        favQuery.in(UserFavoriteQuestion::getQuestionId, questionIds)
+                .eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId())
+                .eq(UserFavoriteQuestion::getBankId, bankId)
+                .orderByAsc(UserFavoriteQuestion::getCollectedTime);
+        List<UserFavoriteQuestion> userFavoriteQuestions = userFavoriteQuestionMapper.selectList(favQuery);
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = userFavoriteQuestions.stream()
+                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
 
         List<InterviewQuestionPageVO> list = new ArrayList<>();
         questionInfos.forEach(questionInfo -> {
@@ -124,7 +131,14 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         InterviewQuestionInfo questionInfo = interviewQuestionInfoMapper.selectOne(interviewQueryWrapper);
 
         List<Long> questionIdList = List.of(questionId); //把单个对象转换成List集合
-        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId,questionIdList);
+        LambdaQueryWrapper<UserFavoriteQuestion> favQuery = new LambdaQueryWrapper<>();
+        favQuery.in(UserFavoriteQuestion::getQuestionId, questionIdList)
+                .eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId())
+                .eq(UserFavoriteQuestion::getBankId, bankId)
+                .orderByAsc(UserFavoriteQuestion::getCollectedTime);
+        List<UserFavoriteQuestion> userFavoriteQuestions = userFavoriteQuestionMapper.selectList(favQuery);
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = userFavoriteQuestions.stream()
+                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
 
         if (questionInfo == null) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
@@ -209,7 +223,14 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         }
 
         List<Long> interviewQuestionIds = interviewQuestionInfos.stream().map(InterviewQuestionInfo::getId).toList();
-        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, interviewQuestionIds);
+        LambdaQueryWrapper<UserFavoriteQuestion> favQuery = new LambdaQueryWrapper<>();
+        favQuery.in(UserFavoriteQuestion::getQuestionId, interviewQuestionIds)
+                .eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId())
+                .eq(UserFavoriteQuestion::getBankId, bankId)
+                .orderByAsc(UserFavoriteQuestion::getCollectedTime);
+        List<UserFavoriteQuestion> userFavoriteQuestions = userFavoriteQuestionMapper.selectList(favQuery);
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = userFavoriteQuestions.stream()
+                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
 
         Long userId = LoginUserHolder.getUserId();
 
@@ -335,6 +356,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         certificateQueryWrapper.eq(CertificateQuestionInfo::getBankId, bankId)
                 .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE)
                 .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
+
+                //这里千万注意一点：字段 QuestionNo 只是用来排序，不返回给前端，不作为前端用于制作题目序号的依据
+                //换句话说，QuestionNo 是管理员使用和查看题目顺序的
+                //前端是根据返回的 组装的 List集合（底层是数组）的下表顺序，完成题目排序的
                 .orderByAsc(CertificateQuestionInfo::getQuestionNo)
                 .orderByAsc(CertificateQuestionInfo::getId);
 
@@ -344,7 +369,14 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         }
         List<Long> questionIds = certificateQuestionInfos.stream().map(CertificateQuestionInfo::getId).toList();
 
-        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, questionIds);
+        LambdaQueryWrapper<UserFavoriteQuestion> favQuery = new LambdaQueryWrapper<>();
+        favQuery.in(UserFavoriteQuestion::getQuestionId, questionIds)
+                .eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId())
+                .eq(UserFavoriteQuestion::getBankId, bankId)
+                .orderByAsc(UserFavoriteQuestion::getCollectedTime);
+        List<UserFavoriteQuestion> userFavoriteQuestions = userFavoriteQuestionMapper.selectList(favQuery);
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = userFavoriteQuestions.stream()
+                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
 
         List<CertificateQuestionPageVO> certificateQuestionPageVos = new ArrayList<>();
         certificateQuestionInfos.forEach(certificateQuestionInfo -> {
@@ -365,6 +397,8 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
     @Transactional
     @Override
+    //所以，到这一步的，要么是从未作答过这道题，要么是作答过这道题，但现在已经清空记录（逻辑删除）
+    //但不管是哪一种，这道题当前肯定是可以重新作答的状态，而不是已经有作答痕迹存在的状态
     public CertificateAnswerPageVO getCertificateAnswer(CertificateQuestionSubmitDTO submitDTO) {
         membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
         if (submitDTO == null || submitDTO.getQuestionId() == null || submitDTO.getQuestionType() == null ||
@@ -388,13 +422,22 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
+
         List<Long> questionIdList = List.of(questionId);
-        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, questionIdList);
+        LambdaQueryWrapper<UserFavoriteQuestion> favQuery = new LambdaQueryWrapper<>();
+        favQuery.in(UserFavoriteQuestion::getQuestionId, questionIdList)
+                .eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId())
+                .eq(UserFavoriteQuestion::getBankId, bankId)
+                .orderByAsc(UserFavoriteQuestion::getCollectedTime);
+        List<UserFavoriteQuestion> userFavoriteQuestions = userFavoriteQuestionMapper.selectList(favQuery);
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = userFavoriteQuestions.stream()
+                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
 
         if (certificateQuestionInfo.getCorrectAnswer() == null || certificateQuestionInfo.getCorrectAnswer().isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
 
+        //比较 用户作答 和 正确答案 是否一致
         List<String> correctAnswers = certificateQuestionInfo.getCorrectAnswer();
         List<String> chosenOptions = submitDTO.getChosenOptions();
 
@@ -439,12 +482,15 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
     public List<CertificateQuestionReviewVO> getCertificateRecord(Long bankId) {
         //校验是否是会员，不是则抛异常
         membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
+
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
+
+        //验证题库是否有效
         publishedQuestionBankAccessService.requirePublished(bankId);
 
-        // 变更：认证题作答记录页直接按题目 bank_id 查询，不再先构造关系 ID 集合。
+        //验证题库中的题目是否有效
         LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
         certificateQueryWrapper.eq(CertificateQuestionInfo::getBankId, bankId)
                 .eq(CertificateQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
@@ -456,10 +502,21 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         if (certificateQuestionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
+
+        //因为这个方法是返回 “继续答题”，所以，只检查用户已经答过的题，不检查用户没有作答的题（没答过的题，因为 UserQuestionAnswer 里没有，那就不返回，前端直接返回题目，继续做）
+        //所以，遍历的主体是 UserQuestionAnswer
         List<Long> certificateQuestionIds = certificateQuestionInfos.stream().map(CertificateQuestionInfo::getId).toList();
-        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, certificateQuestionIds);
         Map<Long, CertificateQuestionInfo> certificateQuestionMap = certificateQuestionInfos.stream()
                 .collect(Collectors.toMap(CertificateQuestionInfo::getId, certificateQuestionInfo -> certificateQuestionInfo));
+
+        LambdaQueryWrapper<UserFavoriteQuestion> favQuery = new LambdaQueryWrapper<>();
+        favQuery.in(UserFavoriteQuestion::getQuestionId, certificateQuestionIds)
+                .eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId())
+                .eq(UserFavoriteQuestion::getBankId, bankId)
+                .orderByAsc(UserFavoriteQuestion::getCollectedTime);
+        List<UserFavoriteQuestion> userFavoriteQuestions = userFavoriteQuestionMapper.selectList(favQuery);
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = userFavoriteQuestions.stream()
+                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
 
 
         Long userId = LoginUserHolder.getUserId();
@@ -471,23 +528,32 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
         List<UserQuestionAnswer> userQuestionAnswers = userQuestionAnswerMapper.selectList(userAnswerQueryWrapper);
         if (userQuestionAnswers.isEmpty()) {
-            return List.of(); //用户一道题都没做，那么就返回空列表
+            return List.of(); //用户一道题都没做，那么就返回空列表，前端会返回 CertificateQuestionPageVO
         }
+
+        //如果用户有答题记录，遍历这些答题记录，并装配到 List<CertificateQuestionReviewVO>，然后返回
         List<CertificateQuestionReviewVO> questionReviewVos = new ArrayList<>();
+
         userQuestionAnswers.forEach(userQuestionAnswer -> {
             CertificateQuestionReviewVO vo = new CertificateQuestionReviewVO();
+            //有答题记录的每一道 questionId 对应的 questionInfo，用于获取 correctAnswer、analysis、imageUrl等字段
             CertificateQuestionInfo certificateQuestionInfo = certificateQuestionMap.get(userQuestionAnswer.getQuestionId());
+            //不会出现 if(certificateQuestionInfo == null) 的情况，因为 userQuestionAnswers 是从 in(UserQuestionAnswer::getQuestionId, certificateQuestionIds) 查询结果的
+            //因此得到的 id 都必然存在 certificateQuestionInfo
 
+            //同时装配 user_question_answer 中的字段
             vo.setQuestionId(userQuestionAnswer.getQuestionId());
+            vo.setIsCorrect(userQuestionAnswer.getIsCorrect());
+            vo.setChosenOptions(userQuestionAnswer.getChosenOptions());
+
             vo.setTitle(certificateQuestionInfo.getTitle());
             vo.setOptions(certificateQuestionInfo.getOptions());
             vo.setQuestionType(certificateQuestionInfo.getQuestionType());
             vo.setCorrectAnswer(certificateQuestionInfo.getCorrectAnswer());
             vo.setAnalysis(certificateQuestionInfo.getAnalysis());
             vo.setImageUrl(readUrlSigner.sign(certificateQuestionInfo.getImageObjectKey()));
-            vo.setIsCorrect(userQuestionAnswer.getIsCorrect());
             vo.setIsFavorite(favoriteQuestionMap.containsKey(userQuestionAnswer.getQuestionId()));
-            vo.setChosenOptions(userQuestionAnswer.getChosenOptions());
+
             questionReviewVos.add(vo);
         });
         return questionReviewVos;
@@ -541,9 +607,17 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         }
 
         List<Long> interviewQuestionIds = interviewQuestionInfos.stream().map(InterviewQuestionInfo::getId).toList();
-        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, interviewQuestionIds);
         Map<Long, InterviewQuestionInfo> questionInfoMap = interviewQuestionInfos.stream().
                 collect(Collectors.toMap(InterviewQuestionInfo::getId, interviewQuestionInfo -> interviewQuestionInfo));
+
+        LambdaQueryWrapper<UserFavoriteQuestion> favQuery = new LambdaQueryWrapper<>();
+        favQuery.in(UserFavoriteQuestion::getQuestionId, interviewQuestionIds)
+                .eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId())
+                .eq(UserFavoriteQuestion::getBankId, bankId)
+                .orderByAsc(UserFavoriteQuestion::getCollectedTime);
+        List<UserFavoriteQuestion> userFavoriteQuestions = userFavoriteQuestionMapper.selectList(favQuery);
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = userFavoriteQuestions.stream()
+                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
 
         Long userId = LoginUserHolder.getUserId();
         //再看userId之下，都答了哪些题
@@ -588,6 +662,8 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             questionReviewVo.setAnalysis(interviewQuestionInfo.getAnalysis());
             questionReviewVo.setContent(userQuestionAnswer.getContent());
             questionReviewVo.setIsFavorite(favoriteQuestionMap.containsKey(interviewQuestionInfo.getId()));
+
+            //Standard membership 就是没有 questionAiEvaluation 的，所以是 null
             if (questionAiEvaluation != null) {
                 AiEvaluationResult aiResult = fetchAiResult(questionAiEvaluation);
                 questionReviewVo.setAiResult(aiResult);
@@ -640,7 +716,12 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                     .eq(UserQuestionAnswer::getUserId, userId)
                     .in(UserQuestionAnswer::getQuestionId, certificateIds);
 
-            userQuestionAnswerMapper.delete(userAnswerQueryWrapper);//再做一个定时任务，物理删除
+            //现在是逻辑删除，再做一个定时任务，物理删除数据库
+            //所以用户每次做完一道题目，准备保存到 user_question_answer 表时，都要先查一下包含逻辑删除的记录里是否有这个 userId+bankId+questionId
+            //如果有，就要先恢复这个记录，再用新数据覆盖旧数据，因为有唯一索引
+            userQuestionAnswerMapper.delete(userAnswerQueryWrapper);
+            //注意一个细节：delete 和 deleteById，并不表示 逻辑删除
+            //如果你的 BaseEntity 中的 Boolean deleted 上没有绑定 @TableLogic，那么 delete 和 deleteById 就是 物理删除
         }
 
         if(groupType.equals(GroupType.INTERVIEW)){
@@ -756,7 +837,14 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         }
 
         List<Long> certificateIds = certificateQuestionInfos.stream().map(CertificateQuestionInfo::getId).toList();
-        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(bankId, certificateIds);
+        LambdaQueryWrapper<UserFavoriteQuestion> favQuery = new LambdaQueryWrapper<>();
+        favQuery.in(UserFavoriteQuestion::getQuestionId, certificateIds)
+                .eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId())
+                .eq(UserFavoriteQuestion::getBankId, bankId)
+                .orderByAsc(UserFavoriteQuestion::getCollectedTime);
+        List<UserFavoriteQuestion> userFavoriteQuestions = userFavoriteQuestionMapper.selectList(favQuery);
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = userFavoriteQuestions.stream()
+                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
 
         Long userId = LoginUserHolder.getUserId();
         LambdaQueryWrapper<UserQuestionAnswer> userAnswerQueryWrapper = new LambdaQueryWrapper<>();
@@ -811,6 +899,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             //这个 completion_count 就是一个很简单的 +1，因此不需要像 UserBankCorrectRate 一样单独创建一个表
             //而且最最重要的，completion_count 统计的是 题库 的完成次数，它不关心是哪个用户完成的，只要有人完成就 +1
             //但题库的平均正确率，就必须按照 userId 去加权平均，否则你怎么知道 平均数呢？ 因为需要用到 userId，那么就必须单独再创建一张表，因为 question_bank 不存 userId
+            //SQL 层面的 UPDATE 方法，本身就自带 排他锁，所以下面这个操作本身就是 原子 的
             int count = interviewQuestionInfoMapper.bankCompletionCount(bankId);
             if(count != 1){
                 throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
@@ -1005,7 +1094,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             //每一条实际的消息，是存放在AiChatMessage表中
             AiChatMessage welcomeMessage = new AiChatMessage();
             welcomeMessage.setSessionId(session.getId());
-            welcomeMessage.setQuestionId(null);
+            welcomeMessage.setQuestionId(null); //这个 questionId 字段，即使不设置，也同样是 null，因为 welcomeMessage 是 新创建的 AiChatMessage 对象，不是从 逻辑删除中恢复回来的
             welcomeMessage.setGroupType(groupType);
             welcomeMessage.setMessageContent("你好，有关于这道题的知识点想深入了解吗？");
             welcomeMessage.setSenderType(AiChatMessageSenderType.AI);
@@ -1130,6 +1219,8 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                         .eq(AiChatSession::getStatus, AiChatSessionStatus.ACTIVE)
         );
 
+        //session == null 必须 return; 否则 NPE
+        //同时也不能抛异常，因为允许 session == null
         if (session == null) {
             return;
         }
@@ -1147,25 +1238,33 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                 userQuestionAnswer.getBankId(),
                 userQuestionAnswer.getQuestionId()
         );
-        if (userAnswer == null) {
-            userQuestionAnswerMapper.insert(userQuestionAnswer);
-            return userQuestionAnswer.getId(); //MyBatis-Plus 的 insert(entity) 在自增主键场景下，通常会把数据库生成的 id 自动回填到 entity 里。
+
+        //曾经作答过，但现在清空记录（逻辑删除）了
+        if(userAnswer != null){
+            userQuestionAnswer.setId(userAnswer.getId());
+
+            if(Boolean.TRUE.equals(userAnswer.getDeleted())){
+                int restoreResult = userQuestionAnswerMapper.restoreById(userAnswer.getId());
+                if(restoreResult != 1){
+                    throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+                }
+            }
+
+            //使用自定义的 overwriteAllUpdate 方法 而不是 updateById 的原因，只有一个：
+            //对于 字段为 null 的情况，updateById 可能会忽略 null，而把原来该字段存储的值再次写入，而 overwriteAllUpdate 则会用 null 覆盖旧值
+            //比如针对 standard membership，isCorrect 和 aiScoreRate 字段是 null，但是当该 userAnswer 被恢复之后， updateById() 依然存的是原来的值，因为 Mybatis 忽略了 null
+            int updateResult = userQuestionAnswerMapper.overwriteAllUpdate(userQuestionAnswer);
+            if(updateResult != 1){
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
+            return userAnswer.getId();
+        }else {
+            int result = userQuestionAnswerMapper.insert(userQuestionAnswer);
+            if(result != 1){
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
+            return userQuestionAnswer.getId();
         }
-
-        if (Boolean.TRUE.equals(userAnswer.getDeleted()) && userQuestionAnswerMapper.restoreById(userAnswer.getId()) != 1) {
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
-        }
-
-        //MyBatis-Plus 的 update 方法没有自动回填 id 功能，所以要手动 set一下
-        //根据 where 条件更新已有行，但数据库不会“生成新 id”，MyBatis-Plus 也不会自动查询旧 id 回填
-        userQuestionAnswer.setId(userAnswer.getId());
-        int result = userQuestionAnswerMapper.overwriteAllUpdate(userQuestionAnswer);
-        if(result != 1){
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
-        }
-
-
-        return userQuestionAnswer.getId();
     }
 
     private void saveOrUpdateLatestEvaluation(QuestionAiEvaluation questionAiEvaluation) {
@@ -1173,27 +1272,13 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         evaluationQueryWrapper.eq(QuestionAiEvaluation::getAnswerId, questionAiEvaluation.getAnswerId())
                 .eq(QuestionAiEvaluation::getQuestionId, questionAiEvaluation.getQuestionId())
                 .eq(QuestionAiEvaluation::getUserId, questionAiEvaluation.getUserId());
+
         QuestionAiEvaluation latestEvaluation = questionAiEvaluationMapper.selectOne(evaluationQueryWrapper);
         if (latestEvaluation == null) {
             questionAiEvaluationMapper.insert(questionAiEvaluation);
         } else {
-            questionAiEvaluation.setId(latestEvaluation.getId());
+            questionAiEvaluation.setId(latestEvaluation.getId()); //必须要先 setId，才能 updateById
             questionAiEvaluationMapper.updateById(questionAiEvaluation);
         }
-    }
-
-    private Map<Long, UserFavoriteQuestion> getFavoriteQuestionMap(Long bankId, Collection<Long> questionIds) {
-        if (questionIds == null || questionIds.isEmpty()) {
-            return Map.of();
-        }
-
-        LambdaQueryWrapper<UserFavoriteQuestion> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(UserFavoriteQuestion::getUserId, LoginUserHolder.getUserId())
-                .eq(UserFavoriteQuestion::getBankId, bankId)
-                .in(UserFavoriteQuestion::getQuestionId, questionIds);
-        List<UserFavoriteQuestion> favorites = userFavoriteQuestionMapper.selectList(queryWrapper);
-
-        return favorites.stream()
-                .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
     }
 }

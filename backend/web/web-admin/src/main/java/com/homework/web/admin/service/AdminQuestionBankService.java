@@ -238,7 +238,6 @@ public class AdminQuestionBankService {
         bank.setBankName(dto.getBankName().trim());
         bank.setSubModuleId(dto.getSubModuleId());// 保存题库所属的最末级分类 ID。
         bank.setCompleteCount(0);// 新题库初始完成人数为 0。
-        bank.setAvgCorrectRate(java.math.BigDecimal.ZERO);// 新题库初始平均正确率为 0。
         bank.setViewCount(0);// 新题库初始浏览次数为 0。
 
 

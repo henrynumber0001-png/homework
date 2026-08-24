@@ -31,4 +31,7 @@ public interface UserBankCorrectRateMapper extends BaseMapper<UserBankCorrectRat
     //这是查询，不是Update，返回值怎么可能是 int ？？
 }
 
-
+// <foreach = list.foreach(bankId:bankIds){}
+// collection = 要遍历的集合名字
+// item = 遍历集合中每个元素的名字
+// open="(" 和 close=")" :因为 SQL 的 IN 必须写成 bank_id IN (10, 20, 30) 这种，所以 open="(" 和 close=")" 就是告诉我 MyBatis，遍历开始前加 (，遍历结束后加 )

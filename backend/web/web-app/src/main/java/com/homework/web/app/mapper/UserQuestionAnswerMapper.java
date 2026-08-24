@@ -21,7 +21,7 @@ public interface UserQuestionAnswerMapper extends BaseMapper<UserQuestionAnswer>
      * FOR UPDATE 避免同一题目的并发提交同时执行恢复或插入。
      */
     @Select("""
-            SELECT id, is_deleted AS deleted
+            SELECT *
             FROM user_question_answer
             WHERE user_id = #{userId}
               AND bank_id = #{bankId}

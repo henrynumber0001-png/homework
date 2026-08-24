@@ -1,8 +1,8 @@
-# “我的消息”代码级实施计划
+# “我的消息”代码级实施计划（历史归档）
 
 > 文档状态：V1.0，第一版后端实现已完成  
-> 前置文档：[“我的消息”功能设计文档](./my-messages-design.md)  
-> 本文保留实现边界、数据迁移、接口契约和后续前端对接说明
+> 当前文档：[私信与消息中心](../../domains/social/messaging.md)
+> 本文仅保留实现边界、数据迁移、接口契约和历史前端对接说明，不作为当前规则来源
 
 ## 1. 已冻结的实现边界
 
@@ -683,7 +683,7 @@ web/web-app/.../mapper/HitCommentMapper.java
 web/web-app/.../service/HitService.java
 web/web-app/.../service/FollowService.java
 web/web-app/.../service/impl/HitServiceImpl.java
-docs/hit-api.md
+docs/reference/social-api.md
 ```
 
 ### 9.3 删除
@@ -841,7 +841,7 @@ MentionUserPicker
 
 8. **接口与回归**
    - Controller 测试、越权测试、并发边界测试。
-   - 更新 `docs/hit-api.md`。
+   - 更新 `docs/reference/social-api.md`。
    - 运行完整 clean test。
 
 9. **前端阶段**

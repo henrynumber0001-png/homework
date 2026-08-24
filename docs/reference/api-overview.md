@@ -338,8 +338,8 @@ HTTP 请求成功不代表业务一定成功，前端还需要检查统一响应
 
 ## 6. 详细专题文档
 
-- [后台管理 API 详细文档](web-admin-api.md)
-- [会员接口与业务规则](membership-api.md)
-- [Hit、消息、公开主页和关注](hit-api.md)
-- [微信 Native 支付接入](wechat-native-membership-payment.md)
-- [私有 COS 图片访问](private-cos-url-auth.md)
+- [后台管理 API 详细文档](admin-api.md)
+- [会员接口与业务规则](../domains/membership/overview.md)
+- [社交域 API](social-api.md)
+- [微信 Native 支付接入](../domains/membership/wechat-payment.md)
+- [私有 COS 图片访问](../engineering/storage/private-cos.md)

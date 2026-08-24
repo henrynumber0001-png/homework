@@ -30,13 +30,15 @@ are excluded from Git.
 
 ## Core Documentation
 
+- [Documentation Center](docs/README.md)
 - [System Design Overview (English)](system-design-en.md)
-- [System Design Overview](docs/system-design.md)
-- [Main API Reference](docs/api-reference.md)
+- [System Design Overview](docs/overview/system-architecture.md)
+- [Feature Map](docs/overview/feature-map.md)
+- [Main API Reference](docs/reference/api-overview.md)
 
-Additional topic-specific documentation remains available in `docs/`, including
-detailed rules for administration, messaging, membership payments, and file
-storage.
+Topic-specific documentation is organized by business domain in `docs/domains`.
+API references, engineering notes, and archived change plans are kept separately
+under `docs/reference`, `docs/engineering`, and `docs/changes`.
 
 ## Production Deployment
 

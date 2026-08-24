@@ -40,14 +40,19 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         if (categoryModuleVos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
+
+        //点击题库，进入的默认模块页面
+        //返回默认 moduleVO 作为高亮提示
         CategoryModuleVO firstModuleVo = categoryModuleVos.get(0);
 
         Long moduleId = firstModuleVo.getId();
         List<CategorySubModuleVO> subModuleVos = listSubModuleVos(moduleId);
 
+        //返回 第一个（默认）subModule
+        //返回默认 subModuleVO 作为高亮提示
         CategorySubModuleVO firstSubModuleVo = subModuleVos.get(0);
 
-        Long subModuleId = firstSubModuleVo.getId();
+        long subModuleId = firstSubModuleVo.getId();
         List<QuestionBankVO> questionBankVos = listQuestionBanksByHot(subModuleId);
 
         GroupPageVO vo = new GroupPageVO();
@@ -71,6 +76,7 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
+        //校验一下用户点击的 moduleId 是否在当前 group 的
         validateModuleInGroup(currentGroupId, moduleId);
 
         //这个currentModuleId是web前端传入的，非用户传入的
@@ -200,26 +206,23 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         LambdaQueryWrapper<QuestionBank> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(QuestionBank::getSubModuleId, subModuleId)
                 .eq(QuestionBank::getStatus, QuestionBankStatus.PUBLISHED)
-                // 变更：题库人工权重优先；默认值都为10时，实际顺序继续由 hot_score 决定。
-                .orderByDesc(QuestionBank::getSortOrder)
-                .orderByDesc(QuestionBank::getHotScore) //首次进入题库页面，默认按照“热度”排序
+                .orderByDesc(QuestionBank::getSortOrder) //排序优先级最高的是自定义的 sortOder
+                .orderByDesc(QuestionBank::getHotScore) //首次进入题库页面，默认按照“热度”排序， hot_score 已经写进数据库 question_bank 的 hot_score 字段
                 .orderByDesc(QuestionBank::getId);
         List<QuestionBank> questionBanks = questionBankMapper.selectList(queryWrapper);
         if (questionBanks.isEmpty()) {
             return List.of();
         }
 
-        //QuestionBank表中是没有 题库平均正确率 这个值的，因此要通过 SQL聚合函数 把 BankCorrectRate表中的用户题库平均正确率（用bankId）聚合，算平均数，再set到对应bankId的 avgCorrectRate 字段；
-        List<Long> questionIds = questionBanks.stream().map(QuestionBank::getId).toList();
-        List<BankCorrectRateVO> bankCorrectRateVOList = userBankCorrectRate.selectAverageByBankIds(questionIds);//这里有个细节，这种查询集合的SQL，返回的也是集合
+        // 平均正确率不是 QuestionBank 的持久化属性，而是按 bankId 实时聚合出的展示数据。
+        List<Long> bankIds = questionBanks.stream().map(QuestionBank::getId).toList();
+        List<BankCorrectRateVO> bankCorrectRateVOList = userBankCorrectRate.selectAverageByBankIds(bankIds);//这里有个细节，这种查询集合的SQL，返回的也是集合
         Map<Long, BigDecimal> avgCorrectRateMap = bankCorrectRateVOList.stream().collect(Collectors.toMap(BankCorrectRateVO::getBankId, BankCorrectRateVO::getAvgCorrectRate));
 
-        questionBanks.forEach(questionBank -> {
-            BigDecimal averageCorrectRate = avgCorrectRateMap.get(questionBank.getId());
-            questionBank.setAvgCorrectRate(averageCorrectRate);
-        });
-
-        List<QuestionBankVO> questionBankVOList = questionBanks.stream().map(this::toQuestionBankVO).collect(Collectors.toList());
+        //这里不必担心 avgCorrectRate 是 null 的情况，因为聚合函数 AVG(correct_rate) 前面已经加了 COALESCE，如果没有用户做过这个题库，或者没有错题，那么就返回 0
+        List<QuestionBankVO> questionBankVOList = questionBanks.stream()
+                .map(questionBank -> toQuestionBankVO(questionBank, avgCorrectRateMap.get(questionBank.getId())))
+                .collect(Collectors.toList());
 
         return questionBankVOList;
     }
@@ -238,16 +241,13 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
             return List.of();
         }
 
-        List<Long> questionIds = questionBanks.stream().map(QuestionBank::getId).toList();
-        List<BankCorrectRateVO> bankCorrectRateVOList = userBankCorrectRate.selectAverageByBankIds(questionIds);//这里有个细节，这种查询集合的SQL，返回的也是集合
+        List<Long> bankIds = questionBanks.stream().map(QuestionBank::getId).toList();
+        List<BankCorrectRateVO> bankCorrectRateVOList = userBankCorrectRate.selectAverageByBankIds(bankIds);//这里有个细节，这种查询集合的SQL，返回的也是集合
         Map<Long, BigDecimal> avgCorrectRateMap = bankCorrectRateVOList.stream().collect(Collectors.toMap(BankCorrectRateVO::getBankId, BankCorrectRateVO::getAvgCorrectRate));
 
-        questionBanks.forEach(questionBank -> {
-            BigDecimal averageCorrectRate = avgCorrectRateMap.get(questionBank.getId());
-            questionBank.setAvgCorrectRate(averageCorrectRate);
-        });
-
-        List<QuestionBankVO> questionBankVos = questionBanks.stream().map(this::toQuestionBankVO).collect(Collectors.toList());
+        List<QuestionBankVO> questionBankVos = questionBanks.stream()
+                .map(questionBank -> toQuestionBankVO(questionBank, avgCorrectRateMap.get(questionBank.getId())))
+                .collect(Collectors.toList());
         return questionBankVos;
     }
 
@@ -288,9 +288,10 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         return vo;
     }
 
-    private QuestionBankVO toQuestionBankVO(QuestionBank entity) {
+    private QuestionBankVO toQuestionBankVO(QuestionBank entity, BigDecimal avgCorrectRate) {
         LambdaQueryWrapper<BankTag> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(BankTag::getBankId, entity.getId()); //bankId 不会出现 像 questionId 那样可能重复的情况，因为question_bank 只有一张表
+
         List<BankTag> bankTags = bankTagMapper.selectList(queryWrapper);
         List<String> tagNames = bankTags.stream().map(BankTag::getTagName).toList();
 
@@ -299,7 +300,7 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         vo.setBankName(entity.getBankName());
         vo.setSubModuleId(entity.getSubModuleId());
         vo.setCompleteCount(entity.getCompleteCount());
-        vo.setAvgCorrectRate(entity.getAvgCorrectRate());
+        vo.setAvgCorrectRate(avgCorrectRate);
         vo.setTagNames(tagNames);
         return vo;
     }

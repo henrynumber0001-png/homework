@@ -1,8 +1,10 @@
-# 0730 题库、题目归属与排序改造说明
+# 0730 题库、题目归属与排序改造说明（历史归档）
+
+> 当前业务规则参见[题库内容](../../domains/question-content/overview.md)和[内容发布](../../domains/question-content/publishing.md)。
 
 > 后续变更：题目表的 `sort_order` 已由 `sql/question_number_v1.sql` 迁移为连续且唯一的
 > `question_no`，拖拽排序接口也已替换为单题序号修改接口。本文件以下内容保留为 0730
-> 版本的历史实现记录；当前行为以 `docs/web-admin-api.md` 为准。
+> 版本的历史实现记录；当前行为以[管理端 API](../../reference/admin-api.md)为准。
 
 ## 1. 改造结果
 
