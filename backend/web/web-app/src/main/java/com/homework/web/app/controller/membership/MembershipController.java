@@ -5,10 +5,7 @@ import com.homework.model.enums.MembershipOrderStatus;
 import com.homework.web.app.dto.MembershipOrderCreateDTO;
 import com.homework.web.app.service.MembershipCheckoutService;
 import com.homework.web.app.service.MembershipService;
-import com.homework.web.app.vo.MembershipInfoVO;
-import com.homework.web.app.vo.MembershipOrderCreateVO;
-import com.homework.web.app.vo.MembershipOrderHistoryVO;
-import com.homework.web.app.vo.MembershipDetailPageVO;
+import com.homework.web.app.vo.*;
 import jakarta.validation.Valid;
 
 import java.util.List;
@@ -75,11 +72,15 @@ public class MembershipController {
         return Result.success(membershipService.getOrderStatus(orderNo));
     }
 
-    /**
-     * 查询当前登录用户的全部会员订单历史，按照订单时间倒序返回。
-     */
-    @GetMapping("/orders")
-    public Result<List<MembershipOrderHistoryVO>> orderHistory() {
-        return Result.success(membershipService.getOrderHistory());
+    //点击“查看全部订单”，默认返回 “待支付”页面
+    @GetMapping("/pending-orders")
+    public Result<List<PendingOrderVO>> pendingOrders() {
+        return Result.success(membershipService.getPendingOrders());
+    }
+
+    //在查询全部订单页面，如果用户点击 “全部订单”，调用此接口
+    @GetMapping("/all-orders")
+    public Result<List<AllOrderVO>> allOrders(){
+        return Result.success(membershipService.getAllOrders());
     }
 }

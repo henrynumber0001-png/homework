@@ -3,10 +3,8 @@ package com.homework.web.app.service;
 import com.homework.model.enums.MembershipOrderStatus;
 import com.homework.web.app.dto.MembershipOrderCreateDTO;
 import com.homework.web.app.dto.MembershipPaymentConfirmationDTO;
-import com.homework.web.app.vo.MembershipInfoVO;
-import com.homework.web.app.vo.MembershipOrderCreateVO;
-import com.homework.web.app.vo.MembershipOrderHistoryVO;
-import com.homework.web.app.vo.MembershipDetailPageVO;
+import com.homework.web.app.vo.*;
+
 import java.util.List;
 
 /** 会员查询、下单、变更和支付确认。 */
@@ -19,11 +17,13 @@ public interface MembershipService {
             MembershipOrderCreateDTO dto
     );
 
-    List<MembershipOrderHistoryVO> getOrderHistory();
+    List<PendingOrderVO> getPendingOrders();
 
     MembershipOrderStatus getOrderStatus(String orderNo);
 
     void confirmPayment(MembershipPaymentConfirmationDTO confirmation);
 
     MembershipInfoVO getMembershipInfo();
+
+    List<AllOrderVO> getAllOrders();
 }

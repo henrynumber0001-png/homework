@@ -37,15 +37,22 @@ export interface MembershipOrderCreate {
   codeUrl: string
 }
 
-export interface MembershipOrderHistory {
+export interface MembershipOrderListItem {
   orderNo: string
   action: number
   membershipType: MembershipTypeValue
-  billingType: number
+  billingType: number | null
   durationMonths: number
   payAmount: number
   currency: string
   orderStatus: number
+}
+
+export interface PendingMembershipOrder extends MembershipOrderListItem {
+  paymentExpiredTime: string
+}
+
+export interface AllMembershipOrder extends MembershipOrderListItem {
   periodEnd: string | null
   payTime: string | null
 }

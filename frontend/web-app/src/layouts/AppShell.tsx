@@ -125,7 +125,7 @@ export function AppShell() {
                   <MenuLink to="/me">个人中心</MenuLink>
                   <MenuLink to="/me/edit">修改资料</MenuLink>
                   <MenuLink to="/messages">我的消息</MenuLink>
-                  <MenuLink to="/membership/orders">订单历史</MenuLink>
+                  <MenuLink to="/membership/orders">全部订单</MenuLink>
                   <DropdownMenu.Separator className="my-1 h-px bg-line" />
                   <DropdownMenu.Item
                     onSelect={logout}

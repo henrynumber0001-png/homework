@@ -196,7 +196,7 @@ export function MembershipPlansPage() {
       <div className="mt-6 flex justify-center">
         <Button asChild variant="ghost">
           <Link to="/membership/orders">
-            查看历史订单
+            查看全部订单
             <ArrowRight className="size-4" />
           </Link>
         </Button>

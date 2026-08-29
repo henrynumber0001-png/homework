@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
@@ -54,9 +55,16 @@ describe('membership child page navigation', () => {
     ).toHaveAttribute('href', '/membership/center')
   })
 
-  it('allows returning from the order history page', async () => {
+  it('shows pending orders by default and allows returning', async () => {
     server.use(
-      http.get('*/api/app/membership/orders', () =>
+      http.get('*/api/app/membership/pending-orders', () =>
+        HttpResponse.json({
+          code: 200,
+          message: 'success',
+          data: [],
+        }),
+      ),
+      http.get('*/api/app/membership/all-orders', () =>
         HttpResponse.json({
           code: 200,
           message: 'success',
@@ -70,5 +78,13 @@ describe('membership child page navigation', () => {
     expect(
       await screen.findByRole('link', { name: '返回会员中心' }),
     ).toHaveAttribute('href', '/membership/center')
+    expect(screen.getByRole('tab', { name: '待支付' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(await screen.findByText('没有待支付订单')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: '全部订单' }))
+    expect(await screen.findByText('还没有会员订单')).toBeInTheDocument()
   })
 })

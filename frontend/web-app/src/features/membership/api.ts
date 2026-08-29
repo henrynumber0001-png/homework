@@ -1,8 +1,9 @@
 import { apiRequest } from '@/shared/api/client'
 import type {
+  AllMembershipOrder,
   MembershipDetailPage,
   MembershipOrderCreate,
-  MembershipOrderHistory,
+  PendingMembershipOrder,
 } from '@/features/membership/types'
 
 export function getMembershipPlans() {
@@ -26,8 +27,14 @@ export function getMembershipOrderStatus(orderNo: string) {
   })
 }
 
-export function getMembershipOrderHistory() {
-  return apiRequest<MembershipOrderHistory[]>({
-    url: '/app/membership/orders',
+export function getPendingMembershipOrders() {
+  return apiRequest<PendingMembershipOrder[]>({
+    url: '/app/membership/pending-orders',
+  })
+}
+
+export function getAllMembershipOrders() {
+  return apiRequest<AllMembershipOrder[]>({
+    url: '/app/membership/all-orders',
   })
 }

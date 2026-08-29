@@ -21,12 +21,15 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-/** Premium 与 Premium Plus 双台账的购买、查询和支付发放流程。 */
+/**
+ * Premium 与 Premium Plus 双台账的购买、查询和支付发放流程。
+ */
 @Service
 @RequiredArgsConstructor
 public class MembershipServiceImpl implements MembershipService {
@@ -61,6 +64,7 @@ public class MembershipServiceImpl implements MembershipService {
         vo.setDisplayName(userInfo.getDisplayName());
         vo.setAvatarUrl(userImageUrlResolver.resolveAvatar(userInfo.getAvatarObjectKey()));
 
+        //输入 userId，检测当前 user 是什么权限的 membership
         MembershipAccessSnapshot membership = membershipAccessService.getAccess(userId);
         vo.setMemberStatus(membership.status());
         vo.setMembershipType(membership.membershipType());
@@ -69,7 +73,10 @@ public class MembershipServiceImpl implements MembershipService {
         return vo;
     }
 
-    /** 返回当前身份、两类全款套餐和当前能够购买的补差档位。 */
+
+    /**
+     * 返回当前身份、两类全款套餐和当前能够购买的补差档位。
+     */
     @Override
     public MembershipDetailPageVO getMembershipDetailPage() {
         Long userId = LoginUserHolder.getUserId();
@@ -78,41 +85,23 @@ public class MembershipServiceImpl implements MembershipService {
         }
 
         LocalDateTime now = LocalDateTime.now();
-        BaseVipRecord baseVip = baseVipRecordMapper.selectOne(
-                new LambdaQueryWrapper<BaseVipRecord>()
-                        .eq(BaseVipRecord::getUserId, userId)
-                        .last("LIMIT 1")
-        );
-        SvipRecord svip = svipRecordMapper.selectOne(
-                new LambdaQueryWrapper<SvipRecord>()
-                        .eq(SvipRecord::getUserId, userId) //userId设置唯一索引
-                        .last("LIMIT 1")
-        );
 
-        //查询是否存在 有效的premium
-        boolean svipActive = svip != null && svip.getExpireTime() != null && svip.getExpireTime().isAfter(now);
-        //查询是否存在 有效的premium plus
-        boolean baseVipActive = baseVip != null && baseVip.getExpireTime() != null && baseVip.getExpireTime().isAfter(now);
-
-        //创建会员详情页对象
+        MembershipAccessSnapshot membershipAccessSnapshot = membershipAccessService.getAccess(userId);
         MembershipDetailPageVO page = new MembershipDetailPageVO();
-        if (svipActive) {
-            page.setMemberStatus(MembershipStatus.PREMIUM_PLUS);
-            page.setCurrentMembershipType(MembershipType.PREMIUM_PLUS);
-            page.setCurrentExpireTime(svip.getExpireTime());
+        page.setCurrentMembershipType(membershipAccessSnapshot.membershipType());
+        page.setMemberStatus(membershipAccessSnapshot.status());
+        page.setCurrentExpireTime(membershipAccessSnapshot.currentExpireTime());
+        page.setBaseFreezeExpireTime(membershipAccessSnapshot.baseFreezeExpireTime());
 
-            //同时存在有效的premium 和 premium plus, 优先使用 premium plus 并 冻结 premium
-            if (baseVipActive && baseVip.getExpireTime().isAfter(svip.getExpireTime())) {
-                page.setBaseFreezeExpireTime(baseVip.getExpireTime());
-            }
-        } else if (baseVipActive) { //如果只有premium, 那就返回premium的信息，freezeExpireTime = null
-            page.setMemberStatus(MembershipStatus.PREMIUM);
-            page.setCurrentMembershipType(MembershipType.PREMIUM);
-            page.setCurrentExpireTime(baseVip.getExpireTime());
-        } else {
-            page.setMemberStatus(MembershipStatus.FREE);
-        }
+        LambdaQueryWrapper<SvipRecord> svipQuery = new LambdaQueryWrapper<>();
+        svipQuery.eq(SvipRecord::getUserId, userId);
+        SvipRecord svip = svipRecordMapper.selectOne(svipQuery);
 
+        LambdaQueryWrapper<BaseVipRecord> baseVipQuery = new LambdaQueryWrapper<>();
+        baseVipQuery.eq(BaseVipRecord::getUserId, userId);
+        BaseVipRecord baseVip = baseVipRecordMapper.selectOne(baseVipQuery);
+
+        boolean svipActive = svip != null && svip.getExpireTime() != null && svip.getExpireTime().isAfter(now);
         //剩余premium的计算开始时间
         LocalDateTime remainingBaseVipStart = svipActive ? svip.getExpireTime() : now;
 
@@ -128,7 +117,7 @@ public class MembershipServiceImpl implements MembershipService {
             maxDiffUpgradeMonths = (int) Math.min(MAX_DIFF_UPGRADE_MONTHS, remainingDays / DIFF_UPGRADE_DAYS_PER_MONTH);
         }
 
-        //查询所有 有效的 会员菜单
+        //查询所有 有效的 会员菜单（这个 membership_plan 表中的数据都是提前预装好的）
         List<MembershipPlan> availablePlans = membershipPlanMapper.selectList(
                 new LambdaQueryWrapper<MembershipPlan>()
                         .eq(MembershipPlan::getEnabled, Boolean.TRUE)
@@ -176,14 +165,16 @@ public class MembershipServiceImpl implements MembershipService {
         premiumPlusCard.setFullPurchaseOptions(premiumPlusFullPurchaseOptions);
 
         //装配会员详情页
-        page.setFullPurchaseCards(List.of(premiumCard, premiumPlusCard));
+        page.setFullPurchaseCards(List.of(premiumCard, premiumPlusCard)); // List.of() 返回不可变集合，new ArrayList() 返回可变集合
         page.setDiffUpgradeAvailable(maxDiffUpgradeMonths > 0); //告诉前端，是否展示补差模块
         page.setMaxDiffUpgradeMonths(maxDiffUpgradeMonths);
         page.setDiffUpgradeOptions(diffUpgradeOptions);
         return page;
     }
 
-    /** 校验套餐和补差资格后创建一笔等待微信支付的订单。 */
+    /**
+     * 校验套餐和补差资格后创建一笔等待微信支付的订单。
+     */
     @Transactional
     @Override
     public MembershipOrderCreateVO createOrder(String idempotencyKey, MembershipOrderCreateDTO dto //idempotencyKey 防重复建单凭证
@@ -199,17 +190,15 @@ public class MembershipServiceImpl implements MembershipService {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
-        //创建用户锁，防止把同一用户的创建订单操作串行化
+        //创建排他锁，防止把同一用户的创建订单操作串行化
         UserInfo lockedUser = userInfoMapper.selectOne(
                 new LambdaQueryWrapper<UserInfo>()
                         .eq(UserInfo::getId, userId)
-                        .last("LIMIT 1 FOR UPDATE")
+                        .last("FOR UPDATE")
         );
 
         if (lockedUser == null) {
-            throw new HomeworkException(
-                    ResultCodeEnum.APP_LOGIN_USER_NOT_EXIST
-            );
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_USER_NOT_EXIST);
         }
 
         //这一步是在查，用户是否有并发操作，或者网络重试
@@ -218,7 +207,6 @@ public class MembershipServiceImpl implements MembershipService {
                 new LambdaQueryWrapper<MembershipOrder>()
                         .eq(MembershipOrder::getUserId, userId) // userId + idempotencyKey = 唯一索引
                         .eq(MembershipOrder::getIdempotencyKey, idempotencyKey) //idempotencyKey 用于防止用户因为重复点击或网络重试而创建多笔相同订单。
-                        .last("LIMIT 1")
         );
         if (existing != null) { //如果这笔订单已经有了，直接返回，不用重复创建了
             MembershipOrderCreateVO result = new MembershipOrderCreateVO();
@@ -231,47 +219,11 @@ public class MembershipServiceImpl implements MembershipService {
             return result;
         }
 
-        //如果没有两个相同的订单
-        //开始创建这笔订单
-        //now 是 本次订单的 创建时间
-        LocalDateTime now = LocalDateTime.now();
-
-        //查看 是否有pending的订单，并且已经过了支付期限了
-        List<MembershipOrder> expiredOrders = membershipOrderMapper.selectList(
-                new LambdaQueryWrapper<MembershipOrder>()
-                        .eq(MembershipOrder::getUserId, userId)
-                        .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING)
-                        .le(MembershipOrder::getPaymentExpiredTime, now)
-        );
-        //如果有，遍历这些订单，把每一个订单状态都改为Expired
-        for (MembershipOrder expiredOrder : expiredOrders) {
-            expiredOrder.setOrderStatus(MembershipOrderStatus.EXPIRED);
-            membershipOrderMapper.updateById(expiredOrder);
-        }
-        //继续计算 再检查用户是否还有尚未超时的待支付订单
-        Long pendingCount = membershipOrderMapper.selectCount(
-                new LambdaQueryWrapper<MembershipOrder>()
-                        .eq(MembershipOrder::getUserId, userId)
-                        .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING)
-        );
-        if (pendingCount > 0) { //如果还有，说明当前有尚未支付的订单（同一个用户同一时间只能存在一笔尚未完成的会员订单）
-            /*
-            如果允许同时存在多个待支付订单，会出现：
-            页面同时存在多个微信二维码；
-            用户可能意外支付多笔订单；
-            补差订单创建后，基础会员剩余时长可能发生变化；
-            多笔支付回调可能先后修改同一组会员台账；
-            用户不知道应该继续支付哪一笔订单。
-             */
-            throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_CHANGE_IN_PROGRESS);
-        }
-
         //检查要支付的plan item还在不在
         MembershipPlan plan = membershipPlanMapper.selectOne(
                 new LambdaQueryWrapper<MembershipPlan>()
                         .eq(MembershipPlan::getId, dto.getPlanId())
                         .eq(MembershipPlan::getEnabled, Boolean.TRUE)
-                        .last("LIMIT 1")
         );
         if (plan == null || plan.getPurchaseType() == null || plan.getMembershipType() == null || plan.getDurationMonths() == null || plan.getPrice() == null
                 || plan.getPrice().signum() <= 0) {
@@ -289,44 +241,46 @@ public class MembershipServiceImpl implements MembershipService {
                 throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_PLAN_NOT_FOUND);
             }
 
-            //这个BaseVipRecord 和 SvipRecord，实际上就是用户的“两张会员卡”
-            //它们不会变，只是在不断更新上面的到期日期
-            /*
-            查询当前会员状态只需要读一条记录；
-            续费直接延长一个 expireTime；
-            Premium Plus 冻结时只需要移动一个最终到期时间；
-            补差资格只需要计算一个剩余时长；
-            支付回调可以锁定并更新唯一一条用户台账。
-             */
+            membershipOrderMapper.pendingToExpired(userId);
+
+            LambdaQueryWrapper<MembershipOrder> pendingOrderQuery = new LambdaQueryWrapper<>();
+            pendingOrderQuery.eq(MembershipOrder::getUserId, userId)
+                    .eq(MembershipOrder::getAction, MembershipOrderAction.DIFF_UPGRADE)
+                    .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING);
+
+            Long count = membershipOrderMapper.selectCount(pendingOrderQuery);
+            if (count > 0) {
+                throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_CHANGE_IN_PROGRESS);
+            }
+
             BaseVipRecord baseVip = baseVipRecordMapper.selectOne(
                     new LambdaQueryWrapper<BaseVipRecord>()
                             .eq(BaseVipRecord::getUserId, userId) //设置 userId 唯一，是为了保证一个用户只有一个可计算的基础VIP账户
-                            .last("LIMIT 1")
             );
-            if (baseVip == null || baseVip.getExpireTime() == null) {
+            if (baseVip == null || baseVip.getExpireTime() == null || !baseVip.getExpireTime().isAfter(LocalDateTime.now())) {
                 throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_DIFF_UPGRADE_UNAVAILABLE); //不具备补差资格
             }
             SvipRecord svip = svipRecordMapper.selectOne(
                     new LambdaQueryWrapper<SvipRecord>()
                             .eq(SvipRecord::getUserId, userId) //设置 userId 唯一，是为了保证一个用户只有一个可计算的SVIP账户：
-                            .last("LIMIT 1")
             );
 
-            //用户的 premium 剩余天数转换的 月份数的整数 是否大于等于 plan所选的 durationMonths
-            //premium 的起算时间，要以 plus到期时间 或者 创建订单时间 now
-            //为什么要先查plus，因为如果有plus, premium的开始时间一定是在 plus 的截止时间
-            LocalDateTime baseVipStartTime = svip != null && svip.getExpireTime().isAfter(now) ? svip.getExpireTime() : now;
-            long remainingDays = Duration.between(baseVipStartTime, baseVip.getExpireTime()).toDays();
+            //这个 remainingBaseVipStartTime 的作用只有一个：计算 remainingDays
+            //原因只有一个：BaseVipRecord 里没有 startTime 字段，所以你不得不通过判断 startTime 来完成剩余天数的计算
+            //而 BaseVipRecord 中的 expireTime 字段，早就在 confirmPayment 中，在购买时已经存入数据库表了，因为现在是在 补差 的分支，所以这个 expireTime 字段的值，是必然存在的
+            LocalDateTime remainingBaseVipStartTime = svip != null && svip.getExpireTime() != null && svip.getExpireTime().isAfter(LocalDateTime.now()) ? svip.getExpireTime() : LocalDateTime.now();
+            if (baseVip.getExpireTime().isAfter(LocalDateTime.now())) {
+                long remainingDays = Duration.between(remainingBaseVipStartTime, baseVip.getExpireTime()).toDays();
+                int maxDiffUpgradeMonths = (int) Math.min(MAX_DIFF_UPGRADE_MONTHS, (remainingDays / DIFF_UPGRADE_DAYS_PER_MONTH));
 
-            int maxDiffUpgradeMonths = (int)Math.min(MAX_DIFF_UPGRADE_MONTHS, (remainingDays / DIFF_UPGRADE_DAYS_PER_MONTH));
-
-            //如果用户选择的 durationMonths 大于可补差的 最大可补差月数，就抛出异常
-            //比如（最多只能补3个月，但是你选的plan.getDurationMonths = 4)
-            if(plan.getDurationMonths() > maxDiffUpgradeMonths){
-                throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_DIFF_UPGRADE_UNAVAILABLE);
+                //如果用户选择的 durationMonths 大于可补差的 最大可补差月数，就抛出异常
+                //比如（最多只能补3个月，但是你选的plan.getDurationMonths = 4)
+                if (plan.getDurationMonths() > maxDiffUpgradeMonths) {
+                    throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_DIFF_UPGRADE_UNAVAILABLE);
+                }
+                //如果等于，就把action设置为 补差
+                action = MembershipOrderAction.DIFF_UPGRADE;
             }
-            //如果等于，就把action设置为 补差
-            action = MembershipOrderAction.DIFF_UPGRADE;
         }
 
         MembershipOrder order = new MembershipOrder();
@@ -341,7 +295,7 @@ public class MembershipServiceImpl implements MembershipService {
         order.setCurrency(StringUtils.hasText(plan.getCurrency()) ? plan.getCurrency() : DEFAULT_CURRENCY);
         order.setOrderStatus(MembershipOrderStatus.PENDING);
         order.setIdempotencyKey(idempotencyKey);
-        order.setPaymentExpiredTime(now.plusMinutes(15));
+        order.setPaymentExpiredTime(LocalDateTime.now().plusMinutes(15));
         membershipOrderMapper.insert(order);
 
         MembershipOrderCreateVO result = new MembershipOrderCreateVO();
@@ -353,21 +307,61 @@ public class MembershipServiceImpl implements MembershipService {
         return result;
     }
 
+
     @Override
-    public List<MembershipOrderHistoryVO> getOrderHistory() {
+    public List<PendingOrderVO> getPendingOrders() {
         Long userId = LoginUserHolder.getUserId();
         if (userId == null) {
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
         }
 
-        List<MembershipOrder> orders = membershipOrderMapper.selectList(
-                new LambdaQueryWrapper<MembershipOrder>()
-                        .eq(MembershipOrder::getUserId, userId)
-                        .orderByDesc(MembershipOrder::getId)
-        );
-        List<MembershipOrderHistoryVO> result = new ArrayList<>(orders.size());
+        //让SQL操作变成原子的，这样就不会出现并发情况
+        membershipOrderMapper.pendingToExpired(userId);
+
+        //然后再检查是否还有 Pending 订单
+        LambdaQueryWrapper<MembershipOrder> orderQuery = new LambdaQueryWrapper<>();
+        orderQuery.eq(MembershipOrder::getUserId, userId)
+                .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING)
+                .orderByAsc(MembershipOrder::getCreatedTime);
+        List<MembershipOrder> pendingOrders = membershipOrderMapper.selectList(orderQuery);
+
+
+        List<PendingOrderVO> pendingPage = new ArrayList<>();
+        for (MembershipOrder pendingOrder : pendingOrders) {
+            PendingOrderVO item = new PendingOrderVO();
+            item.setOrderNo(pendingOrder.getOrderNo());
+            item.setAction(pendingOrder.getAction());
+            item.setMembershipType(pendingOrder.getMembershipType());
+            item.setBillingType(pendingOrder.getBillingType());
+            item.setDurationMonths(pendingOrder.getDurationMonths());
+            item.setPayAmount(pendingOrder.getPayAmount());
+            item.setCurrency(pendingOrder.getCurrency());
+            item.setOrderStatus(pendingOrder.getOrderStatus());
+            item.setPaymentExpiredTime(pendingOrder.getPaymentExpiredTime());
+            pendingPage.add(item);
+        }
+        return pendingPage;
+    }
+
+
+    @Override
+    public List<AllOrderVO> getAllOrders() {
+        Long userId = LoginUserHolder.getUserId();
+        if (userId == null) {
+            throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
+        }
+
+        //让SQL操作变成原子的，这样就不会出现并发情况
+        membershipOrderMapper.pendingToExpired(userId);
+
+        LambdaQueryWrapper<MembershipOrder> orderQuery = new LambdaQueryWrapper<>();
+        orderQuery.eq(MembershipOrder::getUserId, userId)
+                .orderByDesc(MembershipOrder::getCreatedTime);
+        List<MembershipOrder> orders = membershipOrderMapper.selectList(orderQuery);
+
+        List<AllOrderVO> allPage = new ArrayList<>();
         for (MembershipOrder order : orders) {
-            MembershipOrderHistoryVO item = new MembershipOrderHistoryVO();
+            AllOrderVO item = new AllOrderVO();
             item.setOrderNo(order.getOrderNo());
             item.setAction(order.getAction());
             item.setMembershipType(order.getMembershipType());
@@ -378,10 +372,11 @@ public class MembershipServiceImpl implements MembershipService {
             item.setOrderStatus(order.getOrderStatus());
             item.setPeriodEnd(order.getPeriodEnd());
             item.setPayTime(order.getPayTime());
-            result.add(item);
+            allPage.add(item);
         }
-        return result;
+        return allPage;
     }
+
 
     @Override
     public MembershipOrderStatus getOrderStatus(String orderNo) {
@@ -393,11 +388,14 @@ public class MembershipServiceImpl implements MembershipService {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
+        //为什么只处理 pending -> expired ？
+        //因为 paid 在 confirmPayment 中会被处理，唯独 从 pending 到 expired 这里没有处理
+        membershipOrderMapper.pendingToExpiredByOrderNo(userId, orderNo);
+
         MembershipOrder order = membershipOrderMapper.selectOne(
                 new LambdaQueryWrapper<MembershipOrder>()
                         .eq(MembershipOrder::getOrderNo, orderNo)
                         .eq(MembershipOrder::getUserId, userId)
-                        .last("LIMIT 1")
         );
         if (order == null) {
             throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_ORDER_NOT_FOUND);
@@ -430,7 +428,8 @@ public class MembershipServiceImpl implements MembershipService {
                 || !StringUtils.hasText(confirmation.getOrderNo())
                 || !StringUtils.hasText(confirmation.getProviderTradeNo())
                 || confirmation.getPaidAmount() == null
-                || !StringUtils.hasText(confirmation.getCurrency())) {
+                || !StringUtils.hasText(confirmation.getCurrency())
+                || confirmation.getPaidTime() == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
@@ -450,7 +449,7 @@ public class MembershipServiceImpl implements MembershipService {
         }
 
         // 第三步：设置支付时间，检查用户是否在订单有效期内完成了付款。
-        LocalDateTime paidTime = confirmation.getPaidTime() == null ? LocalDateTime.now() : confirmation.getPaidTime();
+        LocalDateTime paidTime = confirmation.getPaidTime();
         if (order.getPaymentExpiredTime() == null || paidTime.isAfter(order.getPaymentExpiredTime())) { //没有设置订单支付时限 或 支付时间超过时效，都不行
             throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_ORDER_STATE_ERROR);
         }
@@ -466,12 +465,12 @@ public class MembershipServiceImpl implements MembershipService {
         BaseVipRecord baseVip = baseVipRecordMapper.selectOne(
                 new LambdaQueryWrapper<BaseVipRecord>()
                         .eq(BaseVipRecord::getUserId, order.getUserId())
-                        .last("LIMIT 1 FOR UPDATE")
+                        .last("FOR UPDATE")
         );
         SvipRecord svip = svipRecordMapper.selectOne(
                 new LambdaQueryWrapper<SvipRecord>()
                         .eq(SvipRecord::getUserId, order.getUserId())
-                        .last("LIMIT 1 FOR UPDATE")
+                        .last("FOR UPDATE")
         );
 
         //定义一个新变量：新增订单的开始时间
@@ -481,7 +480,7 @@ public class MembershipServiceImpl implements MembershipService {
         // 再定义一个本次新增订单会员时长的到期时间
         LocalDateTime newSvipExtensionEndTime;
         LocalDateTime newBaseVipExtensionEndTime;
-        
+
         // 分支一：全款购买 Premium。
         // 这个部分不涉及到对 Premium plus的任何操作，只是查询
         if (order.getAction() == MembershipOrderAction.FULL_PURCHASE && order.getMembershipType() == MembershipType.PREMIUM) {
@@ -496,19 +495,19 @@ public class MembershipServiceImpl implements MembershipService {
                 newBaseVipExtensionEndTime = newBaseVipExtensionStartTime.plusMonths(order.getDurationMonths());
                 baseVip.setExpireTime(newBaseVipExtensionEndTime);
                 baseVipRecordMapper.insert(baseVip);
-            } else if(baseVip.getExpireTime().isAfter(paidTime)) { //如果用户有 有效的premium会员，就把新买的premium时长加到原有的截止时间
+            } else if (baseVip.getExpireTime().isAfter(paidTime)) { //如果用户有 有效的premium会员，就把新买的premium时长加到原有的截止时间
                 newBaseVipExtensionStartTime = baseVip.getExpireTime();
                 newBaseVipExtensionEndTime = newBaseVipExtensionStartTime.plusMonths(order.getDurationMonths());
                 baseVip.setExpireTime(newBaseVipExtensionEndTime);
                 baseVipRecordMapper.updateById(baseVip);
-            }else { //有会员但已过期,那么既然买的就是premium，就把起算时间设为支付时间
+            } else { //有会员但已过期,那么既然买的就是premium，就把起算时间设为支付时间
                 newBaseVipExtensionStartTime = svip != null && svip.getExpireTime().isAfter(paidTime) ? svip.getExpireTime() : paidTime;
                 newBaseVipExtensionEndTime = newBaseVipExtensionStartTime.plusMonths(order.getDurationMonths());
                 baseVip.setExpireTime(newBaseVipExtensionEndTime);
                 baseVipRecordMapper.updateById(baseVip);
             }
             order.setPeriodEnd(newBaseVipExtensionEndTime);
-        // 分支二：全款购买 Premium Plus。
+            // 分支二：全款购买 Premium Plus。
         } else if (order.getAction() == MembershipOrderAction.FULL_PURCHASE && order.getMembershipType() == MembershipType.PREMIUM_PLUS) {
 
             //用户是想购买premium plus，一级分类就是premium plus
@@ -522,13 +521,13 @@ public class MembershipServiceImpl implements MembershipService {
                 svipRecordMapper.insert(svip);
 
                 //存在有效premium plus，时长更新在原plus结尾
-            } else if(svip.getExpireTime() != null && svip.getExpireTime().isAfter(paidTime)) {
+            } else if (svip.getExpireTime() != null && svip.getExpireTime().isAfter(paidTime)) {
                 newSvipExtensionStartTime = svip.getExpireTime();
                 newSvipExtensionEndTime = newSvipExtensionStartTime.plusMonths(order.getDurationMonths());
                 svip.setExpireTime(newSvipExtensionEndTime);
                 svipRecordMapper.updateById(svip);
 
-            }else { //plus过期，但有plus会员卡，时长从支付开始起算
+            } else { //plus过期，但有plus会员卡，时长从支付开始起算
                 newSvipExtensionStartTime = paidTime;
                 newSvipExtensionEndTime = newSvipExtensionStartTime.plusMonths(order.getDurationMonths());
                 svip.setExpireTime(newSvipExtensionEndTime);
@@ -537,7 +536,7 @@ public class MembershipServiceImpl implements MembershipService {
             //如果原来有 有效的premium，顺延精确天数
             //为什么买的时候是自然月，但是顺延要精确到秒？
             //因为买到时候是接受 买到是自然月这个事实的，但是冻结过程中你不能随便减我的天数
-            if(baseVip != null && baseVip.getExpireTime().isAfter(paidTime)) {
+            if (baseVip != null && baseVip.getExpireTime().isAfter(paidTime)) {
                 //Duration 可以精确到纳秒
                 Duration remainingBaseVipTime = Duration.between(newSvipExtensionStartTime, baseVip.getExpireTime());
                 newBaseVipExtensionStartTime = svip.getExpireTime();
@@ -548,7 +547,7 @@ public class MembershipServiceImpl implements MembershipService {
 
             order.setPeriodEnd(newSvipExtensionEndTime);
 
-        // 分支三：补差购买 Premium Plus
+            // 分支三：补差购买 Premium Plus
         } else if (order.getAction() == MembershipOrderAction.DIFF_UPGRADE && order.getMembershipType() == MembershipType.PREMIUM_PLUS) {
 
             //其实这一步已经在前面 createOrder 里做了，不合格的选项，不会进入到回调环节的
@@ -560,24 +559,24 @@ public class MembershipServiceImpl implements MembershipService {
             补差升级：每个月固定转换为 31 天。
             Premium 冻结：保留剩余 Premium 时长，精确平移到新的 Plus 到期时间之后。
              */
-                if(svip != null && svip.getExpireTime().isAfter(paidTime)){
-                    newSvipExtensionStartTime = svip.getExpireTime();
-                    newSvipExtensionEndTime = newSvipExtensionStartTime.plusDays(svipExtensionDays);
-                    svip.setExpireTime(newSvipExtensionEndTime);
-                    svipRecordMapper.updateById(svip);
-                }else if(svip == null){
-                    svip = new SvipRecord();
-                    svip.setUserId(order.getUserId());
-                    newSvipExtensionStartTime = paidTime;
-                    newSvipExtensionEndTime = newSvipExtensionStartTime.plusDays(svipExtensionDays);
-                    svip.setExpireTime(newSvipExtensionEndTime);
-                    svipRecordMapper.insert(svip);
-                }else {
-                    newSvipExtensionStartTime = paidTime;
-                    newSvipExtensionEndTime = newSvipExtensionStartTime.plusDays(svipExtensionDays);
-                    svip.setExpireTime(newSvipExtensionEndTime);
-                    svipRecordMapper.updateById(svip);
-                }
+            if (svip != null && svip.getExpireTime().isAfter(paidTime)) {
+                newSvipExtensionStartTime = svip.getExpireTime();
+                newSvipExtensionEndTime = newSvipExtensionStartTime.plusDays(svipExtensionDays);
+                svip.setExpireTime(newSvipExtensionEndTime);
+                svipRecordMapper.updateById(svip);
+            } else if (svip == null) {
+                svip = new SvipRecord();
+                svip.setUserId(order.getUserId());
+                newSvipExtensionStartTime = paidTime;
+                newSvipExtensionEndTime = newSvipExtensionStartTime.plusDays(svipExtensionDays);
+                svip.setExpireTime(newSvipExtensionEndTime);
+                svipRecordMapper.insert(svip);
+            } else {
+                newSvipExtensionStartTime = paidTime;
+                newSvipExtensionEndTime = newSvipExtensionStartTime.plusDays(svipExtensionDays);
+                svip.setExpireTime(newSvipExtensionEndTime);
+                svipRecordMapper.updateById(svip);
+            }
 
 
             order.setPeriodEnd(newSvipExtensionEndTime);

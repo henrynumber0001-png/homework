@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import lombok.Data;
 
 @Data
-public class MembershipOrderHistoryVO {
+public class PendingOrderVO {
 
     private String orderNo;
 
@@ -27,7 +27,5 @@ public class MembershipOrderHistoryVO {
 
     private MembershipOrderStatus orderStatus;
 
-    private LocalDateTime periodEnd;
-
-    private LocalDateTime payTime;
+    private LocalDateTime paymentExpiredTime;
 }

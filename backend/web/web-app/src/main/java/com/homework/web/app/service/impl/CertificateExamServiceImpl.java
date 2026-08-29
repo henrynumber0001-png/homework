@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 
@@ -246,14 +247,15 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         // 检查用户提交的每一个选项是否真实存在，并检查单选题数量规则。
         validateChosenOptions(questionInfo, dto.getChosenOptions());
 
-        // 同一场考试的同一道题只允许有一条临时答案，因此先查询旧记录。
+        // 同一场考试的同一道题只允许有一条临时答案，因此先查询旧记录
+        // 这里指的是，用户可能先选了一个选项，然后等全部答完之后又返回修改了选项，这些动作都是在最终交卷之前
         CertificateExamAnswer savedAnswer = certificateExamAnswerMapper.selectOne(
                 new LambdaQueryWrapper<CertificateExamAnswer>()
                         .eq(CertificateExamAnswer::getSessionId, dto.getSessionId())
                         .eq(CertificateExamAnswer::getQuestionId, dto.getQuestionId())
         );
 
-        ArrayList<String> chosenOptionsList = new ArrayList<>(dto.getChosenOptions());
+        List<String> chosenOptionsList = new ArrayList<>(dto.getChosenOptions());
         // 如果没旧记录，插入一条新记录。
         if (savedAnswer == null) {
             CertificateExamAnswer newAnswer = new CertificateExamAnswer();
@@ -280,7 +282,6 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
 
-        //先检查session是否存在
         Long userId = LoginUserHolder.getUserId();
 
         // 与 saveAnswer 锁定同一行。
@@ -452,16 +453,18 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
         List<Long> questionOrder = session.getQuestionOrder();
-        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(
-                session.getUserId(), session.getBankId(), questionOrder);
+        Map<Long, UserFavoriteQuestion> favoriteQuestionMap = getFavoriteQuestionMap(session.getUserId(), session.getBankId(), questionOrder);
 
         //根据 questionOrder(verifiedQuestionIds) 再去CertificateQuestionInfo 查询一遍 题目列表
-        // 普通下架情况下，结算时继续显示并判定这道题是合理的，因此只在创建 Session、生成 questionOrder 前筛选 PUBLISHED 状态。
-        LambdaQueryWrapper<CertificateQuestionInfo> questionQueryWrapper = new LambdaQueryWrapper<>();
-        questionQueryWrapper.in(CertificateQuestionInfo::getId, questionOrder)
-                .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
+        //普通下架情况下，结算时继续显示并判定这道题是合理的，因此只在创建 Session、生成 questionOrder 前筛选 PUBLISHED 状态
+        //特地没有筛选 PUBLISHED 状态，因为一旦 session 开始，结算时候就应该包含这次 session 里的所有题目，即使在答题过程中这道题已经下架
 
-        List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(questionQueryWrapper);
+        List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectByIds(questionOrder);
+//        LambdaQueryWrapper<CertificateQuestionInfo> questionQueryWrapper = new LambdaQueryWrapper<>();
+//        questionQueryWrapper.in(CertificateQuestionInfo::getId, questionOrder)
+//                .in(CertificateQuestionInfo::getQuestionType, QuestionInfoQuestionType.SINGLE_CHOICE, QuestionInfoQuestionType.MULTIPLE);
+//
+//        List<CertificateQuestionInfo> certificateQuestionInfos = certificateQuestionInfoMapper.selectList(questionQueryWrapper);
         if (certificateQuestionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
         }
@@ -473,8 +476,8 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         LambdaQueryWrapper<CertificateExamAnswer> answerQueryWrapper = new LambdaQueryWrapper<>();
         answerQueryWrapper.eq(CertificateExamAnswer::getSessionId, session.getId())
                 .eq(CertificateExamAnswer::getUserId, session.getUserId());
+
         List<CertificateExamAnswer> answers = certificateExamAnswerMapper.selectList(answerQueryWrapper);
-//        long answeredCount = certificateExamAnswerMapper.selectCount(answerQueryWrapper);
 
         // 转成 questionId 到答案的 Map，方便 O(1) 查找。
         Map<Long, CertificateExamAnswer> answerMap = answers.stream()
@@ -483,26 +486,21 @@ public class CertificateExamServiceImpl implements CertificateExamService {
         // 用于保存提交后每一道题的题目、用户选择、正确答案和解析。
         List<CertificateQuestionReviewVO> reviewVOs = new ArrayList<>();
 
-        // 记录用户实际作答数量。
-        long answeredCount = 0L;
+        // 记录用户实际作答数量
+        long answeredCount = 0;
+        // 记录答对数量
+        long correctCount = 0;
 
-        // 记录答对数量。
-        long correctCount = 0L;
-
-        for (Long questionId : questionOrder) {
-            CertificateQuestionInfo questionInfo = questionMap.get(questionId);
-
+        for(CertificateQuestionInfo questionInfo : certificateQuestionInfos) {
             // 题目缺少“正确答案”时，抛异常
             if (questionInfo == null || questionInfo.getCorrectAnswer() == null || questionInfo.getCorrectAnswer().isEmpty()) {
                 throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
             }
 
             // 取得用户对这道题保存的最后选择。
-            CertificateExamAnswer answer = answerMap.get(questionId);
-
+            CertificateExamAnswer answer = answerMap.get(questionInfo.getId());
             // 只有选择列表非空时才算已经作答。
-            boolean answered =
-                    answer != null && answer.getChosenOptions() != null && !answer.getChosenOptions().isEmpty();
+            boolean answered = answer != null && answer.getChosenOptions() != null;
 
             // 未作答题默认不算正确；已作答题比较选项集合。
             boolean correct = answered && sameOptions(answer.getChosenOptions(), questionInfo.getCorrectAnswer());
@@ -525,7 +523,7 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             reviewVO.setImageUrl(readUrlSigner.sign(questionInfo.getImageObjectKey()));
             reviewVO.setCorrectAnswer(questionInfo.getCorrectAnswer());
             reviewVO.setAnalysis(questionInfo.getAnalysis());
-            reviewVO.setIsFavorite(favoriteQuestionMap.containsKey(questionId));
+            reviewVO.setIsFavorite(favoriteQuestionMap.containsKey(questionInfo.getId()));
 
             reviewVO.setChosenOptions(answer == null ? null : answer.getChosenOptions());
             reviewVO.setIsCorrect(answered ? correct : null); //answered 本身结果就是 true/false
@@ -591,9 +589,8 @@ public class CertificateExamServiceImpl implements CertificateExamService {
             return false;
         }
 
-        // 数量必须相等，并且转换成 Set 后包含完全相同的选项。
-        return userOptions.size() == correctOptions.size()
-                && new HashSet<>(userOptions).equals(new HashSet<>(correctOptions));
-        //第二步把 List 转成 Set：原因是多选题不应该关心选项顺序。
+        // 选项数量要完全相同（用size()）
+        // 忽略选项顺序的情况下，选项中的每一个元素也要完全相同（用HashSet）
+        return userOptions.size() == correctOptions.size() && new HashSet<>(userOptions).equals(new HashSet<>(correctOptions));
     }
 }

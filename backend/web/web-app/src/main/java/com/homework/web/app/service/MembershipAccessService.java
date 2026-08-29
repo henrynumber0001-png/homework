@@ -45,36 +45,32 @@ public class MembershipAccessService { //查询 BaseVipRecord 和 SvipRecord，�
             return new MembershipAccessSnapshot(MembershipStatus.FREE, null, null, null);
         }
 
-        // 整个方法只取一次当前时间，确保检查两张台账时使用完全相同的时间基准，
-        // 避免一次调用内部出现一张表刚过期、另一张表使用了稍晚时间判断的边界差异。
-        LocalDateTime now = LocalDateTime.now();
-
         // user_id 在两张会员表中都有唯一约束，所以每张表最多返回一条记录。
         // 即使记录已经到期也先查出来，是否有效统一在下面通过 expireTime 判断。
-        SvipRecord svip = svipRecordMapper.selectOne(
-                new LambdaQueryWrapper<SvipRecord>()
-                        .eq(SvipRecord::getUserId, userId)
-        );
-        BaseVipRecord baseVip = baseVipRecordMapper.selectOne(
-                new LambdaQueryWrapper<BaseVipRecord>()
-                        .eq(BaseVipRecord::getUserId, userId)
-        );
+        LambdaQueryWrapper<SvipRecord> svipQuery = new LambdaQueryWrapper<>();
+        svipQuery.eq(SvipRecord::getUserId, userId);
+        SvipRecord svip = svipRecordMapper.selectOne(svipQuery);
+
+        LambdaQueryWrapper<BaseVipRecord> baseVipQuery = new LambdaQueryWrapper<>();
+        baseVipQuery.eq(BaseVipRecord::getUserId, userId);
+        BaseVipRecord baseVip = baseVipRecordMapper.selectOne(baseVipQuery);
 
         // Premium Plus 优先级最高：只要高级会员存在、到期时间存在，并且尚未到期，
         // 就直接把当前有效身份判定为 PREMIUM_PLUS，不再让基础 Premium 覆盖它。
-        if (svip != null
-                && svip.getExpireTime() != null
-                && svip.getExpireTime().isAfter(now)) {
+        if (svip != null && svip.getExpireTime() != null && svip.getExpireTime().isAfter(LocalDateTime.now())) {
             // 如果基础 Premium 的最终到期时间晚于 Premium Plus 到期时间，说明高级会员结束后
             // 仍有一段基础会员权益可以继续生效。快照把这个时间作为“冻结的基础会员到期时间”返回，
             // 供会员页面展示；这里只计算并返回结果，不会修改任何会员台账。
             // 若基础会员不存在、没有到期时间，或不晚于高级会员到期时间，则没有需要单独展示的剩余基础权益。
-            LocalDateTime frozenBaseExpire = baseVip != null && baseVip.getExpireTime() != null && baseVip.getExpireTime().isAfter(svip.getExpireTime())
-                    ? baseVip.getExpireTime()
-                    : null;
+            LocalDateTime frozenBaseExpire = null;
+            if(baseVip != null && baseVip.getExpireTime() != null && baseVip.getExpireTime().isAfter(svip.getExpireTime())) {
+                frozenBaseExpire = baseVip.getExpireTime();
+            }
 
-            // currentExpireTime 对应当前真正生效的 Premium Plus 到期时间；
-            // baseFreezeExpireTime 只描述高级会员结束后可能继续存在的基础会员期限。
+            //这个 MembershipAccessSnapshot 因为是record，它其实是一个 设定参数的逻辑
+            //也就是说，方法名虽然叫 getAccess，但实际上是层层查看当前 userId 的权限满足 哪一层
+            //如果满足 Svip，那么就 new 一个 Svip 的 MembershipAccessSnapshot，把参数类型都按照 Svip 的枚举实例进行注入
+            //也就是，它不是一个查询逻辑，它是主动一个设定逻辑
             MembershipAccessSnapshot membershipAccessSnapshot = new MembershipAccessSnapshot(
                     MembershipStatus.PREMIUM_PLUS, MembershipType.PREMIUM_PLUS, svip.getExpireTime(), frozenBaseExpire);
             return membershipAccessSnapshot;
@@ -82,17 +78,13 @@ public class MembershipAccessService { //查询 BaseVipRecord 和 SvipRecord，�
 
         // 能执行到这里，说明 Premium Plus 不存在或已经到期。
         // 此时再判断基础 Premium；只要其到期时间严格晚于 now，就把基础会员作为当前有效身份，并且不需要冻结的会员时间
-        if (baseVip != null
-                && baseVip.getExpireTime() != null
-                && baseVip.getExpireTime().isAfter(now)) {
+        if (baseVip != null && baseVip.getExpireTime() != null && baseVip.getExpireTime().isAfter(LocalDateTime.now())) {
             return new MembershipAccessSnapshot(MembershipStatus.PREMIUM, MembershipType.PREMIUM, baseVip.getExpireTime(), null);
         }
 
         // 两张台账都不存在，或者已有记录均已到期时，最终身份就是 FREE。
         // 免费用户没有当前会员类型、当前到期时间或被冻结的基础会员到期时间，因此后三项均为 null。
-        return new MembershipAccessSnapshot(
-                MembershipStatus.FREE, null, null, null
-        );
+        return new MembershipAccessSnapshot(MembershipStatus.FREE, null, null, null);
     }
 
     public MembershipAccessSnapshot requireActiveMembership(Long userId) {

@@ -82,6 +82,14 @@ class MembershipServiceTest {
         LocalDateTime now = LocalDateTime.now();
         SvipRecord svip = svip(now.plusDays(10));
         BaseVipRecord baseVip = baseVip(now.plusDays(80));
+        when(membershipAccessService.getAccess(7L)).thenReturn(
+                new MembershipAccessSnapshot(
+                        MembershipStatus.PREMIUM_PLUS,
+                        MembershipType.PREMIUM_PLUS,
+                        svip.getExpireTime(),
+                        baseVip.getExpireTime()
+                )
+        );
         when(svipMapper.selectOne(any())).thenReturn(svip);
         when(baseVipMapper.selectOne(any())).thenReturn(baseVip);
         when(planMapper.selectList(any())).thenReturn(List.of(
@@ -111,10 +119,17 @@ class MembershipServiceTest {
 
     @Test
     void membershipPageHidesDiffUpgradeWithoutThirtyOneFullDays() {
-        when(svipMapper.selectOne(any())).thenReturn(null);
-        when(baseVipMapper.selectOne(any())).thenReturn(
-                baseVip(LocalDateTime.now().plusDays(30))
+        BaseVipRecord baseVip = baseVip(LocalDateTime.now().plusDays(30));
+        when(membershipAccessService.getAccess(7L)).thenReturn(
+                new MembershipAccessSnapshot(
+                        MembershipStatus.PREMIUM,
+                        MembershipType.PREMIUM,
+                        baseVip.getExpireTime(),
+                        null
+                )
         );
+        when(svipMapper.selectOne(any())).thenReturn(null);
+        when(baseVipMapper.selectOne(any())).thenReturn(baseVip);
         when(planMapper.selectList(any())).thenReturn(List.of(diffPlan(10L, 1)));
 
         MembershipDetailPageVO page = service.getMembershipDetailPage();
@@ -130,8 +145,6 @@ class MembershipServiceTest {
         user.setId(7L);
         when(userInfoMapper.selectOne(any())).thenReturn(user);
         when(orderMapper.selectOne(any())).thenReturn(null);
-        when(orderMapper.selectList(any())).thenReturn(List.of());
-        when(orderMapper.selectCount(any())).thenReturn(0L);
         when(planMapper.selectOne(any())).thenReturn(
                 fullPlan(2L, MembershipType.PREMIUM_PLUS, BillingType.QUARTERLY, 3, "349.00")
         );
@@ -154,7 +167,6 @@ class MembershipServiceTest {
         user.setId(7L);
         when(userInfoMapper.selectOne(any())).thenReturn(user);
         when(orderMapper.selectOne(any())).thenReturn(null);
-        when(orderMapper.selectList(any())).thenReturn(List.of());
         when(orderMapper.selectCount(any())).thenReturn(0L);
         when(planMapper.selectOne(any())).thenReturn(diffPlan(12L, 3));
         when(baseVipMapper.selectOne(any())).thenReturn(baseVip(now.plusDays(92)));

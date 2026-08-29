@@ -79,7 +79,7 @@ export function MembershipCenterPage() {
             </Link>
           </Button>
           <Button asChild variant="secondary">
-            <Link to="/membership/orders">订单历史</Link>
+            <Link to="/membership/orders">全部订单</Link>
           </Button>
         </div>
       </Card>
