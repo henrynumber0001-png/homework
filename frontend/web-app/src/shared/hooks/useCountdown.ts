@@ -5,7 +5,7 @@ export function useCountdown(expiresAt?: string) {
     if (!expiresAt) return 0
     return Math.max(
       0,
-      Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000),
+      Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000),
     )
   }, [expiresAt])
   const [secondsLeft, setSecondsLeft] = useState(calculate)

@@ -117,7 +117,7 @@ public class WechatNativePaymentGateway {
         return response.getCodeUrl();
     }
 
-    /** 验签并解密微信支付通知，输出会员服务可以信任的支付结果。 */
+    //这是微信回调的地址：用户扫码完成之后，调用这个方法，解析成 MembershipPaymentConfirmationDTO 对象
     public MembershipPaymentConfirmationDTO parsePaymentNotification(
             String serialNumber,
             String nonce,
@@ -152,19 +152,14 @@ public class WechatNativePaymentGateway {
             throw new IllegalArgumentException("Invalid Wechat payment notification");
         }
 
-        MembershipPaymentConfirmationDTO confirmation =
-                new MembershipPaymentConfirmationDTO();
+        MembershipPaymentConfirmationDTO confirmation = new MembershipPaymentConfirmationDTO();
         confirmation.setOrderNo(transaction.getOutTradeNo());
         confirmation.setProviderTradeNo(transaction.getTransactionId());
-        confirmation.setPaidAmount(
-                BigDecimal.valueOf(transaction.getAmount().getTotal(), 2)
-        );
+        confirmation.setPaidAmount(BigDecimal.valueOf(transaction.getAmount().getTotal(), 2));
         confirmation.setCurrency(transaction.getAmount().getCurrency());
-        confirmation.setPaidTime(
-                OffsetDateTime.parse(transaction.getSuccessTime())
+        confirmation.setPaidTime(OffsetDateTime.parse(transaction.getSuccessTime())
                         .atZoneSameInstant(paymentZone)
-                        .toLocalDateTime()
-        );
+                        .toLocalDateTime());
         return confirmation;
     }
 }

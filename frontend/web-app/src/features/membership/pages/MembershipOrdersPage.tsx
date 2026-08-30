@@ -6,6 +6,7 @@ import {
   getAllMembershipOrders,
   getPendingMembershipOrders,
 } from '@/features/membership/api'
+import { clearPendingOrder } from '@/features/membership/order-storage'
 import type {
   AllMembershipOrder,
   MembershipOrderListItem,
@@ -42,10 +43,18 @@ export function MembershipOrdersPage() {
   })
   const activeQuery = view === 'pending' ? pendingQuery : allQuery
 
-  const handlePendingOrderExpired = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: pendingOrdersQueryKey })
-    void queryClient.invalidateQueries({ queryKey: allOrdersQueryKey })
-  }, [queryClient])
+  const handlePendingOrderExpired = useCallback(
+    (orderNo: string) => {
+      clearPendingOrder(orderNo)
+      queryClient.setQueryData<PendingMembershipOrder[]>(
+        pendingOrdersQueryKey,
+        (orders) => orders?.filter((order) => order.orderNo !== orderNo),
+      )
+      void queryClient.invalidateQueries({ queryKey: pendingOrdersQueryKey })
+      void queryClient.invalidateQueries({ queryKey: allOrdersQueryKey })
+    },
+    [queryClient],
+  )
 
   return (
     <div className="reading-container py-8">
@@ -130,7 +139,7 @@ function PendingOrders({
   onExpired,
 }: {
   orders: PendingMembershipOrder[]
-  onExpired: () => void
+  onExpired: (orderNo: string) => void
 }) {
   if (!orders.length) {
     return (
@@ -161,14 +170,14 @@ function PendingOrderCard({
   onExpired,
 }: {
   order: PendingMembershipOrder
-  onExpired: () => void
+  onExpired: (orderNo: string) => void
 }) {
   const secondsLeft = useCountdown(order.paymentExpiredTime)
   const expired = secondsLeft <= 0
 
   useEffect(() => {
-    if (expired) onExpired()
-  }, [expired, onExpired])
+    if (expired) onExpired(order.orderNo)
+  }, [expired, onExpired, order.orderNo])
 
   if (expired) return null
 

@@ -87,4 +87,38 @@ describe('membership child page navigation', () => {
     await userEvent.click(screen.getByRole('tab', { name: '全部订单' }))
     expect(await screen.findByText('还没有会员订单')).toBeInTheDocument()
   })
+
+  it('removes an expired pending order immediately', async () => {
+    let pendingRequests = 0
+    server.use(
+      http.get('*/api/app/membership/pending-orders', () => {
+        pendingRequests += 1
+        return HttpResponse.json({
+          code: 200,
+          message: 'success',
+          data:
+            pendingRequests === 1
+              ? [
+                  {
+                    orderNo: 'expired-order',
+                    action: 1,
+                    membershipType: 1,
+                    billingType: 1,
+                    durationMonths: 1,
+                    payAmount: 99,
+                    currency: 'CNY',
+                    orderStatus: 1,
+                    paymentExpiredTime: '2020-01-01T00:00:00',
+                  },
+                ]
+              : [],
+        })
+      }),
+    )
+
+    renderPage('/membership/orders', <MembershipOrdersPage />)
+
+    expect(await screen.findByText('没有待支付订单')).toBeInTheDocument()
+    expect(screen.queryByText('expired-order')).not.toBeInTheDocument()
+  })
 })

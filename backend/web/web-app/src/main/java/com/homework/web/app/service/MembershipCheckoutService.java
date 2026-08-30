@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.model.entity.MembershipOrder;
+import com.homework.model.enums.MembershipOrderAction;
 import com.homework.model.enums.MembershipOrderStatus;
 import com.homework.web.app.dto.MembershipOrderCreateDTO;
+import com.homework.web.app.mapper.MembershipDiffReservationMapper;
 import com.homework.web.app.mapper.MembershipOrderMapper;
 import com.homework.web.app.service.payment.WechatNativePaymentGateway;
 import com.homework.web.app.vo.MembershipOrderCreateVO;
@@ -21,6 +23,7 @@ public class MembershipCheckoutService { //负责组织整个支付下单流程�
 
     private final MembershipService membershipService;
     private final MembershipOrderMapper membershipOrderMapper;
+    private final MembershipDiffReservationMapper membershipDiffReservationMapper;
     private final List<WechatNativePaymentGateway> wechatGateways;
 
     public MembershipOrderCreateVO createOrder(String idempotencyKey, MembershipOrderCreateDTO dto) {
@@ -43,11 +46,11 @@ public class MembershipCheckoutService { //负责组织整个支付下单流程�
         try {
             //调用 wechatGateways 获取 微信二维码，返回给前端
             String codeUrl = wechatGateways.get(0).prepay(orderResponse.getOrderNo(), orderResponse.getAmountDue(), orderResponse.getCurrency(), orderResponse.getPaymentExpiredTime());
-            MembershipOrder order = membershipOrderMapper.selectOne(
-                    new LambdaQueryWrapper<MembershipOrder>()
-                            .eq(MembershipOrder::getOrderNo, orderResponse.getOrderNo())
-                            .last("LIMIT 1")
-            );
+
+            LambdaQueryWrapper<MembershipOrder> orderQuery = new LambdaQueryWrapper<>();
+            orderQuery.eq(MembershipOrder::getOrderNo, orderResponse.getOrderNo());
+            MembershipOrder order = membershipOrderMapper.selectOne(orderQuery);
+
             order.setPaymentCodeUrl(codeUrl);
             membershipOrderMapper.updateById(order);
             orderResponse.setCodeUrl(codeUrl); //补全 创建订单的最后一个环节，就是二维码url，然后返回给前端，供用户扫描
@@ -62,6 +65,12 @@ public class MembershipCheckoutService { //负责组织整个支付下单流程�
                     && failedOrder.getOrderStatus() == MembershipOrderStatus.PENDING) {
                 failedOrder.setOrderStatus(MembershipOrderStatus.PAY_FAILED);
                 membershipOrderMapper.updateById(failedOrder);
+                if (failedOrder.getAction() == MembershipOrderAction.DIFF_UPGRADE) {
+                    membershipDiffReservationMapper.releaseByOrderId(
+                            failedOrder.getId(),
+                            failedOrder.getUserId()
+                    );
+                }
             }
             throw new HomeworkException(
                     ResultCodeEnum.MEMBERSHIP_PAYMENT_GATEWAY_ERROR,

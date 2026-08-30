@@ -4,11 +4,13 @@ import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.common.storage.UserImageUrlResolver;
 import com.homework.model.entity.BaseVipRecord;
+import com.homework.model.entity.MembershipDiffReservation;
 import com.homework.model.entity.MembershipOrder;
 import com.homework.model.entity.MembershipPlan;
 import com.homework.model.entity.SvipRecord;
 import com.homework.model.entity.UserInfo;
 import com.homework.model.enums.BillingType;
+import com.homework.model.enums.DiffReservationStatus;
 import com.homework.model.enums.MembershipOrderAction;
 import com.homework.model.enums.MembershipOrderStatus;
 import com.homework.model.enums.MembershipPurchaseType;
@@ -21,6 +23,7 @@ import com.homework.web.app.mapper.*;
 import com.homework.web.app.service.impl.MembershipServiceImpl;
 import com.homework.web.app.vo.MembershipOrderCreateVO;
 import com.homework.web.app.vo.MembershipDetailPageVO;
+import com.homework.web.app.vo.PendingOrderVO;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -40,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,11 +68,14 @@ class MembershipServiceTest {
     private UserInfoMapper userInfoMapper;
     @Mock
     private UserImageUrlResolver userImageUrlResolver;
+    @Mock
+    private MembershipDiffReservationMapper diffReservationMapper;
 
     @BeforeEach
     void setUp() {
         service = new MembershipServiceImpl(planMapper, baseVipMapper, svipMapper, orderMapper,
-                userInfoMapper, membershipAccessService, userImageUrlResolver);
+                userInfoMapper, membershipAccessService, userImageUrlResolver,
+                diffReservationMapper);
         LoginUserHolder.setUserId(7L);
     }
 
@@ -140,6 +147,33 @@ class MembershipServiceTest {
     }
 
     @Test
+    void membershipPageSubtractsReservedDiffDays() {
+        BaseVipRecord baseVip = baseVip(LocalDateTime.now().plusDays(125));
+        when(membershipAccessService.getAccess(7L)).thenReturn(
+                new MembershipAccessSnapshot(
+                        MembershipStatus.PREMIUM,
+                        MembershipType.PREMIUM,
+                        baseVip.getExpireTime(),
+                        null
+                )
+        );
+        when(svipMapper.selectOne(any())).thenReturn(null);
+        when(baseVipMapper.selectOne(any())).thenReturn(baseVip);
+        when(diffReservationMapper.getSumReservationDays(7L)).thenReturn(31);
+        when(planMapper.selectList(any())).thenReturn(List.of(
+                diffPlan(10L, 1),
+                diffPlan(11L, 2),
+                diffPlan(12L, 3),
+                diffPlan(13L, 4)
+        ));
+
+        MembershipDetailPageVO page = service.getMembershipDetailPage();
+
+        assertEquals(3, page.getMaxDiffUpgradeMonths());
+        assertEquals(3, page.getDiffUpgradeOptions().size());
+    }
+
+    @Test
     void createFullPurchaseOrderUsesServerPlanPrice() {
         UserInfo user = new UserInfo();
         user.setId(7L);
@@ -167,7 +201,6 @@ class MembershipServiceTest {
         user.setId(7L);
         when(userInfoMapper.selectOne(any())).thenReturn(user);
         when(orderMapper.selectOne(any())).thenReturn(null);
-        when(orderMapper.selectCount(any())).thenReturn(0L);
         when(planMapper.selectOne(any())).thenReturn(diffPlan(12L, 3));
         when(baseVipMapper.selectOne(any())).thenReturn(baseVip(now.plusDays(92)));
         when(svipMapper.selectOne(any())).thenReturn(null);
@@ -182,6 +215,69 @@ class MembershipServiceTest {
                 error.getResultCodeEnum()
         );
         verify(orderMapper, never()).insert(any(MembershipOrder.class));
+    }
+
+    @Test
+    void createDiffUpgradeCreatesMatchingReservation() {
+        LocalDateTime now = LocalDateTime.now();
+        UserInfo user = new UserInfo();
+        user.setId(7L);
+        when(userInfoMapper.selectOne(any())).thenReturn(user);
+        when(orderMapper.selectOne(any())).thenReturn(null);
+        when(orderMapper.selectList(any())).thenReturn(List.of());
+        when(planMapper.selectOne(any())).thenReturn(diffPlan(10L, 2));
+        when(baseVipMapper.selectOne(any())).thenReturn(baseVip(now.plusDays(100)));
+        when(svipMapper.selectOne(any())).thenReturn(null);
+        when(diffReservationMapper.getSumReservationDays(7L)).thenReturn(0);
+        doAnswer(invocation -> {
+            MembershipOrder order = invocation.getArgument(0);
+            order.setId(301L);
+            return 1;
+        }).when(orderMapper).insert(any(MembershipOrder.class));
+
+        service.createOrder("diff-2", dto(10L));
+
+        ArgumentCaptor<MembershipDiffReservation> captor =
+                ArgumentCaptor.forClass(MembershipDiffReservation.class);
+        verify(diffReservationMapper).insert(captor.capture());
+        MembershipDiffReservation reservation = captor.getValue();
+        assertEquals(301L, reservation.getOrderId());
+        assertEquals(7L, reservation.getUserId());
+        assertEquals(62, reservation.getReservedDays());
+        assertEquals(DiffReservationStatus.RESERVED, reservation.getReservationStatus());
+    }
+
+    @Test
+    void pendingOrdersExpireDiffOrderAndReleaseReservationImmediately() {
+        LocalDateTime now = LocalDateTime.now();
+        MembershipOrder expired = pendingOrder(
+                MembershipOrderAction.DIFF_UPGRADE,
+                MembershipType.PREMIUM_PLUS,
+                null,
+                1,
+                "30.00",
+                now.minusMinutes(20)
+        );
+        MembershipOrder active = pendingOrder(
+                MembershipOrderAction.FULL_PURCHASE,
+                MembershipType.PREMIUM,
+                BillingType.MONTHLY,
+                1,
+                "99.00",
+                now
+        );
+        active.setId(202L);
+        active.setOrderNo("order-202");
+        when(orderMapper.selectList(any()))
+                .thenReturn(List.of(expired), List.of(active));
+
+        List<PendingOrderVO> result = service.getPendingOrders();
+
+        assertEquals(MembershipOrderStatus.EXPIRED, expired.getOrderStatus());
+        verify(diffReservationMapper).releaseByOrderId(expired.getId(), 7L);
+        verify(orderMapper).updateById(expired);
+        assertEquals(1, result.size());
+        assertEquals("order-202", result.get(0).getOrderNo());
     }
 
     @Test
@@ -308,6 +404,8 @@ class MembershipServiceTest {
         when(orderMapper.selectOne(any())).thenReturn(order);
         when(baseVipMapper.selectOne(any())).thenReturn(baseVip);
         when(svipMapper.selectOne(any())).thenReturn(null);
+        MembershipDiffReservation reservation = reservation(order, 62);
+        when(diffReservationMapper.selectOne(any())).thenReturn(reservation);
 
         service.confirmPayment(confirmation(order, paidTime));
 
@@ -317,6 +415,8 @@ class MembershipServiceTest {
         verify(svipMapper).insert(captor.capture());
         assertEquals(paidTime.plusDays(62), captor.getValue().getExpireTime());
         assertNull(order.getBillingType());
+        assertEquals(DiffReservationStatus.CONSUMED, reservation.getReservationStatus());
+        verify(diffReservationMapper).updateById(reservation);
     }
 
     @Test
@@ -476,5 +576,16 @@ class MembershipServiceTest {
         confirmation.setCurrency(order.getCurrency());
         confirmation.setPaidTime(paidTime);
         return confirmation;
+    }
+
+    private MembershipDiffReservation reservation(MembershipOrder order, int reservedDays) {
+        MembershipDiffReservation reservation = new MembershipDiffReservation();
+        reservation.setId(401L);
+        reservation.setOrderId(order.getId());
+        reservation.setUserId(order.getUserId());
+        reservation.setReservedDays(reservedDays);
+        reservation.setReservationStatus(DiffReservationStatus.RESERVED);
+        reservation.setExpiresTime(order.getPaymentExpiredTime());
+        return reservation;
     }
 }

@@ -45,6 +45,7 @@ public class MembershipServiceImpl implements MembershipService {
     private final UserInfoMapper userInfoMapper;
     private final MembershipAccessService membershipAccessService;
     private final UserImageUrlResolver userImageUrlResolver;
+    private final MembershipDiffReservationMapper membershipDiffReservationMapper;
 
 
     @Override
@@ -111,10 +112,14 @@ public class MembershipServiceImpl implements MembershipService {
             //剩余天数的计算（转换成Day）
             long remainingDays = Duration.between(remainingBaseVipStart, baseVip.getExpireTime()).toDays();
 
+            long diffReservationDays = membershipDiffReservationMapper.getSumReservationDays(userId);
+            long availableDays = remainingDays - diffReservationDays;
+
             //该用户实际可以补差额升级到 premium plus 的最大月份数
             //这里执行的是整数除法，小数部分会被直接舍弃
             //因此当 29.2 / 31，那么结果就是0
-            maxDiffUpgradeMonths = (int) Math.min(MAX_DIFF_UPGRADE_MONTHS, remainingDays / DIFF_UPGRADE_DAYS_PER_MONTH);
+            maxDiffUpgradeMonths = (int) Math.min(MAX_DIFF_UPGRADE_MONTHS, (availableDays / DIFF_UPGRADE_DAYS_PER_MONTH));
+
         }
 
         //查询所有 有效的 会员菜单（这个 membership_plan 表中的数据都是提前预装好的）
@@ -241,17 +246,21 @@ public class MembershipServiceImpl implements MembershipService {
                 throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_PLAN_NOT_FOUND);
             }
 
-            membershipOrderMapper.pendingToExpired(userId);
+            //每次购买 补差升级套餐之前，都检查一遍是否有 状态是pending,但时间已过期但未释放的 reservation
+            LambdaQueryWrapper<MembershipOrder> orderQuery = new LambdaQueryWrapper<>();
 
-            LambdaQueryWrapper<MembershipOrder> pendingOrderQuery = new LambdaQueryWrapper<>();
-            pendingOrderQuery.eq(MembershipOrder::getUserId, userId)
+            orderQuery.eq(MembershipOrder::getUserId, userId)
                     .eq(MembershipOrder::getAction, MembershipOrderAction.DIFF_UPGRADE)
-                    .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING);
-
-            Long count = membershipOrderMapper.selectCount(pendingOrderQuery);
-            if (count > 0) {
-                throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_CHANGE_IN_PROGRESS);
+                    .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING)
+                    .le(MembershipOrder::getPaymentExpiredTime, LocalDateTime.now())
+                    .last("FOR UPDATE");
+            List<MembershipOrder> expiredOrders = membershipOrderMapper.selectList(orderQuery);
+            for (MembershipOrder expiredOrder : expiredOrders) {
+                membershipDiffReservationMapper.releaseByOrderId(expiredOrder.getId(),userId);
+                expiredOrder.setOrderStatus(MembershipOrderStatus.EXPIRED);
+                membershipOrderMapper.updateById(expiredOrder);
             }
+
 
             BaseVipRecord baseVip = baseVipRecordMapper.selectOne(
                     new LambdaQueryWrapper<BaseVipRecord>()
@@ -271,15 +280,19 @@ public class MembershipServiceImpl implements MembershipService {
             LocalDateTime remainingBaseVipStartTime = svip != null && svip.getExpireTime() != null && svip.getExpireTime().isAfter(LocalDateTime.now()) ? svip.getExpireTime() : LocalDateTime.now();
             if (baseVip.getExpireTime().isAfter(LocalDateTime.now())) {
                 long remainingDays = Duration.between(remainingBaseVipStartTime, baseVip.getExpireTime()).toDays();
-                int maxDiffUpgradeMonths = (int) Math.min(MAX_DIFF_UPGRADE_MONTHS, (remainingDays / DIFF_UPGRADE_DAYS_PER_MONTH));
+                long diffReservationDays = membershipDiffReservationMapper.getSumReservationDays(userId);
+                long availableDays = remainingDays - diffReservationDays;
+                int maxDiffUpgradeMonths = (int) Math.min(MAX_DIFF_UPGRADE_MONTHS, (availableDays / DIFF_UPGRADE_DAYS_PER_MONTH));
 
                 //如果用户选择的 durationMonths 大于可补差的 最大可补差月数，就抛出异常
                 //比如（最多只能补3个月，但是你选的plan.getDurationMonths = 4)
                 if (plan.getDurationMonths() > maxDiffUpgradeMonths) {
                     throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_DIFF_UPGRADE_UNAVAILABLE);
                 }
-                //如果等于，就把action设置为 补差
+
+                //如果没报错，那就是可以买，就把action设置为 补差
                 action = MembershipOrderAction.DIFF_UPGRADE;
+
             }
         }
 
@@ -298,6 +311,18 @@ public class MembershipServiceImpl implements MembershipService {
         order.setPaymentExpiredTime(LocalDateTime.now().plusMinutes(15));
         membershipOrderMapper.insert(order);
 
+        if(plan.getPurchaseType() == MembershipPurchaseType.DIFF){
+            //一笔订单对应一个reservation，也就是 它不是在 reserveDays 上面累加的，是一笔预定一行数据，然后聚合函数SUM
+            //那么对于当前这笔订单，到目前为止没报错，说明可以继续补差支付，那么就把新一条的补差支付订单再存一条放入 membership_diff_reservation
+            MembershipDiffReservation reservation = new MembershipDiffReservation();
+            reservation.setUserId(userId);
+            reservation.setReservationStatus(DiffReservationStatus.RESERVED);
+            reservation.setReservedDays(plan.getDurationMonths()*DIFF_UPGRADE_DAYS_PER_MONTH);
+            reservation.setOrderId(order.getId());
+            reservation.setExpiresTime(order.getPaymentExpiredTime());
+            membershipDiffReservationMapper.insert(reservation);
+        }
+
         MembershipOrderCreateVO result = new MembershipOrderCreateVO();
         result.setOrderNo(order.getOrderNo());
         result.setOrderStatus(order.getOrderStatus());
@@ -308,6 +333,7 @@ public class MembershipServiceImpl implements MembershipService {
     }
 
 
+    @Transactional
     @Override
     public List<PendingOrderVO> getPendingOrders() {
         Long userId = LoginUserHolder.getUserId();
@@ -315,15 +341,30 @@ public class MembershipServiceImpl implements MembershipService {
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
         }
 
-        //让SQL操作变成原子的，这样就不会出现并发情况
-        membershipOrderMapper.pendingToExpired(userId);
-
-        //然后再检查是否还有 Pending 订单
+        //先查有没有 补差且过期的pending订单
         LambdaQueryWrapper<MembershipOrder> orderQuery = new LambdaQueryWrapper<>();
         orderQuery.eq(MembershipOrder::getUserId, userId)
+                .eq(MembershipOrder::getAction, MembershipOrderAction.DIFF_UPGRADE)
+                .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING)
+                .le(MembershipOrder::getPaymentExpiredTime, LocalDateTime.now())
+                .last("FOR UPDATE");
+        List<MembershipOrder> expiredOrders = membershipOrderMapper.selectList(orderQuery);
+        for (MembershipOrder expiredOrder : expiredOrders) {
+            membershipDiffReservationMapper.releaseByOrderId(expiredOrder.getId(),userId);
+            expiredOrder.setOrderStatus(MembershipOrderStatus.EXPIRED);
+            membershipOrderMapper.updateById(expiredOrder);
+        }
+
+        //再检查 全款订单是否有过期的
+        //让SQL操作变成原子的，这样就不会出现并发情况
+        membershipOrderMapper.fullPurchasePendingToExpired(userId);
+
+        //然后再检查是否还有 Pending 订单
+        LambdaQueryWrapper<MembershipOrder> pendingOrderQuery = new LambdaQueryWrapper<>();
+        pendingOrderQuery.eq(MembershipOrder::getUserId, userId)
                 .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING)
                 .orderByAsc(MembershipOrder::getCreatedTime);
-        List<MembershipOrder> pendingOrders = membershipOrderMapper.selectList(orderQuery);
+        List<MembershipOrder> pendingOrders = membershipOrderMapper.selectList(pendingOrderQuery);
 
 
         List<PendingOrderVO> pendingPage = new ArrayList<>();
@@ -344,6 +385,7 @@ public class MembershipServiceImpl implements MembershipService {
     }
 
 
+    @Transactional //需要加事务，因为它们当前不是纯查询，而是在修改订单和 reservation
     @Override
     public List<AllOrderVO> getAllOrders() {
         Long userId = LoginUserHolder.getUserId();
@@ -351,13 +393,28 @@ public class MembershipServiceImpl implements MembershipService {
             throw new HomeworkException(ResultCodeEnum.APP_LOGIN_NOT_AUTH);
         }
 
-        //让SQL操作变成原子的，这样就不会出现并发情况
-        membershipOrderMapper.pendingToExpired(userId);
-
+        //先查有没有 补差且过期的pending订单
         LambdaQueryWrapper<MembershipOrder> orderQuery = new LambdaQueryWrapper<>();
         orderQuery.eq(MembershipOrder::getUserId, userId)
+                .eq(MembershipOrder::getAction, MembershipOrderAction.DIFF_UPGRADE)
+                .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING)
+                .le(MembershipOrder::getPaymentExpiredTime, LocalDateTime.now())
+                .last("FOR UPDATE");
+        List<MembershipOrder> expiredOrders = membershipOrderMapper.selectList(orderQuery);
+        for (MembershipOrder expiredOrder : expiredOrders) {
+            membershipDiffReservationMapper.releaseByOrderId(expiredOrder.getId(),userId);
+            expiredOrder.setOrderStatus(MembershipOrderStatus.EXPIRED);
+            membershipOrderMapper.updateById(expiredOrder);
+        }
+
+        //再检查 全款订单是否有过期的
+        //让SQL操作变成原子的，这样就不会出现并发情况
+        membershipOrderMapper.fullPurchasePendingToExpired(userId);
+
+        LambdaQueryWrapper<MembershipOrder> allOrderQuery = new LambdaQueryWrapper<>();
+        allOrderQuery.eq(MembershipOrder::getUserId, userId)
                 .orderByDesc(MembershipOrder::getCreatedTime);
-        List<MembershipOrder> orders = membershipOrderMapper.selectList(orderQuery);
+        List<MembershipOrder> orders = membershipOrderMapper.selectList(allOrderQuery);
 
         List<AllOrderVO> allPage = new ArrayList<>();
         for (MembershipOrder order : orders) {
@@ -378,6 +435,7 @@ public class MembershipServiceImpl implements MembershipService {
     }
 
 
+    @Transactional
     @Override
     public MembershipOrderStatus getOrderStatus(String orderNo) {
         Long userId = LoginUserHolder.getUserId();
@@ -386,6 +444,20 @@ public class MembershipServiceImpl implements MembershipService {
         }
         if (!StringUtils.hasText(orderNo)) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
+        }
+
+        //先查有没有 补差且过期的pending订单
+        LambdaQueryWrapper<MembershipOrder> orderQuery = new LambdaQueryWrapper<>();
+        orderQuery.eq(MembershipOrder::getUserId, userId)
+                .eq(MembershipOrder::getAction, MembershipOrderAction.DIFF_UPGRADE)
+                .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING)
+                .le(MembershipOrder::getPaymentExpiredTime, LocalDateTime.now())
+                .last("FOR UPDATE");
+        List<MembershipOrder> expiredOrders = membershipOrderMapper.selectList(orderQuery);
+        for (MembershipOrder expiredOrder : expiredOrders) {
+            membershipDiffReservationMapper.releaseByOrderId(expiredOrder.getId(),userId);
+            expiredOrder.setOrderStatus(MembershipOrderStatus.EXPIRED);
+            membershipOrderMapper.updateById(expiredOrder);
         }
 
         //为什么只处理 pending -> expired ？
@@ -438,7 +510,7 @@ public class MembershipServiceImpl implements MembershipService {
         MembershipOrder order = membershipOrderMapper.selectOne(
                 new LambdaQueryWrapper<MembershipOrder>()
                         .eq(MembershipOrder::getOrderNo, confirmation.getOrderNo())
-                        .last("LIMIT 1 FOR UPDATE")
+                        .last("FOR UPDATE")
         );
         if (order == null) {
             throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_ORDER_NOT_FOUND);
@@ -549,6 +621,18 @@ public class MembershipServiceImpl implements MembershipService {
 
             // 分支三：补差购买 Premium Plus
         } else if (order.getAction() == MembershipOrderAction.DIFF_UPGRADE && order.getMembershipType() == MembershipType.PREMIUM_PLUS) {
+            //先把 membership_diff_reservation 中的记录检查一遍，如果已经支付，那么就修改 reservation_status 状态
+            LambdaQueryWrapper<MembershipDiffReservation> reservationQuery = new LambdaQueryWrapper<>();
+            reservationQuery.eq(MembershipDiffReservation::getUserId, order.getUserId())
+                    .eq(MembershipDiffReservation::getOrderId, order.getId())
+                    .eq(MembershipDiffReservation::getReservationStatus, DiffReservationStatus.RESERVED)
+                    .last("FOR UPDATE");
+            MembershipDiffReservation reservation = membershipDiffReservationMapper.selectOne(reservationQuery);
+
+            if(reservation == null){
+                throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_ORDER_STATE_ERROR);
+            }
+
 
             //其实这一步已经在前面 createOrder 里做了，不合格的选项，不会进入到回调环节的
             int svipExtensionDays = order.getDurationMonths() * DIFF_UPGRADE_DAYS_PER_MONTH;
@@ -578,10 +662,13 @@ public class MembershipServiceImpl implements MembershipService {
                 svipRecordMapper.updateById(svip);
             }
 
-
             order.setPeriodEnd(newSvipExtensionEndTime);
+
+            //权益发放成功，修改 reservation_status 状态
+            reservation.setReservationStatus(DiffReservationStatus.CONSUMED);
+            membershipDiffReservationMapper.updateById(reservation);
         } else {
-            // 订单动作与目标会员类型不属于系统允许的组合，拒绝发放权益。
+            // 订单动作与目标会员类型不属于系统允许的组合，拒绝发放权益
             throw new HomeworkException(ResultCodeEnum.MEMBERSHIP_ORDER_STATE_ERROR);
         }
 

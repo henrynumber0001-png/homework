@@ -1,9 +1,11 @@
 package com.homework.web.app.service;
 
 import com.homework.model.entity.MembershipOrder;
+import com.homework.model.enums.MembershipOrderAction;
 import com.homework.model.enums.MembershipOrderStatus;
 import com.homework.web.app.dto.MembershipOrderCreateDTO;
 import com.homework.web.app.mapper.MembershipOrderMapper;
+import com.homework.web.app.mapper.MembershipDiffReservationMapper;
 import com.homework.web.app.service.payment.WechatNativePaymentGateway;
 import com.homework.web.app.vo.MembershipOrderCreateVO;
 import java.math.BigDecimal;
@@ -16,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -29,6 +32,8 @@ class MembershipCheckoutServiceTest {
     @Mock
     private MembershipOrderMapper orderMapper;
     @Mock
+    private MembershipDiffReservationMapper diffReservationMapper;
+    @Mock
     private WechatNativePaymentGateway wechatGateway;
 
     private MembershipCheckoutService checkoutService;
@@ -38,6 +43,7 @@ class MembershipCheckoutServiceTest {
         checkoutService = new MembershipCheckoutService(
                 membershipService,
                 orderMapper,
+                diffReservationMapper,
                 List.of(wechatGateway)
         );
     }
@@ -78,6 +84,33 @@ class MembershipCheckoutServiceTest {
 
         assertEquals("weixin://wxpay/stored", result.getCodeUrl());
         verify(wechatGateway, never()).prepay(any(), any(), any(), any());
+    }
+
+    @Test
+    void failedWechatPrepayMarksOrderFailedAndReleasesDiffReservation() {
+        MembershipOrderCreateVO localOrder = pendingOrder();
+        MembershipOrder failedOrder = new MembershipOrder();
+        failedOrder.setId(201L);
+        failedOrder.setUserId(7L);
+        failedOrder.setOrderNo("order-1");
+        failedOrder.setAction(MembershipOrderAction.DIFF_UPGRADE);
+        failedOrder.setOrderStatus(MembershipOrderStatus.PENDING);
+        when(membershipService.createOrder(any(), any())).thenReturn(localOrder);
+        when(wechatGateway.prepay(any(), any(), any(), any()))
+                .thenThrow(new IllegalStateException("prepay failed"));
+        when(orderMapper.selectOne(any())).thenReturn(failedOrder);
+
+        MembershipOrderCreateDTO dto = new MembershipOrderCreateDTO();
+        dto.setPlanId(3L);
+
+        assertThrows(
+                RuntimeException.class,
+                () -> checkoutService.createOrder("key-1", dto)
+        );
+
+        assertEquals(MembershipOrderStatus.PAY_FAILED, failedOrder.getOrderStatus());
+        verify(orderMapper).updateById(failedOrder);
+        verify(diffReservationMapper).releaseByOrderId(201L, 7L);
     }
 
     private MembershipOrderCreateVO pendingOrder() {

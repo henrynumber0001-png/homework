@@ -11,12 +11,13 @@ public interface MembershipOrderMapper extends BaseMapper<MembershipOrder> {
 
 
     @Update("""
-UPDATE membership_order
-SET order_status = 4
-WHERE user_id = #{userId}
-AND order_status = 1
-AND payment_expired_time <= NOW()""")
-    int pendingToExpired(@Param("userId") Long userId);
+            UPDATE membership_order
+            SET order_status = 4
+            WHERE user_id = #{userId}
+            AND action = 1
+            AND order_status = 1
+            AND payment_expired_time <= NOW()""")
+    int fullPurchasePendingToExpired(@Param("userId") Long userId);
 
 
     @Update("""
@@ -25,6 +26,7 @@ SET order_status = 4
 WHERE user_id = #{userId}
 AND order_no = #{orderNo}
 AND order_status = 1
+AND action = 1
 AND payment_expired_time <= NOW()""")
     int pendingToExpiredByOrderNo(@Param("userId") Long userId, @Param("orderNo") String orderNo);
 }
