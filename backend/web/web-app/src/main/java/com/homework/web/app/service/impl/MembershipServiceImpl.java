@@ -37,6 +37,7 @@ public class MembershipServiceImpl implements MembershipService {
     private static final String DEFAULT_CURRENCY = "CNY";
     private static final int DIFF_UPGRADE_DAYS_PER_MONTH = 31;
     private static final int MAX_DIFF_UPGRADE_MONTHS = 12;
+    private static final int DIFF_PAYMENT_CALLBACK_GRACE_MINUTES = 1;
 
     private final MembershipPlanMapper membershipPlanMapper;
     private final BaseVipRecordMapper baseVipRecordMapper;
@@ -252,7 +253,7 @@ public class MembershipServiceImpl implements MembershipService {
             orderQuery.eq(MembershipOrder::getUserId, userId)
                     .eq(MembershipOrder::getAction, MembershipOrderAction.DIFF_UPGRADE)
                     .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING)
-                    .le(MembershipOrder::getPaymentExpiredTime, LocalDateTime.now())
+                    .le(MembershipOrder::getPaymentExpiredTime, LocalDateTime.now().minusMinutes(DIFF_PAYMENT_CALLBACK_GRACE_MINUTES))
                     .last("FOR UPDATE");
             List<MembershipOrder> expiredOrders = membershipOrderMapper.selectList(orderQuery);
             for (MembershipOrder expiredOrder : expiredOrders) {
@@ -346,7 +347,8 @@ public class MembershipServiceImpl implements MembershipService {
         orderQuery.eq(MembershipOrder::getUserId, userId)
                 .eq(MembershipOrder::getAction, MembershipOrderAction.DIFF_UPGRADE)
                 .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING)
-                .le(MembershipOrder::getPaymentExpiredTime, LocalDateTime.now())
+                //延迟一分钟处理到期的 DIFF PENDING 订单，为支付成功后的微信回调保留缓冲时间
+                .le(MembershipOrder::getPaymentExpiredTime, LocalDateTime.now().minusMinutes(DIFF_PAYMENT_CALLBACK_GRACE_MINUTES))
                 .last("FOR UPDATE");
         List<MembershipOrder> expiredOrders = membershipOrderMapper.selectList(orderQuery);
         for (MembershipOrder expiredOrder : expiredOrders) {
@@ -363,6 +365,9 @@ public class MembershipServiceImpl implements MembershipService {
         LambdaQueryWrapper<MembershipOrder> pendingOrderQuery = new LambdaQueryWrapper<>();
         pendingOrderQuery.eq(MembershipOrder::getUserId, userId)
                 .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING)
+                //一定要加 expiredTime > now：缓冲期内的 DIFF 订单数据库状态仍是 PENDING，但前端不应继续展示
+                //如果不加筛选条件，当前到期的 pending 订单又会被返回给前端，这是不对的
+                .gt(MembershipOrder::getPaymentExpiredTime, LocalDateTime.now())
                 .orderByAsc(MembershipOrder::getCreatedTime);
         List<MembershipOrder> pendingOrders = membershipOrderMapper.selectList(pendingOrderQuery);
 
@@ -398,7 +403,7 @@ public class MembershipServiceImpl implements MembershipService {
         orderQuery.eq(MembershipOrder::getUserId, userId)
                 .eq(MembershipOrder::getAction, MembershipOrderAction.DIFF_UPGRADE)
                 .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING)
-                .le(MembershipOrder::getPaymentExpiredTime, LocalDateTime.now())
+                .le(MembershipOrder::getPaymentExpiredTime, LocalDateTime.now().minusMinutes(DIFF_PAYMENT_CALLBACK_GRACE_MINUTES))
                 .last("FOR UPDATE");
         List<MembershipOrder> expiredOrders = membershipOrderMapper.selectList(orderQuery);
         for (MembershipOrder expiredOrder : expiredOrders) {
@@ -451,7 +456,7 @@ public class MembershipServiceImpl implements MembershipService {
         orderQuery.eq(MembershipOrder::getUserId, userId)
                 .eq(MembershipOrder::getAction, MembershipOrderAction.DIFF_UPGRADE)
                 .eq(MembershipOrder::getOrderStatus, MembershipOrderStatus.PENDING)
-                .le(MembershipOrder::getPaymentExpiredTime, LocalDateTime.now())
+                .le(MembershipOrder::getPaymentExpiredTime, LocalDateTime.now().minusMinutes(DIFF_PAYMENT_CALLBACK_GRACE_MINUTES))
                 .last("FOR UPDATE");
         List<MembershipOrder> expiredOrders = membershipOrderMapper.selectList(orderQuery);
         for (MembershipOrder expiredOrder : expiredOrders) {

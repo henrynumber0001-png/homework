@@ -1,5 +1,8 @@
 package com.homework.web.app.service;
 
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.homework.common.exception.HomeworkException;
 import com.homework.common.result.ResultCodeEnum;
 import com.homework.common.storage.UserImageUrlResolver;
@@ -28,13 +31,16 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.apache.ibatis.builder.MapperBuilderAssistant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -49,6 +55,17 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class MembershipServiceTest {
+
+    @BeforeAll
+    static void initializeMybatisMetadata() {
+        if (TableInfoHelper.getTableInfo(MembershipOrder.class) == null) {
+            MybatisConfiguration configuration = new MybatisConfiguration();
+            TableInfoHelper.initTableInfo(
+                    new MapperBuilderAssistant(configuration, "membership-service-test"),
+                    MembershipOrder.class
+            );
+        }
+    }
 
     @Mock
     private MembershipPlanMapper planMapper;
@@ -248,7 +265,7 @@ class MembershipServiceTest {
     }
 
     @Test
-    void pendingOrdersExpireDiffOrderAndReleaseReservationImmediately() {
+    void pendingOrdersReleaseDiffReservationAfterCallbackGracePeriod() {
         LocalDateTime now = LocalDateTime.now();
         MembershipOrder expired = pendingOrder(
                 MembershipOrderAction.DIFF_UPGRADE,
@@ -278,6 +295,41 @@ class MembershipServiceTest {
         verify(orderMapper).updateById(expired);
         assertEquals(1, result.size());
         assertEquals("order-202", result.get(0).getOrderNo());
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void getOrderStatusUsesOneMinuteGraceBeforeExpiringDiffOrder() {
+        LocalDateTime now = LocalDateTime.now();
+        MembershipOrder order = pendingOrder(
+                MembershipOrderAction.DIFF_UPGRADE,
+                MembershipType.PREMIUM_PLUS,
+                null,
+                1,
+                "30.00",
+                now.minusMinutes(15).minusSeconds(30)
+        );
+        when(orderMapper.selectList(any())).thenReturn(List.of());
+        when(orderMapper.selectOne(any())).thenReturn(order);
+
+        MembershipOrderStatus result = service.getOrderStatus(order.getOrderNo());
+
+        ArgumentCaptor<LambdaQueryWrapper> queryCaptor =
+                ArgumentCaptor.forClass(LambdaQueryWrapper.class);
+        verify(orderMapper).selectList(queryCaptor.capture());
+        LambdaQueryWrapper capturedQuery = queryCaptor.getValue();
+        capturedQuery.getSqlSegment();
+        Map<String, Object> parameters = capturedQuery.getParamNameValuePairs();
+        LocalDateTime cutoff = parameters.values().stream()
+                .filter(LocalDateTime.class::isInstance)
+                .map(LocalDateTime.class::cast)
+                .findFirst()
+                .orElseThrow();
+        LocalDateTime expectedCutoff = LocalDateTime.now().minusMinutes(1);
+
+        assertTrue(Duration.between(cutoff, expectedCutoff).abs().getSeconds() <= 1);
+        assertEquals(MembershipOrderStatus.PENDING, result);
+        verify(diffReservationMapper, never()).releaseByOrderId(any(), any());
     }
 
     @Test
