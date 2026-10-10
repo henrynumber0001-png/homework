@@ -5,16 +5,9 @@ import com.homework.common.storage.CosReadUrlSigner;
 import com.homework.model.entity.*;
 import com.homework.model.enums.*;
 import com.homework.web.app.context.LoginUserHolder;
-import com.homework.web.app.dto.AiEvaluationResult;
-import com.homework.web.app.dto.CertificateQuestionSubmitDTO;
-import com.homework.web.app.dto.InterviewQuestionSubmitDTO;
-import com.homework.web.app.dto.UserQuestionNoteDTO;
+import com.homework.web.app.dto.*;
 import com.homework.web.app.mapper.*;
-import com.homework.web.app.service.AiEvaluationService;
-import com.homework.web.app.service.LlmClient;
-import com.homework.web.app.service.MembershipAccessService;
-import com.homework.web.app.service.MembershipAccessSnapshot;
-import com.homework.web.app.service.PublishedQuestionBankAccessService;
+import com.homework.web.app.service.*;
 import com.homework.web.app.vo.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,6 +65,13 @@ class QuestionInfoServiceImplTest {
     @InjectMocks
     private QuestionInfoServiceImpl service;
 
+    private final MembershipAccessSnapshot membershipAccessSnapshot = new MembershipAccessSnapshot(
+            MembershipStatus.PREMIUM,
+            MembershipType.PREMIUM,
+            null,
+            null
+    );
+
     @BeforeEach
     void setUp() {
         LoginUserHolder.setUserId(7L);
@@ -84,6 +84,8 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void activateMissingFavoriteInsertsCurrentUserAndBank() {
+        when(membershipAccessService.requireActiveMembership(7L)).thenReturn(membershipAccessSnapshot);
+
         // Arrange
         when(interviewQuestionInfoMapper.selectCount(any())).thenReturn(1L);
         when(userFavoriteQuestionMapper.selectIncludingDeletedForUpdate(7L, 11L, 22L)).thenReturn(null);
@@ -105,6 +107,8 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void deactivateMissingFavoriteIsIdempotent() {
+        when(membershipAccessService.requireActiveMembership(7L)).thenReturn(membershipAccessSnapshot);
+
         when(interviewQuestionInfoMapper.selectCount(any())).thenReturn(1L);
         when(userFavoriteQuestionMapper.selectIncludingDeletedForUpdate(7L, 11L, 22L)).thenReturn(null);
 
@@ -117,6 +121,8 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void activateDeletedFavoriteRestoresFavoriteRecordId() {
+        when(membershipAccessService.requireActiveMembership(7L)).thenReturn(membershipAccessSnapshot);
+
         UserFavoriteQuestion existing = favorite(99L, true);
         when(interviewQuestionInfoMapper.selectCount(any())).thenReturn(1L);
 
@@ -137,6 +143,8 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void deactivateActiveFavoriteUsesFavoriteRecordId() {
+        when(membershipAccessService.requireActiveMembership(7L)).thenReturn(membershipAccessSnapshot);
+
         UserFavoriteQuestion existing = favorite(99L, false);
         when(interviewQuestionInfoMapper.selectCount(any())).thenReturn(1L);
         when(userFavoriteQuestionMapper.selectIncludingDeletedForUpdate(7L, 11L, 22L)).thenReturn(existing);
@@ -149,6 +157,8 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void repeatedActivateOnActiveFavoriteDoesNotWriteAgain() {
+        when(membershipAccessService.requireActiveMembership(7L)).thenReturn(membershipAccessSnapshot);
+
         when(interviewQuestionInfoMapper.selectCount(any())).thenReturn(1L);
         when(userFavoriteQuestionMapper.selectIncludingDeletedForUpdate(7L, 11L, 22L))
                 .thenReturn(favorite(99L, false));
@@ -196,6 +206,8 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void interviewQuestionListUsesFavoriteMap() {
+        when(membershipAccessService.requireActiveMembership(7L)).thenReturn(membershipAccessSnapshot);
+
         //设置一个InterviewQuestionInfo对象
         InterviewQuestionInfo question = new InterviewQuestionInfo();
         question.setId(22L);
@@ -372,6 +384,7 @@ class QuestionInfoServiceImplTest {
 
     @Test
     public void getInterviewQuestionReviewTest() {
+        when(membershipAccessService.requireActiveMembership(7L)).thenReturn(membershipAccessSnapshot);
 
         InterviewQuestionInfo info = new InterviewQuestionInfo();
         info.setId(22L);
@@ -480,6 +493,7 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void saveUserQuestionNoteTest() {
+        when(membershipAccessService.requireActiveMembership(7L)).thenReturn(membershipAccessSnapshot);
 
         UserQuestionNoteDTO noteDTO = new UserQuestionNoteDTO();
         noteDTO.setQuestionId(22L);
@@ -503,6 +517,7 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void getCertificateByBankIdTest() {
+        when(membershipAccessService.requireActiveMembership(7L)).thenReturn(membershipAccessSnapshot);
 
         List<String> options = List.of("A", "B", "C", "D");
         CertificateQuestionInfo info = new CertificateQuestionInfo();
@@ -536,6 +551,8 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void getCertificateAnswerTest() {
+        when(membershipAccessService.requireActiveMembership(7L)).thenReturn(membershipAccessSnapshot);
+
         CertificateQuestionSubmitDTO dto = new CertificateQuestionSubmitDTO();
         dto.setQuestionId(22L);
         dto.setBankId(11L);
@@ -624,6 +641,8 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void getCertificateRecordTest() {
+        when(membershipAccessService.requireActiveMembership(7L)).thenReturn(membershipAccessSnapshot);
+
         /**
          * 一个测试方法测试一个明确的业务场景或行为，当然这个场景里可以有很多个断言
          * 比如：有答案+有AI，有答案+无AI，分数低于60分，都应该单独分开测
@@ -684,6 +703,7 @@ class QuestionInfoServiceImplTest {
 
     @Test
     void getInterviewRecordTest() {
+        when(membershipAccessService.requireActiveMembership(7L)).thenReturn(membershipAccessSnapshot);
 
         InterviewQuestionInfo info = new InterviewQuestionInfo();
         info.setId(22L);
@@ -814,7 +834,7 @@ class QuestionInfoServiceImplTest {
         //你直接 stub requirePremiumPlus 就好了
         when(membershipAccessService.requirePremiumPlus(7L)).thenReturn(premiumPlusSnapshot);
 
-        LocalDateTime createdTime = LocalDateTime.of(2026,10,10,10,0);
+        LocalDateTime createdTime = LocalDateTime.of(2026, 10, 10, 10, 0);
 
         AiChatMessage aiChatMessage = new AiChatMessage();
         aiChatMessage.setSessionId(99L);
@@ -850,7 +870,7 @@ class QuestionInfoServiceImplTest {
         assertEquals(1, messages.size());
         assertEquals(9L, messages.get(0).getMessageId());
         assertEquals(AiChatMessageSenderType.AI, messages.get(0).getSenderType());
-        assertEquals("你好，有关于这道题的知识点想深入了解吗？",messages.get(0).getMessageContent());
+        assertEquals("你好，有关于这道题的知识点想深入了解吗？", messages.get(0).getMessageContent());
         assertEquals(createdTime, messages.get(0).getCreatedTime());
 
         ArgumentCaptor<AiChatSession> sessionCaptor = ArgumentCaptor.forClass(AiChatSession.class);
@@ -872,11 +892,11 @@ class QuestionInfoServiceImplTest {
         assertEquals(99L, message.getSessionId());
         assertEquals(AiChatMessageSenderType.AI, message.getSenderType());
         assertEquals(GroupType.CERTIFICATION, message.getGroupType());
-        assertEquals("你好，有关于这道题的知识点想深入了解吗？",message.getMessageContent());
-        assertEquals("rule-welcome",message.getModelName());
+        assertEquals("你好，有关于这道题的知识点想深入了解吗？", message.getMessageContent());
+        assertEquals("rule-welcome", message.getModelName());
 
-        verify(aiChatSessionMapper,never()).updateById(any(AiChatSession.class));
-        verify(aiChatMessageMapper,never()).delete(any());
+        verify(aiChatSessionMapper, never()).updateById(any(AiChatSession.class));
+        verify(aiChatMessageMapper, never()).delete(any());
 
         verify(membershipAccessService).requirePremiumPlus(7L);
         verify(publishedQuestionBankAccessService).requirePublished(11L);
@@ -884,5 +904,147 @@ class QuestionInfoServiceImplTest {
     }
 
 
-}
+    @Test
+    void followUpAiTest() {
+        MembershipAccessSnapshot premiumPlusSnapshot = new MembershipAccessSnapshot(MembershipStatus.PREMIUM_PLUS, MembershipType.PREMIUM_PLUS, null, null);
+        when(membershipAccessService.requirePremiumPlus(7L)).thenReturn(premiumPlusSnapshot);
 
+        LocalDateTime createdTime = LocalDateTime.of(2026, 10, 10, 10, 0);
+
+        AiChatSession session = new AiChatSession();
+        session.setId(99L);
+        session.setUserId(7L);
+        session.setBankId(11L);
+        session.setGroupType(GroupType.CERTIFICATION);
+        session.setStatus(AiChatSessionStatus.ACTIVE);
+
+        AiChatMessage history = new AiChatMessage();
+        history.setId(9L);
+        history.setSessionId(99L);
+        history.setSenderType(AiChatMessageSenderType.AI);
+        history.setGroupType(GroupType.CERTIFICATION);
+        history.setMessageContent("你好，有关于这道题的知识点想深入了解吗？");
+
+        AiChatMessage userMessage = new AiChatMessage();
+        userMessage.setId(10L);
+        userMessage.setSessionId(99L);
+        userMessage.setSenderType(AiChatMessageSenderType.USER);
+        userMessage.setGroupType(GroupType.CERTIFICATION);
+        userMessage.setMessageContent("我想了解");
+        userMessage.setCreatedTime(createdTime);
+
+        AiChatMessage aiMessage = new AiChatMessage();
+        aiMessage.setId(11L);
+        aiMessage.setSessionId(99L);
+        aiMessage.setSenderType(AiChatMessageSenderType.AI);
+        aiMessage.setGroupType(GroupType.CERTIFICATION);
+        aiMessage.setMessageContent("这是 Mock AI 回复。启用 Qwen 后，将根据当前题目、答案解析和用户问题生成回复。");
+        aiMessage.setModelName("mock-llm");
+
+        LlmResponse llmResponse = new LlmResponse(
+                "这是 Mock AI 回复。启用 Qwen 后，将根据当前题目、答案解析和用户问题生成回复。",
+                "mock-llm",
+                null,
+                null,
+                null
+        );
+
+        AiFollowUpDTO aiFollowUpDTO = new AiFollowUpDTO();
+        aiFollowUpDTO.setQuestionId(22L);
+        aiFollowUpDTO.setBankId(11L);
+        aiFollowUpDTO.setGroupType(GroupType.CERTIFICATION);
+        aiFollowUpDTO.setMessage("我想了解");
+
+        when(aiChatSessionMapper.selectOne(any())).thenReturn(session);
+
+        /**
+         * 多次相同方法的调用，stub的返回值，可以依次输入到参数中
+         */
+        when(aiChatMessageMapper.selectList(any())).thenReturn(List.of(history), List.of(history, userMessage, aiMessage));
+        when(aiPromptBuilder.buildQuestionContext(any(AiFollowUpDTO.class))).thenReturn("questionContext");
+        when(aiPromptBuilder.buildAiChatPrompt(anyString(), anyList(), anyString())).thenReturn("prompt");
+        when(llmClient.chat(anyString())).thenReturn(llmResponse);
+
+        /**
+         * 这是新知识点
+         * 当你使用了 thenAnswer，既要设置字段，又要返回值，还要重复使用该方法多次的时候，不能像 thenReturn(value1,value2) 那样
+         * 而是要写 thenAnswer(invocation -> {AiChatMessage1}).thenAnswer(invocation -> {AiChatMessage2}) [注意是 点，而非 逗号隔开]
+         */
+        when(aiChatMessageMapper.insert(any(AiChatMessage.class))).thenAnswer(invocation -> {
+                    AiChatMessage firstMessage = invocation.getArgument(0);
+                    firstMessage.setId(10L);
+                    return 1;
+                }).thenAnswer(invocation -> {
+                    AiChatMessage secondMessage = invocation.getArgument(0);
+                    secondMessage.setId(11L);
+                    return 1;
+                });
+        /*
+        还有一种写法，可以参考，拓展思路
+        AiChatMessageSenderType senderType = message.getSenderType();
+
+        if (senderType == AiChatMessageSenderType.USER) {
+            message.setId(10L);
+        } else if (senderType == AiChatMessageSenderType.AI) {
+            message.setId(11L);
+        } else {
+            fail("插入消息的 senderType 不能为 null");
+        }
+         */
+
+        AiChatVO result = service.followUpAi(aiFollowUpDTO);
+        assertNotNull(result);
+        assertEquals(99L, result.getSessionId());
+        assertEquals(11L, result.getBankId());
+
+        List<AiChatMessageVO> messages = result.getMessages();
+        assertEquals(3, messages.size());
+        assertEquals(10L, messages.get(1).getMessageId());
+        assertEquals(AiChatMessageSenderType.USER, messages.get(1).getSenderType());
+        assertEquals("我想了解", messages.get(1).getMessageContent());
+        assertEquals(createdTime, messages.get(1).getCreatedTime());
+
+        ArgumentCaptor<AiChatMessage> messageCaptor = ArgumentCaptor.forClass(AiChatMessage.class);
+        /**
+         * 这里正好和 thenAnswer 形成 combo
+         * 前面用 条件判断，这里用 times(2)，表示 被验证方法 被执行 2次，那么就会捕获 2个插入的 AiChatMessage对象（因为在生产代码中，aiChatMessageMapper.insert就执行了2次）
+         * 然后 验证2个对象的参数
+         */
+        verify(aiChatMessageMapper, times(2)).insert(messageCaptor.capture());
+
+        /**
+         * 这里要用 getAllValues()，而不是 getValue(),接收两次捕获的对象
+         */
+        List<AiChatMessage> captorMessages = messageCaptor.getAllValues();
+
+        AiChatMessage captorMessageUser = captorMessages.get(0);
+        assertEquals(22L, captorMessageUser.getQuestionId());
+        assertEquals(99L, captorMessageUser.getSessionId());
+        assertEquals(GroupType.CERTIFICATION, captorMessageUser.getGroupType());
+        assertEquals(AiChatMessageSenderType.USER, captorMessageUser.getSenderType());
+        assertEquals("我想了解", captorMessageUser.getMessageContent());
+        assertNull(captorMessageUser.getModelName());
+        //下面这两组，在 verify中验证，意义不大，因为这都是你在 verify的 thenAnswer 中自己设置的，你再捕获他们没意义，必然相同
+        //但是我们在 thenAnswer 中自己设置，目的是为了在上面 993行，也就是该测试方法的返回值中必须要验证这个字段，然后进行验证，所以993行的验证是必要的
+        assertEquals(createdTime, captorMessageUser.getCreatedTime());
+        assertEquals(10L, captorMessageUser.getId());
+
+        AiChatMessage captorMessageAi = captorMessages.get(1);
+        assertEquals(22L, captorMessageAi.getQuestionId());
+        assertEquals(99L, captorMessageAi.getSessionId());
+        assertEquals(GroupType.CERTIFICATION, captorMessageAi.getGroupType());
+        assertEquals(AiChatMessageSenderType.AI, captorMessageAi.getSenderType());
+        assertEquals("这是 Mock AI 回复。启用 Qwen 后，将根据当前题目、答案解析和用户问题生成回复。", captorMessageAi.getMessageContent());
+        assertEquals("mock-llm", captorMessageAi.getModelName());
+        //同上注释
+        assertEquals(createdTime, captorMessageAi.getCreatedTime());
+        assertEquals(11L, captorMessageAi.getId());
+
+        verify(aiPromptBuilder).buildAiChatPrompt("questionContext", List.of(history), "我想了解");
+        verify(llmClient).chat("prompt");
+        verify(membershipAccessService).requirePremiumPlus(7L);
+        verify(publishedQuestionBankAccessService).requirePublished(11L);
+
+    }
+
+}

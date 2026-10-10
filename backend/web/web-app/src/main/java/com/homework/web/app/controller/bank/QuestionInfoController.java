@@ -92,7 +92,7 @@ public class QuestionInfoController {
     }
 
     //用户点击答案解析里的“追问AI”按钮时，先调用这个接口拉取当前题库已有的 AI 会话。
-    //如果之前已经追问过，会返回历史消息；如果还没追问过，会返回空消息列表。
+    //如果之前已经追问过，会返回历史消息；如果还没追问过，会返回空消息列表 + 欢迎语。
     @GetMapping("/ai/chat")
     public Result<AiChatVO> startAiChat(@RequestParam Long bankId, @RequestParam GroupType bankType) {
         AiChatVO vo = questionInfoService.startAiChat(bankId, bankType);
