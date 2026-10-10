@@ -467,7 +467,7 @@ public class AdminQuestionService {
 //                    int expectedRows = maxQuestionNo - lowerQuestionNo + 1;
 
                     // 不能直接把 4～8 修改成 3～7，虽然MySQL内可以通过 ORDER BY 实现顺序更新，但这不代表其他数据库也支持UPDATE + ORDER BY
-                    // UPDATE question_info SET question_no = question_no - 1 WHERE bank_id = #{bankId} AND #{question_no} BETWEEN lowerQuestionNo AND maxQuestionNo ORDER BY question_no ASC
+                    // UPDATE question_info SET question_no = question_no - 1 WHERE bank_id = #{bankId} AND #{question_no} BETWEEN #{question_no} + 1 AND COALESCE(Max(question_no),0) ORDER BY question_no ASC
                     // 最稳妥的解决方案是：先把受影响序号变成负数，再恢复成正数并减 1，最终得到连续的 1～N 序号。这样做的好处是，不会破坏bank_id + question_no的唯一索引
                     int temporaryRows = interviewQuestionMapper.negativeQuestionNoRange(bankId, lowerQuestionNo, maxQuestionNo);
                     // 这个算法，值得学习

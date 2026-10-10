@@ -13,7 +13,7 @@
             is_deleted = 0,
             answered_time = #{userQuestionAnswer.answeredTime},
             updated_time = CURRENT_TIMESTAMP(3)
-        WHERE id = #{userQuestionAnswer.id} <!-- 这些是业务字段，如果这些字段都改了，你还更新什么，那就变成插入了 -->
+        WHERE id = #{userQuestionAnswer.id} <!-- 这些是业务字段，如果这些字段都改了，你还更新什么，那就变成插入了；而且，一个存在记录的 userQuestionAnswer，id,bankId,questionId,userId 这些是不可能变的 -->
         AND bank_id = #{userQuestionAnswer.bankId}
         AND question_id = #{userQuestionAnswer.questionId}
         AND user_id = #{userQuestionAnswer.userId}

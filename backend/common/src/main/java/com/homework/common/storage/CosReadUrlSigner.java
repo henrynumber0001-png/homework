@@ -31,7 +31,6 @@ public class CosReadUrlSigner {
         String presignedUrl = cosClient.generatePresignedUrl(bucket, objectKey, expiresTime, HttpMethodName.GET).toString();
         return presignedUrl;
 
-
         //generatePresignedUrl 方法把 GET请求方法 + 到期时间 + COS服务器的桶名 + objectKey 拼起来
         //然后再利用我的COS子账户的 SecretKey，使用HMAC-SHA1/SHA256算法，最终得到一个签名（比如2AE8F9C7D5....）
         //generatePresignedUrl 最终生成的不只是一个签名，而是一整个URL（Presigned URL），包含：COS Public URL + objectKey + 算法 + 签发AKID + 签名有效期（根据ttl）+ SecretKey生效时间 + 签名本身

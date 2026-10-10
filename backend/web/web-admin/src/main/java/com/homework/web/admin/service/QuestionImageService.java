@@ -79,7 +79,7 @@ public class QuestionImageService {
             metadata.setContentLength(file.getSize());
             metadata.setContentType(file.getContentType());
 
-            //调用腾讯COS客户端，把前端传过来的图片都字节数、文件类型、objectKey存入指定的存储桶里的一个object中
+            //调用腾讯COS客户端，把前端传过来的图片的字节数、文件类型、objectKey存入指定的存储桶里的一个object中
             cosClient.putObject(new PutObjectRequest(
                     properties.getBucket(), //保存到哪个桶
                     objectKey, //桶里的键 输入什么
@@ -110,7 +110,6 @@ public class QuestionImageService {
      */
 
     /** 将临时图片复制到正式目录、删除原对象，并返回正式对象 Key。 */
-
     public String bind(String objectKey) { //再把这个临时照片的 objectKey 传回来
         if (objectKey == null || objectKey.isBlank()) {
             return null;
@@ -246,5 +245,59 @@ Public URL + ObjectKey
          一致               不一致
           │                 │
           ▼                 ▼
-      返回 Object        403 Forbidden
+      Binary Content  403 Forbidden
+       + Metadata
+          ↓
+    浏览器解码并显示图片
+
+ */
+
+/*
+接下来，通过 QuestionInfoServiceImpl 的 getInterviewQuestionReview(Long bankId) 彻底了解 presignedUrl 的用法
+
+首先说结论：当浏览器发出一个请求，后端会根据readUrlSigner.sign(questionInfo.getImageObjectKey()) 返回 imageUrl
+但本身不会触发 COS 请求，只有前端把这个 URL 真正用于 <img src="...">、CSS 背景图或主动 fetch() 时，浏览器才会请求 COS。
+
+根据业务逻辑，操作顺序如下：
+前端请求全部答题情况
+        ↓
+后端返回 List<InterviewQuestionReviewVO>
+        ↓
+每道题可能包含 imageUrl
+        ↓
+前端只保存这些数据，不渲染图片
+        ↓
+此时不会请求 COS
+        ↓
+用户点击具体题号
+        ↓
+前端显示这道题的详情
+        ↓
+React 渲染 <img src={当前题目的 imageUrl}>
+        ↓
+浏览器自动向 COS 发起 GET 请求
+        ↓
+COS 返回图片二进制
+        ↓
+浏览器解码并显示
+
+
+即，只收到 imageUrl 不会自动请求 COS
+例如：
+const reviews = [
+  {
+    questionId: 22,
+    title: 'Java并发',
+    imageUrl: 'https://bucket.cos...signed-url...',
+  },
+]
+点击题目后渲染 <img> 才会请求，例如：
+{selectedReview?.imageUrl ? (
+  <img
+    src={selectedReview.imageUrl} //浏览器才会自动执行：GET https://bucket.cos...signed-url...
+    alt={selectedReview.title}
+  />
+) : null}
+
+浏览器会自己完成请求、接收二进制、解码和显示。
  */

@@ -52,14 +52,13 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
     @Override
     public List<InterviewQuestionPageVO> getInterviewByBankId(Long bankId) {
-        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId());
+        membershipAccessService.requireActiveMembership(LoginUserHolder.getUserId()); //有返回值，但我不用接这个返回值，这个方法只是想判断 userId 是否有会员权限，没有会抛异常，不会执行下面的代码
 
         if (bankId == null) {
             throw new HomeworkException(ResultCodeEnum.PARAM_ERROR);
         }
         publishedQuestionBankAccessService.requirePublished(bankId);
 
-        // 变更：原来先查关系表再用 IN 查询；现在直接按面试题 bank_id 查询并按手动顺序返回。
         LambdaQueryWrapper<InterviewQuestionInfo> questionInfoQueryWrapper = new LambdaQueryWrapper<>();
         questionInfoQueryWrapper.eq(InterviewQuestionInfo::getBankId, bankId)
                 .eq(InterviewQuestionInfo::getQuestionType, QuestionInfoQuestionType.ESSAY)
@@ -67,6 +66,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                 .orderByAsc(InterviewQuestionInfo::getQuestionNo)
                 .orderByAsc(InterviewQuestionInfo::getId);
 
+        //mapper 根据查询条件 没有查询到结果时，返回的是 空列表，而非 null（因为这里调用的方法是 selectList）
         List<InterviewQuestionInfo> questionInfos = interviewQuestionInfoMapper.selectList(questionInfoQueryWrapper);
         if (questionInfos.isEmpty()) {
             throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
@@ -101,7 +101,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             list.add(vo);
         });
 
-        interviewQuestionInfoMapper.incrementViewCount(bankId);
+        interviewQuestionInfoMapper.incrementViewCount(bankId); //每次调用 incrementViewCount，并传入 bankId 时，都会更新数据库表中的 viewCount 字段
         return list;
     }
 
@@ -129,6 +129,9 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                 .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED);
 
         InterviewQuestionInfo questionInfo = interviewQuestionInfoMapper.selectOne(interviewQueryWrapper);
+        if (questionInfo == null) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        }
 
         List<Long> questionIdList = List.of(questionId); //把单个对象转换成List集合
         LambdaQueryWrapper<UserFavoriteQuestion> favQuery = new LambdaQueryWrapper<>();
@@ -140,9 +143,6 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         Map<Long, UserFavoriteQuestion> favoriteQuestionMap = userFavoriteQuestions.stream()
                 .collect(Collectors.toMap(UserFavoriteQuestion::getQuestionId, Function.identity()));
 
-        if (questionInfo == null) {
-            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
-        }
 
         //兜底机制（但后端接口不能只相信前端，因为用户可以绕过页面，直接请求）
         if (!questionInfo.getQuestionType().equals(QuestionInfoQuestionType.ESSAY)
@@ -320,7 +320,6 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         }
         publishedQuestionBankAccessService.requirePublished(noteDTO.getBankId());
 
-        // 变更：笔记保存前直接检查两类题目实体的 bankId + questionId，不再查询关系表。
         Long interviewCount = interviewQuestionInfoMapper.selectCount(
                 new LambdaQueryWrapper<InterviewQuestionInfo>()
                         .eq(InterviewQuestionInfo::getBankId, noteDTO.getBankId())
@@ -341,7 +340,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         userQuestionNote.setBankId(noteDTO.getBankId());
         userQuestionNote.setQuestionId(noteDTO.getQuestionId()); //空格字符串可以保存，但null和空字符串不行
         userQuestionNote.setNoteContent(noteDTO.getNoteContent());
-        userQuestionNoteMapper.insert(userQuestionNote);
+        int result = userQuestionNoteMapper.insert(userQuestionNote);
+        if(result != 1) {
+            throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+        };
     }
 
     @Override
@@ -359,7 +361,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
                 //这里千万注意一点：字段 QuestionNo 只是用来排序，不返回给前端，不作为前端用于制作题目序号的依据
                 //换句话说，QuestionNo 是管理员使用和查看题目顺序的
-                //前端是根据返回的 组装的 List集合（底层是数组）的下表顺序，完成题目排序的
+                //前端是根据返回的 组装的 List集合（底层是数组）的下标顺序，完成题目排序的
                 .orderByAsc(CertificateQuestionInfo::getQuestionNo)
                 .orderByAsc(CertificateQuestionInfo::getId);
 
@@ -410,7 +412,6 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         Long bankId = submitDTO.getBankId();
         publishedQuestionBankAccessService.requirePublished(bankId);
 
-        // 变更：提交答案时直接在认证题查询中校验 bankId，阻止跨题库提交。
         LambdaQueryWrapper<CertificateQuestionInfo> certificateQueryWrapper = new LambdaQueryWrapper<>();
         certificateQueryWrapper.eq(CertificateQuestionInfo::getId, questionId)
                 .eq(CertificateQuestionInfo::getBankId, bankId)
@@ -593,7 +594,6 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         }
         publishedQuestionBankAccessService.requirePublished(bankId);
 
-        // 变更：面试题作答记录页直接按 bank_id 查询，并保留人工拖拽顺序。
         LambdaQueryWrapper<InterviewQuestionInfo> interviewQueryWrapper = new LambdaQueryWrapper<>();
         interviewQueryWrapper.eq(InterviewQuestionInfo::getBankId, bankId)
                 .eq(InterviewQuestionInfo::getStatus, QuestionInfoStatus.PUBLISHED)
@@ -639,7 +639,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         //再接着查QuestionAiEvaluation
         LambdaQueryWrapper<QuestionAiEvaluation> questionAiEvaluationQueryWrapper = new LambdaQueryWrapper<>();
         questionAiEvaluationQueryWrapper.in(QuestionAiEvaluation::getQuestionId, interviewQuestionIds)
-                .in(QuestionAiEvaluation::getId, userAnswerIds)
+                .in(QuestionAiEvaluation::getAnswerId, userAnswerIds)
                 .eq(QuestionAiEvaluation::getUserId, userId);
 
         List<QuestionAiEvaluation> questionAiEvaluations = questionAiEvaluationMapper.selectList(questionAiEvaluationQueryWrapper);
@@ -759,7 +759,9 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
         publishedQuestionBankAccessService.requirePublished(bankId);
 
         Long userId = LoginUserHolder.getUserId();
-        // 变更：收藏前直接检查两类题目实体的归属，防止收藏其他题库的题目。
+
+        //先查询这道题在题库中是否存在
+        //又因为 collect 方法没有区分 groupType，所以 通过 interviewCount + certificateCount 的结果（是否为0）区分
         Long interviewCount = interviewQuestionInfoMapper.selectCount(
                 new LambdaQueryWrapper<InterviewQuestionInfo>()
                         .eq(InterviewQuestionInfo::getBankId, bankId)
@@ -793,7 +795,7 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
                     throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
                 }
             }
-        } else if (existing != null && Boolean.TRUE.equals(existing.getDeleted())) {
+        } else if (existing != null && Boolean.TRUE.equals(existing.getDeleted())) {//existing 是 user_favorite_question 表的一行数据
             if (actionStatus == ActionStatus.ACTIVATE) {
                 int result = userFavoriteQuestionMapper.restoreById(existing.getId());
                 if (result != 1) {
@@ -996,7 +998,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             bankCorrectRate.setBankId(bankId);
             bankCorrectRate.setGroupType(groupType);
             bankCorrectRate.setCorrectRate(countVO.getCorrectRate());
-            userBankCorrectRateMapper.insert(bankCorrectRate);
+            int result = userBankCorrectRateMapper.insert(bankCorrectRate);
+            if (result != 1) {
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
         }
 
         //返回的是用户作答的interview题库的题目的平均正确率
@@ -1067,9 +1072,11 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             newSession.setBankId(bankId);
             newSession.setGroupType(groupType);
             newSession.setStatus(AiChatSessionStatus.ACTIVE);
-            aiChatSessionMapper.insert(newSession);
+            int result = aiChatSessionMapper.insert(newSession);
+            if (result != 1) {
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
             session = newSession;
-
 
             //还要创建一个AiChatMessage，因为你要写一个第一次的欢迎语
             AiChatMessage welcomeMessage = new AiChatMessage();
@@ -1078,7 +1085,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
             welcomeMessage.setMessageContent("你好，有关于这道题的知识点想深入了解吗？");
             welcomeMessage.setSenderType(AiChatMessageSenderType.AI);
             welcomeMessage.setModelName(RULE_WELCOME_MODEL);
-            aiChatMessageMapper.insert(welcomeMessage);
+            int insert = aiChatMessageMapper.insert(welcomeMessage);
+            if(insert != 1){
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
         }
 
         if (session.getStatus().equals(AiChatSessionStatus.CLOSED)) {
@@ -1089,7 +1099,11 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
             LambdaQueryWrapper<AiChatMessage> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.eq(AiChatMessage::getSessionId, session.getId());
-            aiChatMessageMapper.delete(queryWrapper); //逻辑删除：根据sessionId查询出的所有message
+            int delete = aiChatMessageMapper.delete(queryWrapper);//逻辑删除：根据sessionId查询出的所有message
+            if (delete != 1) {
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
+
             //重新创建第一条message（欢迎语）
             //每一条实际的消息，是存放在AiChatMessage表中
             AiChatMessage welcomeMessage = new AiChatMessage();
@@ -1275,7 +1289,10 @@ public class QuestionInfoServiceImpl implements QuestionInfoService {
 
         QuestionAiEvaluation latestEvaluation = questionAiEvaluationMapper.selectOne(evaluationQueryWrapper);
         if (latestEvaluation == null) {
-            questionAiEvaluationMapper.insert(questionAiEvaluation);
+            int result = questionAiEvaluationMapper.insert(questionAiEvaluation);
+            if (result != 1) {
+                throw new HomeworkException(ResultCodeEnum.DATA_ERROR);
+            }
         } else {
             questionAiEvaluation.setId(latestEvaluation.getId()); //必须要先 setId，才能 updateById
             questionAiEvaluationMapper.updateById(questionAiEvaluation);

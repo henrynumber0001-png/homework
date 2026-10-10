@@ -13,7 +13,7 @@ public class QuestionCountVO {
 
     private Long totalCount;
     private Long answeredCount;
-    //只针对 GroupType = CERTIFICATION
+
     private Long correctCount;
 
     private BigDecimal correctRate;

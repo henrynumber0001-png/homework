@@ -19,8 +19,14 @@ public interface UserFavoriteQuestionMapper extends BaseMapper<UserFavoriteQuest
     //FOR UPDATE 不必依赖 LIMIT 1，它会锁住所有符合条件的记录，直到当前事务提交或回滚。
 
     @Select("""
-            SELECT id, user_id, bank_id, question_id, collected_time,
-                   created_time, updated_time, is_deleted
+            SELECT id, 
+                   user_id, 
+                   bank_id, 
+                   question_id, 
+                   collected_time,
+                   created_time, 
+                   updated_time, 
+                   is_deleted
             FROM user_favorite_question
             WHERE user_id = #{userId}
               AND bank_id = #{bankId}
